@@ -125,6 +125,7 @@ export function createNewGameState(
 export function createEmptyUncreatedState(): GameState {
   const s = createNewGameState('', 'female', 'flame');
   s.created = false;
+  s.playerName = '';
   return s;
 }
 

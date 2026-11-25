@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { getCharacterQuote, getCharacterTitle, SCHOOLS } from '../data/schools';
 import type { Gender, SchoolId } from '../types/game';
-import { AstraCrestSvg, PlayerSilhouetteSvg } from './GothicArt';
+import { AstraCrestSvg, PlayerPortrait } from './GothicArt';
 
 interface Props {
   isRebirth?: boolean;
@@ -32,7 +32,7 @@ export const CharacterCreation: React.FC<Props> = ({
     <div className="creation-screen">
       <div className="creation-header">
         <div className="creation-crest">
-          <AstraCrestSvg size={56} />
+          <AstraCrestSvg size={50} />
         </div>
         <h1 className="creation-title">마법학교 아스트라</h1>
         <p className="creation-subtitle">
@@ -40,6 +40,33 @@ export const CharacterCreation: React.FC<Props> = ({
             ? `제 ${rebirthCount + 1}회차 시간 회귀 · 새로운 별빛의 입학서`
             : '검은 안개 속 최후의 마법학교 · 신입생 입학서'}
         </p>
+      </div>
+
+      <div className="preview-card wc-preview-card">
+        <div className="wc-preview-frame">
+          <PlayerPortrait school={school} gender={gender} variant="preview" />
+        </div>
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <div style={{ fontSize: 11, color: schoolInfo.color, fontWeight: 700 }}>
+            {schoolInfo.name} · {title}
+          </div>
+          <div
+            style={{
+              fontFamily: 'var(--font-serif)',
+              fontSize: 16,
+              fontWeight: 700,
+              margin: '3px 0 5px',
+            }}
+          >
+            {name.trim() || '견습생'}
+          </div>
+          <div style={{ fontSize: 11.5, color: '#dfd6c7', marginBottom: 6, lineHeight: 1.5 }}>
+            “{quote}”
+          </div>
+          <div style={{ fontSize: 11, color: '#9c9589', lineHeight: 1.45 }}>
+            {schoolInfo.flavor}
+          </div>
+        </div>
       </div>
 
       <div className="panel">
@@ -77,7 +104,7 @@ export const CharacterCreation: React.FC<Props> = ({
       <div className="panel">
         <div className="panel-title-row">
           <h2 className="panel-title">2. 출신 학파 선택</h2>
-          <span className="panel-sub">고유 마법 및 패시브 결정</span>
+          <span className="panel-sub">8종 수채화 원화 &amp; 고유 마법</span>
         </div>
         <div className="school-grid">
           {SCHOOL_ORDER.map((sid) => {
@@ -115,31 +142,6 @@ export const CharacterCreation: React.FC<Props> = ({
               </button>
             );
           })}
-        </div>
-      </div>
-
-      <div className="preview-card">
-        <div className="portrait-frame" style={{ marginBottom: 0, flexShrink: 0 }}>
-          <PlayerSilhouetteSvg school={school} gender={gender} size={74} />
-        </div>
-        <div style={{ minWidth: 0 }}>
-          <div style={{ fontSize: 11, color: schoolInfo.color, fontWeight: 700 }}>
-            {schoolInfo.name} · {title}
-          </div>
-          <div
-            style={{
-              fontFamily: 'var(--font-serif)',
-              fontSize: 15,
-              fontWeight: 700,
-              margin: '2px 0 4px',
-            }}
-          >
-            {name.trim() || '견습생'}
-          </div>
-          <div style={{ fontSize: 11.5, color: '#c5bdb0', marginBottom: 5 }}>
-            “{quote}”
-          </div>
-          <div style={{ fontSize: 11, color: '#8b8479' }}>{schoolInfo.flavor}</div>
         </div>
       </div>
 

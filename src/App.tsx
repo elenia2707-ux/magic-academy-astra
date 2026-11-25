@@ -5,8 +5,8 @@ import { BattleTab } from './components/BattleTab';
 import { CharacterCreation } from './components/CharacterCreation';
 import { DeckGearTab } from './components/DeckGearTab';
 import { FamiliarTab } from './components/FamiliarTab';
-import { PlayerSilhouetteSvg } from './components/GothicArt';
-import { OfflineModal, StoryModal } from './components/Modals';
+import { PlayerPortrait } from './components/GothicArt';
+import { HeroPortraitModal, OfflineModal, StoryModal } from './components/Modals';
 import { SchoolTab } from './components/SchoolTab';
 import { generateAbyssNode } from './data/abyssEvents';
 import {
@@ -77,6 +77,7 @@ export default function App() {
   const [storyModal, setStoryModal] = useState<{ act: number; phase: 'intro' | 'clear' } | null>(
     null
   );
+  const [heroModalOpen, setHeroModalOpen] = useState(false);
   const [rebirthPending, setRebirthPending] = useState(false);
   const [tab, setTab] = useState<TabId>('battle');
   const [toast, setToast] = useState<string | null>(null);
@@ -90,9 +91,34 @@ export default function App() {
   const stateRef = useRef(state);
   const statsRef = useRef(stats);
   const combatRef = useRef(combat);
+  const combatTransitionRef = useRef(false);
+  const nextCombatTimerRef = useRef<number | null>(null);
   stateRef.current = state;
   statsRef.current = stats;
   combatRef.current = combat;
+
+  const clearPendingCombatTimer = useCallback(() => {
+    if (nextCombatTimerRef.current !== null) {
+      window.clearTimeout(nextCombatTimerRef.current);
+      nextCombatTimerRef.current = null;
+    }
+    combatTransitionRef.current = false;
+  }, []);
+
+  const startCombatNow = useCallback(
+    (
+      nextState: GameState,
+      nextStats: ReturnType<typeof computePlayerStats>,
+      mode: CombatMode,
+      act?: number,
+      stageIndex?: number,
+      towerFloor?: number
+    ) => {
+      clearPendingCombatTimer();
+      setCombat(createCombatRuntime(nextState, nextStats, mode, act, stageIndex, towerFloor));
+    },
+    [clearPendingCombatTimer]
+  );
 
   const showToast = useCallback((msg: string) => {
     setToast(msg);
@@ -103,6 +129,10 @@ export default function App() {
     const t = setTimeout(() => setToast(null), 2400);
     return () => clearTimeout(t);
   }, [toast]);
+
+  useEffect(() => {
+    return () => clearPendingCombatTimer();
+  }, [clearPendingCombatTimer]);
 
   // 최초 로드 시 오프라인 방치 정산
   useEffect(() => {
@@ -156,12 +186,14 @@ export default function App() {
 
       if (!hasTraining && !lanternDue) return;
 
+      const trainedPreview = hasTraining ? advanceTraining(cur, 1, curStats) : null;
+      if (trainedPreview && trainedPreview.completedNames.length > 0) {
+        showToast(`수련 완료: ${trainedPreview.completedNames[0]}`);
+        playSfx('heal', cur.settings.sfxEnabled);
+      }
+
       setState((prev) => {
         const trained = hasTraining ? advanceTraining(prev, 1, curStats) : null;
-        if (trained && trained.completedNames.length > 0) {
-          showToast(`수련 완료: ${trained.completedNames[0]}`);
-          playSfx('heal', prev.settings.sfxEnabled);
-        }
         const nextAbyss = lanternDue
           ? {
               ...prev.abyss,
@@ -206,36 +238,93 @@ export default function App() {
     };
   };
 
-  // 자동 턴제 전투 틱
+  // 자동 턴제 전투 틱 (전환 중 중복 틱 및 이중 보상 방지)
   useEffect(() => {
     if (!state.created || rebirthPending) return;
     const ms = state.settings.speed === 3 ? 460 : state.settings.speed === 2 ? 780 : 1320;
     const id = setInterval(() => {
+      if (combatTransitionRef.current) return;
       const curState = stateRef.current;
       const curStats = statsRef.current;
       const curCombat = combatRef.current;
+      if (curCombat.enemyHp <= 0 || curCombat.playerHp <= 0) return;
 
       const outcome = stepCombatTurn(curCombat, curState, curStats);
       setCombat(outcome.combat);
       playSfx(outcome.sfx, curState.settings.sfxEnabled);
 
       if (outcome.result === 'victory') {
+        combatTransitionRef.current = true;
         const rewardMult = getRewardMultiplier(curState);
         const enemy = curCombat.enemy;
         const expGain = Math.round(enemy.expReward * rewardMult);
         const stoneGain = Math.round(enemy.stoneReward * rewardMult);
 
+        // 전환 대상 및 사이드이펙트를 state updater 밖에서 결정적으로 계산
         let nextMode: CombatMode = curCombat.mode;
         let nextAct = curCombat.act;
         let nextStage = curCombat.stageIndex;
         let nextTower = curCombat.towerFloor;
+        let toastToShow: string | null = null;
+        let clearStoryAct: number | null = null;
+
+        if (curCombat.mode === 'rankBoss') {
+          const promoted = Math.min(5, curState.rank + 1) as RankIndex;
+          toastToShow = `승급 성공! [${RANKS[promoted].name}]이(가) 되었습니다!`;
+          nextMode = 'stage';
+          nextAct = curState.selectedAct;
+          nextStage = curState.selectedStage;
+        } else if (curCombat.mode === 'tower') {
+          nextTower = curCombat.towerFloor + 1;
+          toastToShow = `무한 심연 탑 ${curCombat.towerFloor}층 돌파!`;
+        } else if (curCombat.mode === 'abyssElite') {
+          toastToShow = '심연 정예 토벌 완료!';
+          nextMode = 'stage';
+          nextAct = curState.selectedAct;
+          nextStage = curState.selectedStage;
+        } else {
+          const isActBoss = curCombat.stageIndex === 4;
+          if (isActBoss) {
+            if (!curState.clearedActs.includes(curCombat.act)) {
+              clearStoryAct = curCombat.act;
+            }
+            if (curState.settings.autoAdvance && curCombat.act < 6) {
+              nextAct = curCombat.act + 1;
+              nextStage = 0;
+            }
+          } else if (curState.settings.autoAdvance && curCombat.stageIndex < 3) {
+            nextStage = curCombat.stageIndex + 1;
+          }
+        }
+
+        const droppedItem: EquipmentItem | null =
+          curCombat.mode === 'tower'
+            ? generateEquipment(6, undefined, rollRarity(6, 20))
+            : curCombat.mode === 'abyssElite'
+              ? generateEquipment(curState.highestAct, undefined, rollRarity(curState.highestAct, 25))
+              : curCombat.mode === 'stage' &&
+                  Math.random() < (curCombat.stageIndex === 4 ? 1.0 : 0.24)
+                ? generateEquipment(
+                    curCombat.act,
+                    undefined,
+                    curCombat.stageIndex === 4 ? rollRarity(curCombat.act, 24) : undefined
+                  )
+                : null;
+        const extraTomeRoll =
+          curCombat.mode === 'stage' && curCombat.stageIndex >= 2 && curCombat.stageIndex < 4 && Math.random() < 0.12
+            ? 1
+            : 0;
+        const extraEggRoll =
+          curCombat.mode === 'stage' && curCombat.stageIndex >= 1 && curCombat.stageIndex < 4 && Math.random() < 0.14
+            ? 1
+            : 0;
 
         setState((prev) => {
           const lvRes = applyExpAndLevelUp(prev.level, prev.exp, expGain);
           let rank = prev.rank;
           let highestAct = prev.highestAct;
           let highestStageInAct = prev.highestStageInAct;
-          let clearedActs = [...prev.clearedActs];
+          const clearedActs = [...prev.clearedActs];
           let tomeShards = prev.tomeShards;
           let eggShards = prev.eggShards;
           let inventory = prev.inventory;
@@ -244,8 +333,14 @@ export default function App() {
           let selectedStage = prev.selectedStage;
           let towerFloor = prev.towerFloor;
           let highestTowerFloor = prev.highestTowerFloor;
-          let trainingSlots = [...prev.trainingSlots];
+          const trainingSlots = [...prev.trainingSlots];
           let abyss = prev.abyss;
+
+          if (droppedItem) {
+            const res = addDroppedItem(prev, droppedItem);
+            inventory = res.inventory;
+            arcaneDust = res.arcaneDust;
+          }
 
           if (curCombat.mode === 'rankBoss') {
             const promoted = Math.min(5, prev.rank + 1) as RankIndex;
@@ -254,54 +349,26 @@ export default function App() {
               RANKS[promoted].trainSlots + (prev.prestige.upgrades.extraTrainSlot ?? 0);
             while (trainingSlots.length < newTrainMax) trainingSlots.push(null);
             tomeShards += 2;
-            showToast(`승급 성공! [${RANKS[promoted].name}]이(가) 되었습니다!`);
-            nextMode = 'stage';
-            nextAct = prev.selectedAct;
-            nextStage = prev.selectedStage;
           } else if (curCombat.mode === 'tower') {
             highestTowerFloor = Math.max(highestTowerFloor, curCombat.towerFloor);
             towerFloor = curCombat.towerFloor + 1;
-            nextTower = towerFloor;
             tomeShards += curCombat.towerFloor % 5 === 0 ? 3 : 1;
-            const drop = generateEquipment(6, undefined, rollRarity(6, 20));
-            const res = addDroppedItem(prev, drop);
-            inventory = res.inventory;
-            arcaneDust = res.arcaneDust;
-            showToast(`무한 심연 탑 ${curCombat.towerFloor}층 돌파!`);
           } else if (curCombat.mode === 'abyssElite') {
             tomeShards += 2;
             eggShards += 2;
-            const drop = generateEquipment(prev.highestAct, undefined, rollRarity(prev.highestAct, 25));
-            const res = addDroppedItem(prev, drop);
-            inventory = res.inventory;
-            arcaneDust = res.arcaneDust;
             abyss = {
               ...prev.abyss,
-              lastResult: `정예 등불 사냥꾼 토벌! 금서 조각 +2, 알 조각 +2, [${drop.name}] 획득!`,
+              lastResult: `정예 등불 사냥꾼 토벌! 금서 조각 +2, 알 조각 +2${
+                droppedItem ? `, [${droppedItem.name}] 획득!` : '!'
+              }`,
             };
-            showToast('심연 정예 토벌 완료!');
-            nextMode = 'stage';
-            nextAct = prev.selectedAct;
-            nextStage = prev.selectedStage;
           } else {
-            // 일반 스테이지 & 챕터 보스
             const isActBoss = curCombat.stageIndex === 4;
-            if (Math.random() < (isActBoss ? 1.0 : 0.24)) {
-              const drop = generateEquipment(
-                curCombat.act,
-                undefined,
-                isActBoss ? rollRarity(curCombat.act, 24) : undefined
-              );
-              const res = addDroppedItem(prev, drop);
-              inventory = res.inventory;
-              arcaneDust = res.arcaneDust;
-            }
             if (isActBoss) {
               tomeShards += 2;
               eggShards += 1;
               if (!clearedActs.includes(curCombat.act)) {
                 clearedActs.push(curCombat.act);
-                setStoryModal({ act: curCombat.act, phase: 'clear' });
                 if (curCombat.act < 6 && highestAct <= curCombat.act) {
                   highestAct = curCombat.act + 1;
                   highestStageInAct = 0;
@@ -310,22 +377,15 @@ export default function App() {
               if (prev.settings.autoAdvance && curCombat.act < 6) {
                 selectedAct = curCombat.act + 1;
                 selectedStage = 0;
-                nextAct = selectedAct;
-                nextStage = 0;
               }
             } else {
-              if (curCombat.stageIndex >= 2 && Math.random() < 0.12) {
-                tomeShards += 1;
-              }
-              if (curCombat.stageIndex >= 1 && Math.random() < 0.14) {
-                eggShards += 1;
-              }
+              tomeShards += extraTomeRoll;
+              eggShards += extraEggRoll;
               if (curCombat.act === highestAct && curCombat.stageIndex >= highestStageInAct) {
                 highestStageInAct = Math.min(4, curCombat.stageIndex + 1);
               }
               if (prev.settings.autoAdvance && curCombat.stageIndex < 3) {
                 selectedStage = curCombat.stageIndex + 1;
-                nextStage = selectedStage;
               }
             }
           }
@@ -353,7 +413,14 @@ export default function App() {
           };
         });
 
-        setTimeout(() => {
+        if (toastToShow) showToast(toastToShow);
+        if (clearStoryAct !== null) {
+          setStoryModal({ act: clearStoryAct, phase: 'clear' });
+        }
+
+        nextCombatTimerRef.current = window.setTimeout(() => {
+          nextCombatTimerRef.current = null;
+          combatTransitionRef.current = false;
           const freshState = stateRef.current;
           const freshStats = statsRef.current;
           setCombat(
@@ -361,6 +428,7 @@ export default function App() {
           );
         }, Math.min(480, Math.round(ms * 0.6)));
       } else if (outcome.result === 'defeat') {
+        combatTransitionRef.current = true;
         const wasSpecial = curCombat.mode !== 'stage';
         const fallbackStage =
           curCombat.mode === 'stage' && curCombat.stageIndex === 4
@@ -375,7 +443,9 @@ export default function App() {
           setState((prev) => ({ ...prev, selectedStage: 3 }));
         }
 
-        setTimeout(() => {
+        nextCombatTimerRef.current = window.setTimeout(() => {
+          nextCombatTimerRef.current = null;
+          combatTransitionRef.current = false;
           const freshState = stateRef.current;
           const freshStats = statsRef.current;
           setCombat(
@@ -410,7 +480,7 @@ export default function App() {
     setState(fresh);
     setRebirthPending(false);
     const freshStats = computePlayerStats(fresh);
-    setCombat(createCombatRuntime(fresh, freshStats, 'stage', 1, 0));
+    startCombatNow(fresh, freshStats, 'stage', 1, 0);
     setTab('battle');
     setStoryModal({ act: 1, phase: 'intro' });
     saveGameToStorage(fresh);
@@ -420,33 +490,33 @@ export default function App() {
   const handleChangeStage = (act: number, stageIndex: number) => {
     playSfx('click', state.settings.sfxEnabled);
     setState((prev) => ({ ...prev, selectedAct: act, selectedStage: stageIndex }));
-    setCombat(createCombatRuntime(state, stats, 'stage', act, stageIndex));
+    startCombatNow(state, stats, 'stage', act, stageIndex);
   };
 
   const handleChallengeActBoss = () => {
     playSfx('click', state.settings.sfxEnabled);
     setState((prev) => ({ ...prev, selectedStage: 4 }));
-    setCombat(createCombatRuntime(state, stats, 'stage', state.selectedAct, 4));
+    startCombatNow(state, stats, 'stage', state.selectedAct, 4);
   };
 
   const handleReturnNormalStage = () => {
     playSfx('click', state.settings.sfxEnabled);
     const safeStage = Math.min(3, state.selectedStage);
     setState((prev) => ({ ...prev, selectedStage: safeStage }));
-    setCombat(createCombatRuntime(state, stats, 'stage', state.selectedAct, safeStage));
+    startCombatNow(state, stats, 'stage', state.selectedAct, safeStage);
   };
 
   const handleChallengeRankExam = () => {
     playSfx('click', state.settings.sfxEnabled);
     setTab('battle');
-    setCombat(createCombatRuntime(state, stats, 'rankBoss'));
+    startCombatNow(state, stats, 'rankBoss');
     showToast('승급 시험 보스전 개시!');
   };
 
   const handleChallengeTower = () => {
     playSfx('click', state.settings.sfxEnabled);
     setTab('battle');
-    setCombat(createCombatRuntime(state, stats, 'tower', state.selectedAct, 0, state.towerFloor));
+    startCombatNow(state, stats, 'tower', state.selectedAct, 0, state.towerFloor);
   };
 
   const handleAssignTraining = (slotIdx: number, skillId: string | null) => {
@@ -572,6 +642,11 @@ export default function App() {
 
   const handleDismantleBulk = (below: Rarity) => {
     const limit = RARITY_META[below].order;
+    const dustGain = state.inventory.reduce(
+      (acc, item) => (RARITY_META[item.rarity].order < limit ? acc + RARITY_META[item.rarity].dustValue : acc),
+      0
+    );
+    if (dustGain > 0) showToast(`일괄 분해 완료! 마력 가루 +${dustGain}`);
     setState((prev) => {
       let dust = 0;
       const keep: EquipmentItem[] = [];
@@ -582,7 +657,6 @@ export default function App() {
           keep.push(item);
         }
       }
-      if (dust > 0) showToast(`일괄 분해 완료! 마력 가루 +${dust}`);
       return { ...prev, inventory: keep, arcaneDust: prev.arcaneDust + dust };
     });
   };
@@ -695,7 +769,7 @@ export default function App() {
         abyss: { ...prev.abyss, activeNode: null },
       }));
       setTab('battle');
-      setCombat(createCombatRuntime(state, stats, 'abyssElite'));
+      startCombatNow(state, stats, 'abyssElite');
       return;
     }
 
@@ -819,9 +893,15 @@ export default function App() {
             <header className="top-header">
               <div className="header-row">
                 <div className="player-badge">
-                  <div className="player-avatar-mini">
-                    <PlayerSilhouetteSvg school={state.school} gender={state.gender} size={34} />
-                  </div>
+                  <button
+                    type="button"
+                    className="player-avatar-mini"
+                    onClick={() => setHeroModalOpen(true)}
+                    title="캐릭터 원화 크게 보기"
+                    aria-label="캐릭터 원화 크게 보기"
+                  >
+                    <PlayerPortrait school={state.school} gender={state.gender} variant="avatar" />
+                  </button>
                   <div className="player-meta">
                     <div className="player-name-line">
                       <span className="player-name">{state.playerName}</span>
@@ -875,6 +955,7 @@ export default function App() {
                     }))
                   }
                   onOpenStory={(act) => setStoryModal({ act, phase: 'intro' })}
+                  onOpenHeroModal={() => setHeroModalOpen(true)}
                 />
               )}
 
@@ -938,7 +1019,10 @@ export default function App() {
                   onResolveAbyssChoice={handleResolveAbyssChoice}
                   onChallengeTower={handleChallengeTower}
                   onBuyPrestigeUpgrade={handleBuyPrestigeUpgrade}
-                  onStartRebirthFlow={() => setRebirthPending(true)}
+                  onStartRebirthFlow={() => {
+                    clearPendingCombatTimer();
+                    setRebirthPending(true);
+                  }}
                   onToggleSfx={() =>
                     setState((prev) => ({
                       ...prev,
@@ -950,10 +1034,11 @@ export default function App() {
                     if (!loaded) return false;
                     setState(loaded);
                     saveGameToStorage(loaded);
-                    setCombat(createCombatRuntime(loaded, computePlayerStats(loaded), 'stage'));
+                    startCombatNow(loaded, computePlayerStats(loaded), 'stage');
                     return true;
                   }}
                   onHardReset={() => {
+                    clearPendingCombatTimer();
                     clearGameStorage();
                     setState(createEmptyUncreatedState());
                     setTab('battle');
@@ -1017,6 +1102,14 @@ export default function App() {
                 actNumber={storyModal.act}
                 phase={storyModal.phase}
                 onClose={() => setStoryModal(null)}
+              />
+            )}
+
+            {heroModalOpen && (
+              <HeroPortraitModal
+                state={state}
+                stats={stats}
+                onClose={() => setHeroModalOpen(false)}
               />
             )}
           </>

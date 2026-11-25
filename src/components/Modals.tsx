@@ -1,7 +1,9 @@
 import React from 'react';
 import { ACTS } from '../data/acts';
+import { getCharacterQuote, getCharacterTitle, RANKS, SCHOOLS } from '../data/schools';
 import { formatDuration } from '../engine/offline';
-import type { OfflineSummary } from '../types/game';
+import type { ComputedStats, GameState, OfflineSummary } from '../types/game';
+import { PlayerPortrait } from './GothicArt';
 
 export const OfflineModal: React.FC<{
   summary: OfflineSummary;
@@ -76,6 +78,55 @@ export const StoryModal: React.FC<{
         </div>
         <button type="button" className="btn btn-gold btn-block" onClick={onClose}>
           {phase === 'intro' ? '임무 출격하기' : '계속 진행하기'}
+        </button>
+      </div>
+    </div>
+  );
+};
+
+export const HeroPortraitModal: React.FC<{
+  state: GameState;
+  stats: ComputedStats;
+  onClose: () => void;
+}> = ({ state, stats, onClose }) => {
+  const school = SCHOOLS[state.school];
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal-card hero-showcase-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="wc-full-frame">
+          <PlayerPortrait school={state.school} gender={state.gender} variant="full" />
+        </div>
+        <div style={{ textAlign: 'center', marginTop: 10 }}>
+          <div style={{ fontSize: 11, color: school.color, fontWeight: 700 }}>
+            {school.name} · {RANKS[state.rank].name} ({RANKS[state.rank].english})
+          </div>
+          <h3 className="modal-title" style={{ margin: '3px 0 4px', textAlign: 'center' }}>
+            {state.playerName} — {getCharacterTitle(state.school, state.gender)}
+          </h3>
+          <div style={{ fontSize: 11.5, color: '#c5bdb0', marginBottom: 10 }}>
+            “{getCharacterQuote(state.school, state.gender)}”
+          </div>
+        </div>
+        <div className="stat-grid" style={{ marginBottom: 10 }}>
+          <div className="stat-box">
+            <span>마력</span>
+            <strong>{stats.magic.toLocaleString()}</strong>
+          </div>
+          <div className="stat-box">
+            <span>체력</span>
+            <strong>{stats.maxHp.toLocaleString()}</strong>
+          </div>
+          <div className="stat-box">
+            <span>방어</span>
+            <strong>{stats.def.toLocaleString()}</strong>
+          </div>
+          <div className="stat-box">
+            <span>치명</span>
+            <strong>{stats.critRate}%</strong>
+          </div>
+        </div>
+        <button type="button" className="btn btn-gold btn-block" onClick={onClose}>
+          닫기
         </button>
       </div>
     </div>

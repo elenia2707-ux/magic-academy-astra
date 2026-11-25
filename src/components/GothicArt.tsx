@@ -1,6 +1,45 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import type { FamiliarId, Gender, MagicCategory, SchoolId } from '../types/game';
+import { getHeroArt } from '../data/art';
 import { CATEGORY_META, SCHOOLS } from '../data/schools';
+
+export const PlayerPortrait: React.FC<{
+  school: SchoolId;
+  gender: Gender;
+  variant?: 'avatar' | 'card' | 'preview' | 'full';
+  alt?: string;
+}> = ({ school, gender, variant = 'card', alt }) => {
+  const art = getHeroArt(school, gender);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    setFailed(false);
+  }, [art.url]);
+
+  if (failed) {
+    const fallbackSize = variant === 'avatar' ? 34 : variant === 'full' ? 180 : 88;
+    return <PlayerSilhouetteSvg school={school} gender={gender} size={fallbackSize} />;
+  }
+
+  const pos =
+    variant === 'avatar'
+      ? art.avatarPosition
+      : variant === 'full'
+        ? '50% 50%'
+        : art.cardPosition;
+
+  return (
+    <img
+      src={art.url}
+      alt={alt ?? `${SCHOOLS[school].name} ${gender === 'male' ? '남성' : '여성'} 마법사`}
+      className={`wc-portrait wc-portrait-${variant}`}
+      style={{ objectPosition: pos, backgroundColor: art.bgTint }}
+      loading={variant === 'avatar' ? 'eager' : 'lazy'}
+      draggable={false}
+      onError={() => setFailed(true)}
+    />
+  );
+};
 
 export const AstraCrestSvg: React.FC<{ size?: number }> = ({ size = 48 }) => (
   <svg width={size} height={size} viewBox="0 0 100 100" fill="none">

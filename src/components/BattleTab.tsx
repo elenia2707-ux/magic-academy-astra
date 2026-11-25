@@ -5,7 +5,7 @@ import { FAMILIARS } from '../data/familiars';
 import { CATEGORY_META, getCharacterTitle, RANKS, SCHOOLS } from '../data/schools';
 import { SKILL_MAP } from '../data/skills';
 import type { CombatRuntime, ComputedStats, GameState, StatusEffect, StatusType } from '../types/game';
-import { FamiliarSilhouetteSvg, MonsterSilhouetteSvg, PlayerSilhouetteSvg } from './GothicArt';
+import { FamiliarSilhouetteSvg, MonsterSilhouetteSvg, PlayerPortrait } from './GothicArt';
 
 interface Props {
   state: GameState;
@@ -17,6 +17,7 @@ interface Props {
   onCycleSpeed: () => void;
   onToggleAutoAdvance: () => void;
   onOpenStory: (act: number) => void;
+  onOpenHeroModal: () => void;
 }
 
 const STATUS_LABEL: Record<StatusType, string> = {
@@ -51,6 +52,7 @@ export const BattleTab: React.FC<Props> = ({
   onCycleSpeed,
   onToggleAutoAdvance,
   onOpenStory,
+  onOpenHeroModal,
 }) => {
   const logRef = useRef<HTMLDivElement | null>(null);
 
@@ -165,7 +167,7 @@ export const BattleTab: React.FC<Props> = ({
         </div>
       </div>
 
-      {/* 고딕 카드·실루엣 전투 무대 */}
+      {/* 고딕 수채화 카드 전투 무대 */}
       <div className="arena-card">
         <div className="arena-banner">
           <span>
@@ -184,7 +186,7 @@ export const BattleTab: React.FC<Props> = ({
         </div>
 
         <div className="duel-grid">
-          {/* 플레이어 카드 */}
+          {/* 플레이어 수채화 카드 */}
           <div
             className={`combatant-card ${
               combat.lastVfx?.target === 'player' && !combat.lastVfx.isHeal ? 'shake' : ''
@@ -198,14 +200,20 @@ export const BattleTab: React.FC<Props> = ({
                 </div>
               </div>
             )}
-            <div className="portrait-frame">
-              <PlayerSilhouetteSvg school={state.school} gender={state.gender} size={74} />
+            <button
+              type="button"
+              className="portrait-frame portrait-frame-art"
+              onClick={onOpenHeroModal}
+              title="탭하여 캐릭터 원화 크게 보기"
+              aria-label="캐릭터 원화 크게 보기"
+            >
+              <PlayerPortrait school={state.school} gender={state.gender} variant="card" />
               {state.activeFamiliar && activeFam && (
                 <div className="familiar-mini-badge" title={FAMILIARS[state.activeFamiliar].name}>
                   <FamiliarSilhouetteSvg id={state.activeFamiliar} size={18} />
                 </div>
               )}
-            </div>
+            </button>
             <div className="combatant-name">{state.playerName}</div>
             <div className="combatant-role">
               Lv.{state.level} {getCharacterTitle(state.school, state.gender)}
