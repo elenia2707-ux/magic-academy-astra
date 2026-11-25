@@ -1,5 +1,20 @@
-const CACHE_NAME = 'astra-academy-v1';
-const ASSETS = ['./', './index.html', './manifest.webmanifest', './icon.svg'];
+const CACHE_NAME = 'astra-academy-v2';
+const ASSETS = [
+  './',
+  './index.html',
+  './manifest.webmanifest',
+  './icon.svg',
+  './apple-touch-icon.png',
+  './icon-512.png',
+  './art/heroes/flame_female.webp',
+  './art/heroes/flame_male.webp',
+  './art/heroes/frost_female.webp',
+  './art/heroes/frost_male.webp',
+  './art/heroes/thunder_female.webp',
+  './art/heroes/thunder_male.webp',
+  './art/heroes/earth_female.webp',
+  './art/heroes/earth_male.webp',
+];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
