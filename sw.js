@@ -1,4 +1,4 @@
-const CACHE_NAME = 'astra-academy-v5';
+const CACHE_NAME = 'astra-academy-v6';
 const ASSETS = [
   './',
   './index.html',
@@ -26,6 +26,15 @@ const ASSETS = [
   './art/bosses/boss_knight.webp',
   './art/bosses/boss_demon.webp',
   './art/bosses/demon_lord.webp',
+  './art/npcs/bernard.webp',
+  './art/npcs/lucia.webp',
+  './art/npcs/karen.webp',
+  './art/npcs/sebastian.webp',
+  './art/npcs/volta.webp',
+  './art/npcs/morden.webp',
+  './art/npcs/irene.webp',
+  './art/npcs/seraphina.webp',
+  './art/npcs/martha.webp',
 ];
 
 self.addEventListener('install', (event) => {
