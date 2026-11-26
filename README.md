@@ -1,32 +1,11 @@
-# React + TypeScript + Vite
+# 마법학교 아스트라 (Magic Academy Astra)
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+> 멸망 직전의 고딕 마법학교에서 성장하는 아이폰 PWA 다크 판타지 방치형 턴제 RPG
 
-Currently, two official plugins are available:
+### 🎮 라이브 플레이 주소 (아이폰 Safari로 열기)
+👉 **https://elenia2707-ux.github.io/magic-academy-astra/**
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
-```
-
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+### 📱 아이폰 홈 화면에 앱처럼 추가하는 방법
+1. 위 링크를 아이폰 **Safari**에서 열기
+2. 하단 **공유 버튼(□↑)** → **‘홈 화면에 추가’** 선택
+3. 홈 화면 아이콘으로 전체 화면 앱처럼 바로 실행!
