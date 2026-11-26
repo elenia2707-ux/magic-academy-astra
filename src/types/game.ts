@@ -114,6 +114,34 @@ export interface OwnedFamiliar {
   evolution: 0 | 1 | 2; // 0: 유체, 1: 성체, 2: 각성체
 }
 
+export type ProfessorId =
+  | 'bernard'
+  | 'lucia'
+  | 'karen'
+  | 'sebastian'
+  | 'volta'
+  | 'morden'
+  | 'irene'
+  | 'seraphina'
+  | 'martha';
+
+export type StoryPhase = 'intro' | 'mid' | 'boss' | 'clear';
+
+export type DialogueSpeakerKey =
+  | { kind: 'professor'; id: ProfessorId }
+  | { kind: 'boss'; artKey: string }
+  | { kind: 'player' }
+  | { kind: 'system' };
+
+export interface DialogueLine {
+  speaker: string;
+  role?: string;
+  portrait?: DialogueSpeakerKey;
+  text: string;
+  schoolVariants?: Partial<Record<SchoolId, string>>;
+  ngPlusText?: string;
+}
+
 export interface MonsterDef {
   id: string;
   name: string;
@@ -130,6 +158,8 @@ export interface MonsterDef {
   heavyInterval?: number; // N턴마다 강공격
   heavyName?: string;
   heavyMult?: number;
+  encounterQuote?: string;
+  ngPlusQuote?: string;
   statusOnHit?: {
     type: StatusType;
     turns: number;
@@ -144,8 +174,12 @@ export interface ActDef {
   subtitle: string;
   location: string;
   requiredRank: RankIndex;
-  introLines: { speaker: string; text: string }[];
-  clearLines: { speaker: string; text: string }[];
+  introLines: DialogueLine[];
+  midLines: DialogueLine[];
+  bossLines: DialogueLine[];
+  clearLines: DialogueLine[];
+  bossQuote: string;
+  bossNgPlusQuote?: string;
   stages: MonsterDef[]; // 5 stages (4 regular + 1 chapter boss)
 }
 
@@ -266,6 +300,7 @@ export interface GameState {
   highestStageInAct: number; // 0~4
   clearedActs: number[]; // 클리어한 막 번호
   viewedStoryActs: number[];
+  viewedStoryKeys?: string[]; // 중반·보스·흑마법 해금 등 세부 스토리 1회 시청 기록
   selectedAct: number;
   selectedStage: number; // 0~4
   towerFloor: number;

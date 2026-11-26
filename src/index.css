@@ -1166,3 +1166,278 @@ textarea {
     inset 0 -8px 12px rgba(8, 7, 12, 0.36);
 }
 
+/* ================= STORY VN & PROFESSOR UI ================= */
+.story-vn-modal {
+  max-width: 392px;
+  padding: 15px;
+}
+
+.story-phase-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 5px;
+  margin-top: 8px;
+}
+
+.story-phase-btn {
+  border: 1px solid var(--border-muted);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-ash);
+  border-radius: 7px;
+  padding: 5px 4px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.story-phase-btn.active {
+  border-color: var(--border-gold);
+  background: rgba(200, 164, 93, 0.16);
+  color: var(--gold-bright);
+}
+
+.story-phase-btn:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
+.dialogue-vn {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 9px 10px;
+}
+
+.dialogue-vn.boss-line {
+  border-left-color: #cf4c50;
+  background: rgba(48, 14, 18, 0.34);
+}
+
+.dialogue-avatar {
+  width: 52px;
+  height: 52px;
+  border-radius: 9px;
+  overflow: hidden;
+  flex-shrink: 0;
+  border: 1px solid var(--border-gold);
+  background: #0d0c11;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.48);
+}
+
+.dialogue-avatar.boss {
+  border-color: rgba(207, 76, 80, 0.72);
+}
+
+.dialogue-body {
+  min-width: 0;
+  flex: 1;
+}
+
+.dialogue-speaker-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-bottom: 3px;
+}
+
+.dialogue-role {
+  font-size: 10px;
+  color: var(--text-ash);
+}
+
+.dialogue-ng-tag {
+  font-size: 9.5px;
+  padding: 1px 5px;
+  border-radius: 99px;
+  background: rgba(180, 143, 217, 0.2);
+  border: 1px solid rgba(180, 143, 217, 0.45);
+  color: #d9c0f5;
+  font-weight: 700;
+}
+
+/* Professor Banner inside Classrooms / Library / Headmaster */
+.professor-banner {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  background: linear-gradient(135deg, rgba(25, 22, 32, 0.92) 0%, rgba(15, 14, 21, 0.92) 100%);
+  border: 1px solid var(--border-gold);
+  border-radius: 10px;
+  padding: 9px 10px;
+  margin-bottom: 10px;
+}
+
+.wc-npc-thumb {
+  position: relative;
+  width: 58px;
+  height: 74px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border-gold);
+  background: #0d0c11;
+  padding: 0;
+  flex-shrink: 0;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  transition: transform 0.12s ease;
+}
+
+.wc-npc-thumb:active {
+  transform: scale(0.96);
+}
+
+.professor-banner-body {
+  min-width: 0;
+  flex: 1;
+}
+
+.professor-banner-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.professor-banner-name {
+  font-family: var(--font-serif);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.professor-banner-role {
+  font-size: 10.5px;
+  color: var(--text-ash);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.professor-zoom-btn {
+  margin-left: auto;
+  padding: 2px 7px;
+  font-size: 10.5px;
+}
+
+.professor-banner-quote {
+  font-size: 11.5px;
+  color: var(--text-ivory);
+  line-height: 1.48;
+}
+
+.classroom-filter-row {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+  margin-bottom: 9px;
+}
+
+.filter-pill {
+  border: 1px solid var(--border-muted);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-parchment);
+  border-radius: 99px;
+  padding: 4px 9px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.filter-pill.active {
+  border-color: var(--border-gold);
+  background: rgba(200, 164, 93, 0.16);
+  color: var(--gold-bright);
+}
+
+/* 9-Professor Faculty Grid */
+.faculty-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 7px;
+}
+
+.faculty-card {
+  border: 1px solid var(--border-muted);
+  background: var(--bg-panel-alt);
+  border-radius: 9px;
+  padding: 5px;
+  text-align: center;
+  cursor: pointer;
+  transition: transform 0.12s ease, border-color 0.14s ease;
+}
+
+.faculty-card.mine {
+  border-color: var(--border-gold);
+}
+
+.faculty-card:active {
+  transform: scale(0.97);
+}
+
+.faculty-portrait-box {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #0d0c11;
+  margin-bottom: 4px;
+}
+
+.faculty-badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 99px;
+  background: rgba(17, 16, 22, 0.85);
+  border: 1px solid var(--border-gold);
+  color: var(--gold-bright);
+}
+
+.faculty-name {
+  font-family: var(--font-serif);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-ivory);
+}
+
+.faculty-role {
+  font-size: 9.5px;
+  color: var(--text-ash);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Boss Encounter Quote Strip in Battle Arena */
+.boss-quote-strip {
+  margin-top: 8px;
+  padding: 6px 9px;
+  border-radius: 8px;
+  background: rgba(58, 16, 22, 0.42);
+  border: 1px solid rgba(207, 76, 80, 0.42);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.boss-quote-speaker {
+  font-family: var(--font-serif);
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #e88e92;
+}
+
+.boss-quote-text {
+  font-size: 11.5px;
+  color: #f3e6e2;
+  line-height: 1.42;
+}
+
+

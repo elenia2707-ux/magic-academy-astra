@@ -335,6 +335,20 @@ export const BattleTab: React.FC<Props> = ({
           </div>
         </div>
 
+        {/* 보스 조우 한 줄 대사 배너 */}
+        {(combat.enemy.encounterQuote || combat.enemy.ngPlusQuote) && (
+          <div className="boss-quote-strip">
+            <span className="boss-quote-speaker">{combat.enemy.name}</span>
+            <span className="boss-quote-text">
+              “
+              {state.prestige.rebirthCount >= 1 && combat.enemy.ngPlusQuote
+                ? combat.enemy.ngPlusQuote
+                : combat.enemy.encounterQuote}
+              ”
+            </span>
+          </div>
+        )}
+
         {/* 현재 심플 로테이션 스킬 덱 상태 */}
         <div className="rotation-strip">
           {Array.from({ length: stats.maxDeckSlots }).map((_, idx) => {
@@ -402,6 +416,7 @@ export const BattleTab: React.FC<Props> = ({
       {enemyModalOpen && (
         <MonsterShowcaseModal
           monster={combat.enemy}
+          rebirthCount={state.prestige.rebirthCount}
           onClose={() => setEnemyModalOpen(false)}
         />
       )}

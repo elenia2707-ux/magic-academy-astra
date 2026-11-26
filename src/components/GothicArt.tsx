@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import type { FamiliarId, Gender, MagicCategory, SchoolId } from '../types/game';
-import { getFamiliarArt, getHeroArt, getMonsterArt } from '../data/art';
+import type { FamiliarId, Gender, MagicCategory, ProfessorId, SchoolId } from '../types/game';
+import { getFamiliarArt, getHeroArt, getMonsterArt, getNpcArt } from '../data/art';
 import { FAMILIARS } from '../data/familiars';
 import { CATEGORY_META, SCHOOLS } from '../data/schools';
 
@@ -107,6 +107,42 @@ export const MonsterPortrait: React.FC<{
         backgroundColor: art.bgTint,
       }}
       loading={variant === 'card' ? 'eager' : 'lazy'}
+      draggable={false}
+      onError={() => setFailed(true)}
+    />
+  );
+};
+
+export const NpcPortrait: React.FC<{
+  id: ProfessorId;
+  variant?: 'avatar' | 'card' | 'full';
+  alt?: string;
+}> = ({ id, variant = 'avatar', alt }) => {
+  const art = getNpcArt(id);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    setFailed(false);
+  }, [art.url]);
+
+  if (failed) {
+    return <AstraCrestSvg size={variant === 'full' ? 120 : 42} />;
+  }
+
+  const pos =
+    variant === 'avatar'
+      ? art.avatarPosition
+      : variant === 'full'
+        ? '50% 50%'
+        : art.position;
+
+  return (
+    <img
+      src={art.url}
+      alt={alt ?? '아스트라 교수 초상화'}
+      className={`wc-portrait wc-npc-${variant}`}
+      style={{ objectPosition: pos, backgroundColor: art.bgTint }}
+      loading={variant === 'avatar' ? 'eager' : 'lazy'}
       draggable={false}
       onError={() => setFailed(true)}
     />

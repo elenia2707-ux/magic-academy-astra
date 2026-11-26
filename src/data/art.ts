@@ -1,4 +1,4 @@
-import type { FamiliarId, Gender, SchoolId } from '../types/game';
+import type { FamiliarId, Gender, ProfessorId, SchoolId } from '../types/game';
 
 export interface HeroArtMeta {
   url: string;
@@ -143,6 +143,70 @@ export const MONSTER_ART: Record<string, MonsterArtMeta> = {
   },
 };
 
+export interface NpcArtMeta {
+  url: string;
+  position: string;
+  avatarPosition: string;
+  bgTint: string;
+}
+
+export const NPC_ART: Record<ProfessorId, NpcArtMeta> = {
+  bernard: {
+    url: './art/npcs/bernard.webp',
+    position: '50% 18%',
+    avatarPosition: '52% 20%',
+    bgTint: '#171a22',
+  },
+  lucia: {
+    url: './art/npcs/lucia.webp',
+    position: '50% 16%',
+    avatarPosition: '48% 18%',
+    bgTint: '#1b1721',
+  },
+  karen: {
+    url: './art/npcs/karen.webp',
+    position: '50% 18%',
+    avatarPosition: '52% 20%',
+    bgTint: '#211718',
+  },
+  sebastian: {
+    url: './art/npcs/sebastian.webp',
+    position: '50% 18%',
+    avatarPosition: '50% 20%',
+    bgTint: '#171e26',
+  },
+  volta: {
+    url: './art/npcs/volta.webp',
+    position: '50% 18%',
+    avatarPosition: '50% 21%',
+    bgTint: '#171a24',
+  },
+  morden: {
+    url: './art/npcs/morden.webp',
+    position: '50% 18%',
+    avatarPosition: '50% 20%',
+    bgTint: '#19201a',
+  },
+  irene: {
+    url: './art/npcs/irene.webp',
+    position: '50% 16%',
+    avatarPosition: '50% 18%',
+    bgTint: '#17211d',
+  },
+  seraphina: {
+    url: './art/npcs/seraphina.webp',
+    position: '50% 16%',
+    avatarPosition: '50% 18%',
+    bgTint: '#1a1b20',
+  },
+  martha: {
+    url: './art/npcs/martha.webp',
+    position: '50% 16%',
+    avatarPosition: '49% 19%',
+    bgTint: '#1b161f',
+  },
+};
+
 export function getHeroArt(school: SchoolId, gender: Gender): HeroArtMeta {
   return HERO_ART[`${school}_${gender}`];
 }
@@ -153,4 +217,8 @@ export function getFamiliarArt(id: FamiliarId): FamiliarArtMeta {
 
 export function getMonsterArt(artKey: string): MonsterArtMeta | undefined {
   return MONSTER_ART[artKey];
+}
+
+export function getNpcArt(id: ProfessorId): NpcArtMeta {
+  return NPC_ART[id];
 }

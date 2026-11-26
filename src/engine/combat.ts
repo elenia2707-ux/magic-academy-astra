@@ -60,6 +60,15 @@ export function createCombatRuntime(
           ? `심연 미궁 정예전 — [${enemy.name}]과(와) 조우했습니다!`
           : `[${enemy.name}]이(가) 검은 안개 속에서 나타났습니다.`;
 
+  const initialLogs: CombatLogEntry[] = [nextLog(0, introMsg, 'system')];
+  const bossQuote =
+    state.prestige.rebirthCount >= 1 && enemy.ngPlusQuote
+      ? enemy.ngPlusQuote
+      : enemy.encounterQuote;
+  if (bossQuote) {
+    initialLogs.push(nextLog(0, `${enemy.name}: “${bossQuote}”`, 'dark'));
+  }
+
   return {
     mode,
     act,
@@ -79,7 +88,7 @@ export function createCombatRuntime(
     enemyStatuses: [],
     enemyTelegraph: false,
     familiarCounter: 0,
-    logs: [nextLog(0, introMsg, 'system')],
+    logs: initialLogs,
     lastVfx: null,
     victoryBanner: null,
   };

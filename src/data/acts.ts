@@ -7,20 +7,82 @@ export const ACTS: ActDef[] = [
     subtitle: '수정 광산의 변이',
     location: '아스트라 외곽 & 수정 광산',
     requiredRank: 0,
+    bossQuote: '붉은 별의 파편이… 저 여자의 손목에서 울고 있다! 전부 부숴주마!!',
+    bossNgPlusQuote: '또 이 냄새다… 부서진 별빛을 품은 자가 광산으로 내려왔구나!',
     introLines: [
       {
         speaker: '교장 베르나르',
-        text: '검은 안개가 남쪽 국경을 삼켰다. 살아남아 아스트라의 교문을 넘은 신입생이여, 이제 네 별빛을 증명할 시간이다.',
+        role: '아스트라 교장',
+        portrait: { kind: 'professor', id: 'bernard' },
+        text: '12년 전 대재앙 ‘흑식’ 이후, 대륙의 별빛은 하나둘 꺼져가고 있다. 검은 안개를 뚫고 아스트라의 교문을 넘은 신입생 {name}이여, 이제 네 별빛을 증명할 시간이다.',
+        ngPlusText:
+          '…묘하군, {name}. 입학식인데도 그대의 눈빛엔 이미 흑식의 밤을 수없이 건너온 자의 각오가 서려 있다. 좋다. 이번엔 시작부터 흔들리지 마라.',
       },
       {
         speaker: '담임 교수 루시아',
-        text: '먼저 학교 아래 수정 광산이 오염되었어. 교실에서 기초 마법을 익히고, 광산 깊은 곳의 거대 수정 골렘을 정화해 줘.',
+        role: '신입생 담임',
+        portrait: { kind: 'professor', id: 'lucia' },
+        text: '반가워요, {name}! 저는 신입생 담임을 맡은 루시아예요. 입학하자마자 미안하지만, 학교 아래 수정 광산이 붉게 폭주하고 있대요. 교실에서 기초 마법을 익힌 뒤 함께 조사해 줄래요?',
+        ngPlusText:
+          '어라… {name}, 처음 뵙는데 왜 이렇게 낯이 익고 안심이 될까요? 마치 아주 오래전부터 제 손을 잡아준 사람처럼… 후후, 어서 수정 광산으로 가볼까요?',
+      },
+      {
+        speaker: '학파 지도 교수',
+        role: '출신 학파 격려',
+        portrait: { kind: 'player' },
+        text: '각 학파의 긍지를 잊지 말고, 아스트라의 첫 임무를 무사히 마치고 돌아오너라.',
+        schoolVariants: {
+          flame:
+            '[흑염학 카렌] 하하, 우리 흑염 신입 {name}! 광산 안개 따위 잿더미로 만들고 와. 겁먹으면 화로 교실 출입 금지야!',
+          frost:
+            '[빙결학 세바스티안] …백야의 후계자 {name}, 흥분해서 마나를 낭비하지 마라. 광산의 변이체들을 얼음처럼 냉정하게 처리하고 복귀하도록.',
+          thunder:
+            '[뇌전학 볼타] 자, 우리 폭풍 첨탑의 기대주 {name}! 눈 깜짝할 사이에 황금빛 번개로 광산을 쓸어버리고 오라고.',
+          earth:
+            '[대지학 모르덴] 서두를 필요 없다, {name}. 발밑의 대지가 흔들릴수록 마음을 굳게 다잡고, 끝까지 버텨 돌아오거라.',
+        },
+      },
+    ],
+    midLines: [
+      {
+        speaker: '담임 교수 루시아',
+        role: '수정 광산 심층 입구',
+        portrait: { kind: 'professor', id: 'lucia' },
+        text: '잠깐만요, {name}… 여기 바닥에 박힌 붉은 수정 파편이 이상해요. 제가 가까이 가기만 해도 손목의 검은 봉인 리본이 타는 것처럼 뜨거워져요…',
+      },
+      {
+        speaker: '교장 베르나르',
+        role: '통신 수정구',
+        portrait: { kind: 'professor', id: 'bernard' },
+        text: '루시아! 결계 밖으로 더 이상 따라 내려가지 말라고 했을 텐데. 즉시 본관으로 복귀하라. 광산 최심부는 {name}에게 맡긴다.',
+      },
+    ],
+    bossLines: [
+      {
+        speaker: '붉은 수정 군주 락엘르',
+        role: '제 1막 보스 · 광산의 폭군',
+        portrait: { kind: 'boss', artKey: 'boss_golem' },
+        text: '크르르…! 아까 그 여자의 손목에서 마왕님의 심장 소리가 들렸다!! 붉은 수정의 이름으로, 아스트라의 별빛을 산산조각 내주마!',
+      },
+      {
+        speaker: '{name}',
+        role: '아스트라 신입생',
+        portrait: { kind: 'player' },
+        text: '루시아 교수님의 손목에 대해 뭘 알고 있는 거지…? 우선 폭주한 수정 군주부터 잠재워야 해!',
       },
     ],
     clearLines: [
       {
         speaker: '담임 교수 루시아',
-        text: '해냈구나! 수정 광산의 마력맥이 안정되었어. 이제 교장실에서 [시전자] 승급 시험에 도전할 자격이 생겼단다.',
+        role: '신입생 담임',
+        portrait: { kind: 'professor', id: 'lucia' },
+        text: '무사히 돌아왔군요, {name}! 광산의 마력맥이 안정되자 제 손목의 열기도 가라앉았어요… 방금 락엘르가 한 말은, 그냥 오염된 마수의 헛소리겠죠?',
+      },
+      {
+        speaker: '교장 베르나르',
+        role: '아스트라 교장',
+        portrait: { kind: 'professor', id: 'bernard' },
+        text: '훌륭히 해냈다. 교장실로 오거라. 이제 [시전자] 계급 승급 시험에 도전할 자격을 부여하마.',
       },
     ],
     stages: [
@@ -83,6 +145,8 @@ export const ACTS: ActDef[] = [
         heavyInterval: 3,
         heavyName: '붉은 수정 붕괴',
         heavyMult: 1.75,
+        encounterQuote: '붉은 별의 파편이… 저 여자의 손목에서 울고 있다! 전부 부숴주마!!',
+        ngPlusQuote: '또 이 냄새다… 부서진 별빛을 품은 자가 광산으로 내려왔구나!',
       },
     ],
   },
@@ -92,20 +156,56 @@ export const ACTS: ActDef[] = [
     subtitle: '풀려난 금서의 망령',
     location: '아스트라 지하 대서고',
     requiredRank: 1,
+    bossQuote: '마르타… 아직도 내 열쇠를 목에 걸고 있더냐… 마왕의 그릇이 아직 학교에 숨 쉬고 있다!',
+    bossNgPlusQuote: '기억의 책장이 뒤섞였군… 너는 이미 이 서고의 결말을 읽은 눈빛이다.',
     introLines: [
       {
         speaker: '사서장 마르타',
-        text: '지하 서고의 봉인이 깨졌어요. 버려진 금서들이 스스로 페이지를 넘기며 망령을 불러내고 있습니다.',
+        role: '금서 도서관 사서장',
+        portrait: { kind: 'professor', id: 'martha' },
+        text: '지하 대서고의 철문이 안쪽에서 부서졌습니다. 12년 전 봉인했던 금서들이 스스로 페이지를 넘기며, 옛 학우들의 망령을 불러내고 있어요.',
       },
       {
         speaker: '담임 교수 루시아',
-        text: '사역마 사육실이 열렸으니 든든한 사역마를 데려가렴. 서고 깊은 곳의 망령 사서를 잠재우면 금서 도서관의 열쇠를 얻게 될 거야.',
+        role: '신입생 담임',
+        portrait: { kind: 'professor', id: 'lucia' },
+        text: '이제 사역마 사육실이 열렸으니 든든한 사역마와 함께 내려가세요, {name}. 마르타 사서장님이 목에 건 저 낡은 열쇠가… 서고 최심부와 연결돼 있대요.',
+      },
+    ],
+    midLines: [
+      {
+        speaker: '사서장 마르타',
+        role: '지하 대서고 3열',
+        portrait: { kind: 'professor', id: 'martha' },
+        text: '…들리십니까? 저 망령들이 읊조리는 건 주문이 아닙니다. 12년 전 흑식의 날, 마왕을 없앨 금서를 찾다 사라진 제 스승 — 전임 사서장 크노스님의 연구 일지예요.',
+      },
+      {
+        speaker: '성광 교수 세라피나',
+        role: '성당 치유실',
+        portrait: { kind: 'professor', id: 'seraphina' },
+        text: '크노스 님은 스스로를 서고에 가두기 직전, “학교 안에 마왕의 파편이 살아 숨 쉬고 있다”는 말만 남기셨죠… 부디 그분의 영혼을 편히 잠재워 주세요.',
+      },
+    ],
+    bossLines: [
+      {
+        speaker: '망령 대사서 크노스',
+        role: '제 2막 보스 · 12년 전 전임 사서장',
+        portrait: { kind: 'boss', artKey: 'boss_wraith' },
+        text: '크흐흐… 마르타, 아직도 내 낡은 철제 열쇠를 목에 걸고 있더냐…! 베르나르에게 전하라! 마왕의 그릇을 품고 있는 한, 아스트라는 안에서부터 썩어 무너질 것이다!',
+      },
+      {
+        speaker: '사서장 마르타',
+        role: '금서 도서관 사서장',
+        portrait: { kind: 'professor', id: 'martha' },
+        text: '스승님, 이제 그만 쉬세요… {name}, 망설이지 말고 크노스 님의 사슬을 끊어주세요!',
       },
     ],
     clearLines: [
       {
         speaker: '사서장 마르타',
-        text: '고맙습니다. 이제 [정규 마법사]로 승급하면 금지된 흑마법 서고의 출입을 허가받게 될 거예요… 부디 이성을 잃지 마시길.',
+        role: '금서 도서관 사서장',
+        portrait: { kind: 'professor', id: 'martha' },
+        text: '…감사합니다, {name}. 스승님의 마지막 말씀은 마음에 담아두겠습니다. [정규 마법사]로 승급하시면 금서 도서관의 문을 열어드리죠. 부디 이성을 잃지 마시길.',
       },
     ],
     stages: [
@@ -169,6 +269,8 @@ export const ACTS: ActDef[] = [
         heavyInterval: 3,
         heavyName: '금단의 장송곡',
         heavyMult: 1.9,
+        encounterQuote: '마르타… 아직도 내 열쇠를 목에 걸고 있더냐… 마왕의 그릇이 아직 학교에 숨 쉬고 있다!',
+        ngPlusQuote: '기억의 책장이 뒤섞였군… 너는 이미 이 서고의 결말을 읽은 눈빛이다.',
         statusOnHit: { type: 'curse', turns: 3, value: 0.18, chance: 0.4 },
       },
     ],
@@ -179,20 +281,62 @@ export const ACTS: ActDef[] = [
     subtitle: '타락한 정령과 마녀의 탑',
     location: '님펜의 타락 숲',
     requiredRank: 2,
+    bossQuote: '아이린… 아직도 그 시든 장미를 꽂고 다니니? 베르나르가 루시아를 학교에 가둔 진짜 이유를 아느냐!',
+    bossNgPlusQuote: '붉은 달 아래서 다시 마주쳤군… 네가 시간을 몇 번을 돌려도 내 숲은 불탔어!',
     introLines: [
       {
-        speaker: '정령학 교수 아이린',
-        text: '학교 북쪽의 님펜 숲에 붉은 달이 떴어요. 평화롭던 정령들이 검은 안개에 잠식되어 미쳐가고 있습니다.',
+        speaker: '결계·정령 교수 아이린',
+        role: '정령 결계 교실',
+        portrait: { kind: 'professor', id: 'irene' },
+        text: '부탁드려요, {name}… 북쪽 님펜 숲에 붉은 달이 떴어요. 평화롭던 정령들이 피에 물들고… 숲 한가운데 마녀의 탑에서 그 아이의 마력이 느껴져요.',
       },
       {
         speaker: '교장 베르나르',
-        text: '숲 중앙의 마녀 탑에서 흑마법 의식이 벌어지고 있다. 필요하다면 금서 도서관의 힘마저 써서 저지하라.',
+        role: '아스트라 교장',
+        portrait: { kind: 'professor', id: 'bernard' },
+        text: '붉은 달의 마녀 모르가나… 한때 아스트라 최연소 정령학 수석이었던 자다. 필요하다면 금서 도서관의 흑마법마저 써서 그녀의 의식을 저지하라.',
+      },
+    ],
+    midLines: [
+      {
+        speaker: '결계·정령 교수 아이린',
+        role: '피로 물든 정령 성소',
+        portrait: { kind: 'professor', id: 'irene' },
+        text: '…제 가슴에 꽂힌 이 시든 붉은 장미, 보이시나요? 12년 전 흑식이 오기 직전, 모르가나가 졸업 선물로 꽂아준 꽃이에요. 고향 숲이 불타던 날, 전 그 아이 손을 놓쳐버렸어요…',
+      },
+      {
+        speaker: '대지·사령 교수 모르덴',
+        role: '후방 엄호',
+        portrait: { kind: 'professor', id: 'morden' },
+        text: '과거를 애도할 시간은 끝난 뒤에 가져라, 아이린. 저 탑 꼭대기에서 모르가나가 붉은 달을 끌어내리고 있다. {name}, 정면 돌파다!',
+      },
+    ],
+    bossLines: [
+      {
+        speaker: '붉은 달의 마녀 모르가나',
+        role: '제 3막 보스 · 옛 정령학 수석',
+        portrait: { kind: 'boss', artKey: 'boss_witch' },
+        text: '아하하… 아이린! 아직도 그 시든 장미를 가슴에 꽂고 다니니? 위선적인 아스트라 녀석들… 베르나르가 왜 담임 루시아를 결계 밖으로 한 발짝도 못 나가게 가둬둔 줄은 알고 싸우는 거냐?!',
+      },
+      {
+        speaker: '결계·정령 교수 아이린',
+        role: '정령 결계 교실',
+        portrait: { kind: 'professor', id: 'irene' },
+        text: '모르가나, 제발 멈춰…! {name}, 미안해요. 저 아이의 고통을 끝내줄 수 있는 건 이제 당신뿐이에요!',
       },
     ],
     clearLines: [
       {
-        speaker: '정령학 교수 아이린',
-        text: '붉은 달이 가라앉았어요… 당신의 마력이 이제 학교의 벽을 넘어 대륙을 비추기 시작했군요.',
+        speaker: '붉은 달의 마녀 모르가나',
+        role: '사라지는 잔향',
+        portrait: { kind: 'boss', artKey: 'boss_witch' },
+        text: '…아이린, 네 장미… 아직 버리지 않았구나. 고마워… 그리고 {name}, 베르나르에게 꼭 물어봐. 루시아의 손목에 묶인 게 대체 무엇인지…',
+      },
+      {
+        speaker: '결계·정령 교수 아이린',
+        role: '정령 결계 교실',
+        portrait: { kind: 'professor', id: 'irene' },
+        text: '…붉은 달이 가라앉았어요. 모르가나의 마지막 얼굴은, 12년 전 그 다정하던 친구 그대로였어요. 고마워요, 정말 고마워요 {name}.',
       },
     ],
     stages: [
@@ -257,6 +401,8 @@ export const ACTS: ActDef[] = [
         heavyInterval: 3,
         heavyName: '혈월의 저주',
         heavyMult: 2.05,
+        encounterQuote: '아이린… 아직도 그 시든 장미를 꽂고 다니니? 베르나르가 루시아를 학교에 가둔 진짜 이유를 아느냐!',
+        ngPlusQuote: '붉은 달 아래서 다시 마주쳤군… 네가 시간을 몇 번을 돌려도 내 숲은 불탔어!',
         statusOnHit: { type: 'poison', turns: 3, value: 0.32, chance: 0.45 },
       },
     ],
@@ -267,20 +413,72 @@ export const ACTS: ActDef[] = [
     subtitle: '죽음의 기사단이 점령한 성채',
     location: '함락된 데런 왕도',
     requiredRank: 3,
+    bossQuote: '아스트라의 마법사여… 베르나르에게 전하라. 그 아이를 끝까지 지키라고!!',
+    bossNgPlusQuote: '…기묘하구나. 네 검과 마법에선 이미 내 최후를 지켜본 자의 경의가 느껴진다.',
     introLines: [
       {
         speaker: '교장 베르나르',
-        text: '한때 아스트라와 동맹이었던 데런 왕도가 하룻밤 새 침묵했다. 왕성의 기사들은 모두 죽음의 기사로 되살아났다고 한다.',
+        role: '아스트라 교장',
+        portrait: { kind: 'professor', id: 'bernard' },
+        text: '마지막 동맹국이던 데런 왕도의 연락이 끊겼다. 왕성의 기사단장 알드리치 — 12년 전 내 등을 맡겼던 옛 전우마저 죽음의 기사로 되살아났다는 보고다.',
+      },
+      {
+        speaker: '전선 전술 교관',
+        role: '출격 전 조언',
+        portrait: { kind: 'professor', id: 'sebastian' },
+        text: '데런 왕도는 화력과 방어가 모두 살인적이다. 로테이션 덱에 보호막·회복·약화를 정교하게 섞어두지 않으면 한 턴에 무너진다.',
+        schoolVariants: {
+          flame:
+            '[흑염학 카렌] 왕도의 망령 갑주들은 두껍지만 연옥의 불꽃엔 속수무책이야! 단, 체력 챙기는 성광·결계 스킬 하나쯤은 꼭 덱에 끼워둬, {name}!',
+          frost:
+            '[빙결학 세바스티안] 데런 기사단의 참격은 치명적이다. 빙결로 강공격 템포를 끊고, 보호막과 회복 로테이션을 완벽히 맞춰라.',
+          thunder:
+            '[뇌전학 볼타] 묵직한 중갑 기사들일수록 번개에 취약하지. 감전과 치명타로 녹이되, 강공격 턴엔 결계로 버틸 준비를 해 둬.',
+          earth:
+            '[대지학 모르덴] 알드리치는 생전 최고의 기사였다. 대지의 방벽과 반사로 그의 흑검을 정면으로 받아내며 명예롭게 맞서거라.',
+        },
+      },
+    ],
+    midLines: [
+      {
+        speaker: '성광 교수 세라피나',
+        role: '왕도 외곽 피난민 구호',
+        portrait: { kind: 'professor', id: 'seraphina' },
+        text: '살아남은 시민들은 모두 아스트라 결계 안으로 대피시켰어요! …그런데 이상해요. 데스나이트들은 피난민을 쫓지 않고, 오직 북쪽 심연의 문 앞을 막아선 채 서 있었어요.',
       },
       {
         speaker: '담임 교수 루시아',
-        text: '이제부턴 방심하면 한 턴에 무너져. 로테이션 덱에 방어막과 회복, 그리고 약화 마법을 정교하게 배치해야 해.',
+        role: '통신 수정구',
+        portrait: { kind: 'professor', id: 'lucia' },
+        text: '{name}… 알드리치 단장님은 저주에 걸린 뒤에도 마지막 의지로 심연의 군세를 막고 계셨던 걸지도 몰라요. 부디 그분께 명예로운 안식을 드려주세요.',
+      },
+    ],
+    bossLines: [
+      {
+        speaker: '데스나이트 단장 알드리치',
+        role: '제 4막 보스 · 베르나르의 옛 전우',
+        portrait: { kind: 'boss', artKey: 'boss_knight' },
+        text: '…아스트라의 문장이로군. 나의 육신은 저주에 묶였으나 기사의 맹세만은 녹슬지 않았다! 베르나르의 제자여, 네 마력으로 내 갑주를 꿰뚫어 증명하라!',
+      },
+      {
+        speaker: '{name}',
+        role: '아스트라 비술사',
+        portrait: { kind: 'player' },
+        text: '알드리치 단장님… 아스트라의 이름을 걸고, 전력을 다해 안식을 드리겠습니다!',
       },
     ],
     clearLines: [
       {
+        speaker: '데스나이트 단장 알드리치',
+        role: '마지막 유언',
+        portrait: { kind: 'boss', artKey: 'boss_knight' },
+        text: '훌륭하구나… 베르나르에게 전해주게. “네가 그 아이를 살리기로 택한 그날의 결정을, 난 한 번도 원망하지 않았다. 끝까지 루시아를 지키라”고…',
+      },
+      {
         speaker: '교장 베르나르',
-        text: '왕도의 비극에 마침표를 찍었군. 허나 북쪽 지평선에 마침내 [심연의 균열]이 열렸다.',
+        role: '아스트라 교장',
+        portrait: { kind: 'professor', id: 'bernard' },
+        text: '…고맙다, 벗이여. 그리고 미안하구나, {name}. 이제 북쪽 하늘에 [심연의 균열]이 열렸다. 더 이상 네게 진실을 숨길 수 없겠군.',
       },
     ],
     stages: [
@@ -345,6 +543,8 @@ export const ACTS: ActDef[] = [
         heavyInterval: 3,
         heavyName: '참수의 흑검격',
         heavyMult: 2.2,
+        encounterQuote: '아스트라의 마법사여… 베르나르에게 전하라. 그 아이를 끝까지 지키라고!!',
+        ngPlusQuote: '…기묘하구나. 네 검과 마법에선 이미 내 최후를 지켜본 자의 경의가 느껴진다.',
         statusOnHit: { type: 'burn', turns: 3, value: 0.36, chance: 0.45 },
       },
     ],
@@ -352,23 +552,71 @@ export const ACTS: ActDef[] = [
   {
     act: 5,
     title: '제 5막 · 심연의 균열',
-    subtitle: '마왕군 군단장의 전선',
+    subtitle: '마왕군 군단장의 전선과 숨겨진 진실',
     location: '검은 안개의 협곡',
     requiredRank: 4,
+    bossQuote: '그릇을 내놓아라! 마왕님의 심장을 인간의 껍질 속에 가둬둔 죄를 갚아라!!',
+    bossNgPlusQuote: '네놈인가… 그릇을 지키기 위해 몇 번이고 심연 앞에 서는 어리석은 마법사여!',
     introLines: [
       {
+        speaker: '뇌전학 교수 볼타',
+        role: '외벽 결계 지휘',
+        portrait: { kind: 'professor', id: 'volta' },
+        text: '비상이다!! 마왕군 선봉장 말레고스가 아스트라 정문 결계를 정면으로 찢고 있어! 교장 선생님이 먼저 막아서다 부상을 입으셨다!',
+      },
+      {
+        speaker: '흑염학 교수 카렌',
+        role: '최전선 방어',
+        portrait: { kind: 'professor', id: 'karen' },
+        text: '젠장, 놈들이 학교 본관 — 아니, 루시아를 정확히 노리고 밀고 들어온다! {name}, 교사진 전원이 길을 열 테니 균열로 돌파해!',
+      },
+    ],
+    midLines: [
+      {
         speaker: '교장 베르나르',
-        text: '하늘의 별빛이 거의 사라졌다. 균열 너머에서 마왕 발바르의 군단장이 아스트라를 향해 진군하고 있다.',
+        role: '12년 전의 진실 고백',
+        portrait: { kind: 'professor', id: 'bernard' },
+        text: '…더는 감출 수 없구나. 들어라, {name}. 12년 전 초대 교장 아스티엔께서 마왕을 봉인할 때, 폭주하던 마왕의 심장 조각을 떼어내 인간의 모습으로 봉인한 ‘그릇’이… 바로 담임 루시아다.',
       },
       {
         speaker: '담임 교수 루시아',
-        text: '여기까지 온 제자는 지난 백 년간 손에 꼽아. 네 사역마와 궁극 마법, 그리고 금기의 힘까지 모두 쏟아부어줘!',
+        role: '풀려가는 검은 봉인 리본',
+        portrait: { kind: 'professor', id: 'lucia' },
+        text: '…원로들이 저를 처형하자고 했을 때, 교장 선생님이 막아주셨죠. 제가 사라지면 발바르가 깨어나지 않을 거라면, 이제는 제가…!',
+      },
+      {
+        speaker: '교장 베르나르',
+        role: '아스트라 교장',
+        portrait: { kind: 'professor', id: 'bernard' },
+        text: '어리석은 소리 하지 마라, 루시아! 내가 금서 도서관까지 열며 {name}을(를) 혹독하게 키운 이유는 단 하나 — 너를 희생시키지 않고 마왕을 벨 ‘별의 계승자’를 만들기 위해서였다!',
+      },
+    ],
+    bossLines: [
+      {
+        speaker: '심연 군단장 말레고스',
+        role: '제 5막 보스 · 공허의 집행자',
+        portrait: { kind: 'boss', artKey: 'boss_demon' },
+        text: '하찮은 인간들의 감상 놀음은 끝났다! 그 여자 — 루시아의 심장을 되찾아 마왕 발바르 님을 완전 부활시키겠다! 가로막는 놈은 공허째 찢어발겨 주마!',
+      },
+      {
+        speaker: '{name}',
+        role: '아스트라 심연 마도사',
+        portrait: { kind: 'player' },
+        text: '루시아 교수님은 누구의 그릇도 아니야 — 우리 아스트라의 소중한 스승님이야! 네놈부터 여기서 끝내주겠다!',
       },
     ],
     clearLines: [
       {
+        speaker: '담임 교수 루시아',
+        role: '신입생 담임',
+        portrait: { kind: 'professor', id: 'lucia' },
+        text: '…{name}, 교장 선생님… 저를 포기하지 않아 주셔서 정말 감사해요. 이제 저도 도망치지 않을게요. 제 안의 별빛마저 모두 당신께 맡길게요!',
+      },
+      {
         speaker: '교장 베르나르',
-        text: '군단장이 쓰러졌다! 이제 [대마도사]의 칭호를 얻고 별이 잠든 왕좌로 향할 때다.',
+        role: '아스트라 교장',
+        portrait: { kind: 'professor', id: 'bernard' },
+        text: '말레고스가 쓰러졌다! 이제 교장실에서 초대 교장 아스티엔의 환영을 넘어 [대마도사]의 칭호를 얻고, 검은 왕좌로 진군하라!',
       },
     ],
     stages: [
@@ -433,6 +681,8 @@ export const ACTS: ActDef[] = [
         heavyInterval: 3,
         heavyName: '공허 붕괴파',
         heavyMult: 2.35,
+        encounterQuote: '그릇을 내놓아라! 마왕님의 심장을 인간의 껍질 속에 가둬둔 죄를 갚아라!!',
+        ngPlusQuote: '네놈인가… 그릇을 지키기 위해 몇 번이고 심연 앞에 서는 어리석은 마법사여!',
         statusOnHit: { type: 'curse', turns: 3, value: 0.28, chance: 0.5 },
       },
     ],
@@ -443,24 +693,82 @@ export const ACTS: ActDef[] = [
     subtitle: '부활한 마왕 발바르',
     location: '검은 왕좌의 첨탑',
     requiredRank: 5,
+    bossQuote: '아스트라의 마지막 별빛이여… 나 역시 한때 이 하늘을 지키던 최초의 현자였다. 네 희망을 증명해 보아라!',
+    bossNgPlusQuote: '또다시 시간을 거슬러 왔구나, 별의 계승자여… 몇 번을 되감아도 네 눈빛만은 변하지 않는군.',
     introLines: [
       {
-        speaker: '마왕 발바르',
-        text: '아스트라의 마지막 별빛이 스스로 왕좌까지 기어 올라왔구나. 네 스승들도 결국 어둠에 삼켜졌거늘.',
+        speaker: '학파 지도 교수',
+        role: '최후의 축복',
+        portrait: { kind: 'professor', id: 'karen' },
+        text: '아스트라의 모든 학파가 네 뒤에 서 있다. 반드시 살아서 돌아오너라, 대마도사 {name}!',
+        schoolVariants: {
+          flame:
+            '[흑염학 카렌] 내 최고의 제자 {name}! 마왕이고 뭐고 네 흑염으로 밤하늘까지 다시 불붙이고 와. 돌아오면 술 한 잔 거하게 사주마!',
+          frost:
+            '[빙결학 세바스티안] …백야의 이름으로 축복하지, {name}. 절대 죽지 마라. 내 제자가 마왕 따위에게 무릎 꿇는 꼴은 용납 못 한다.',
+          thunder:
+            '[뇌전학 볼타] 검은 안개 구름은 우리가 걷어낼게. 넌 첨탑 꼭대기까지 한 줄기 황금빛 번개처럼 꿰뚫고 올라가, {name}!',
+          earth:
+            '[대지학 모르덴] 전우들의 룬이 오늘따라 따뜻하구나. 아스트라의 마지막 방패여, 대지의 이름으로 네 귀환을 기다리겠다.',
+        },
+      },
+      {
+        speaker: '담임 교수 루시아',
+        role: '신입생 담임',
+        portrait: { kind: 'professor', id: 'lucia' },
+        text: '꼭 돌아오겠다고 약속해 주세요, {name}. 별빛이 돌아온 밤하늘 아래서… 아스트라의 졸업식을 함께 맞고 싶어요.',
+        ngPlusText:
+          '이상해요… 방금 문득, 우리가 아주 오래전에도 이 약속을 나눴던 기억이 스쳐 지나갔어요. 이번엔 기필코 웃으며 다시 만나요, {name}!',
+      },
+    ],
+    midLines: [
+      {
+        speaker: '부활한 마왕 발바르',
+        role: '첨탑 너머의 목소리',
+        portrait: { kind: 'boss', artKey: 'demon_lord' },
+        text: '가련하구나… 나 또한 아득한 옛날, 아스트라 성좌를 홀로 지키던 최초의 대현자였다. 인간들은 끝없이 배신했고, 별빛은 아무도 구원하지 못했다. 그래서 내가 모든 빛을 삼킨 것이다.',
       },
       {
         speaker: '교장 베르나르',
-        text: '대마도사여, 아스트라의 모든 세월이 네 지팡이 끝에 걸려 있다. 마왕을 베고 다시 밤하늘에 별을 띄워라!',
+        role: '통신 수정구',
+        portrait: { kind: 'professor', id: 'bernard' },
+        text: '현혹되지 마라, 대마도사여! 크노스도, 모르가나도, 알드리치도… 그리고 루시아마저 끝내 누군가를 지키려 했다. 우리가 짊어진 인연이 거짓이 아님을 보여줘라!',
+      },
+    ],
+    bossLines: [
+      {
+        speaker: '부활한 마왕 발바르',
+        role: '최종 보스 · 타락한 최초의 수호자',
+        portrait: { kind: 'boss', artKey: 'demon_lord' },
+        text: '아스트라의 마지막 별빛이 스스로 왕좌까지 기어 올라왔구나. 좋다 — 네가 지켜낸 인연이 내 영겁의 절망보다 무거운지, 이 종언의 흑식 앞에서 증명해 보아라!',
+        ngPlusText:
+          '또다시 시간을 거슬러 왔구나, {name}… 네 영혼에 켜켜이 쌓인 별의 잔재가 울고 있다. 이번 윤회야말로 나를 구원할 수 있을지 시험해 보마!',
+      },
+      {
+        speaker: '{name}',
+        role: '아스트라 대마도사',
+        portrait: { kind: 'player' },
+        text: '모두의 별빛을 여기까지 가져왔어… 이제 길었던 흑식의 밤을 끝낼 시간이야, 발바르!',
       },
     ],
     clearLines: [
       {
+        speaker: '부활한 마왕 발바르',
+        role: '사라지는 최초의 대현자',
+        portrait: { kind: 'boss', artKey: 'demon_lord' },
+        text: '…아아, 오랜만에 보는 별빛이로구나. {name}… 네 영혼에도 이미 수많은 윤회의 [별의 잔재]가 깃들어 있다. 언젠가 더 완벽한 구원을 원한다면, 시간을 되감아 또 다른 길로 나를 찾아오거라…',
+      },
+      {
         speaker: '교장 베르나르',
-        text: '검은 안개가 걷히고… 마침내 별빛이 돌아왔다! 그대의 이름은 아스트라의 역사에 영원히 새겨질 것이다.',
+        role: '아스트라 교장',
+        portrait: { kind: 'professor', id: 'bernard' },
+        text: '검은 안개가 걷히고… 12년 만에 밤하늘의 아스트라 성좌가 돌아왔다! 루시아의 손목에 있던 검은 봉인도 빛이 되어 사라졌구나. 그대의 이름은 영원히 기억될 것이다.',
       },
       {
         speaker: '시스템 안내',
-        text: '메인 스토리 6막 완결! 이제 [무한 심연 탑]과 선택형 환생 [시간 회귀]가 개방되었습니다. 원한다면 별의 잔재를 모아 새로운 학파로 다시 도전할 수도 있습니다.',
+        role: '엔딩 & 엔드 콘텐츠 해금',
+        portrait: { kind: 'system' },
+        text: '메인 스토리 6막 완결! 이제 [무한 심연 탑]과 선택형 환생 [시간 회귀]가 개방되었습니다. 별의 잔재를 모아 영구 각인을 새기고, 다른 학파로 시간을 되감아 2회차 전용 대사와 새로운 조합을 즐겨보세요!',
       },
     ],
     stages: [
@@ -525,6 +833,10 @@ export const ACTS: ActDef[] = [
         heavyInterval: 3,
         heavyName: '종언의 흑식',
         heavyMult: 2.55,
+        encounterQuote:
+          '아스트라의 마지막 별빛이여… 나 역시 한때 이 하늘을 지키던 최초의 현자였다. 네 희망을 증명해 보아라!',
+        ngPlusQuote:
+          '또다시 시간을 거슬러 왔구나, 별의 계승자여… 몇 번을 되감아도 네 눈빛만은 변하지 않는군.',
         statusOnHit: { type: 'curse', turns: 3, value: 0.32, chance: 0.55 },
       },
     ],
@@ -577,5 +889,6 @@ export function createAbyssEliteMonster(level: number, rank: number): MonsterDef
     heavyInterval: 3,
     heavyName: '미궁의 낫격',
     heavyMult: 1.85,
+    encounterQuote: '어둠 속에서 등불을 켠 죄… 네 마력째 거둬가마!',
   };
 }

@@ -1,12 +1,18 @@
 import React, { useState } from 'react';
-import { BookMarked, Flame, GraduationCap, Lock, Sparkles, Swords } from 'lucide-react';
+import { BookMarked, Flame, GraduationCap, Lock, Sparkles, Swords, Users } from 'lucide-react';
 import { ACTS } from '../data/acts';
+import {
+  getProfessorGreeting,
+  getSchoolProfessorId,
+  PROFESSOR_ORDER,
+  PROFESSORS,
+} from '../data/professors';
 import { CATEGORY_META, RANK_EXAM_BOSSES, RANKS, SCHOOLS } from '../data/schools';
 import { getSkillsForPlayer, SKILL_MAP } from '../data/skills';
 import { getSkillUpgradeCost } from '../engine/stats';
-import type { ComputedStats, GameState, MonsterDef, SkillDef } from '../types/game';
-import { CategoryDot, MonsterPortrait } from './GothicArt';
-import { MonsterShowcaseModal } from './Modals';
+import type { ComputedStats, GameState, MonsterDef, ProfessorId, SkillDef } from '../types/game';
+import { CategoryDot, MonsterPortrait, NpcPortrait } from './GothicArt';
+import { MonsterShowcaseModal, ProfessorShowcaseModal } from './Modals';
 
 interface Props {
   state: GameState;
@@ -15,9 +21,11 @@ interface Props {
   onUnlockDarkSkill: (skillId: string) => void;
   onUpgradeSkillWithStones: (skillId: string) => void;
   onChallengeRankExam: () => void;
-  onOpenStory: (act: number) => void;
+  onOpenStory: (act: number, archiveMode?: boolean) => void;
   onSelectAct: (act: number) => void;
 }
+
+type ClassroomFilter = 'all' | 'school' | 'ward' | 'holy';
 
 export const SchoolTab: React.FC<Props> = ({
   state,
@@ -30,19 +38,64 @@ export const SchoolTab: React.FC<Props> = ({
   onSelectAct,
 }) => {
   const [sub, setSub] = useState<'class' | 'forbidden' | 'headmaster'>('class');
+  const [classFilter, setClassFilter] = useState<ClassroomFilter>('all');
   const [inspectBoss, setInspectBoss] = useState<{ monster: MonsterDef; actLabel: string } | null>(
     null
   );
+  const [inspectProfessor, setInspectProfessor] = useState<ProfessorId | null>(null);
 
   const allSkills = getSkillsForPlayer(state.school);
   const normalSkills = allSkills.filter((s) => s.category !== 'dark');
+  const filteredNormalSkills = normalSkills.filter((s) => {
+    if (classFilter === 'all') return true;
+    if (classFilter === 'school') return s.category === state.school;
+    return s.category === classFilter;
+  });
   const darkSkills = allSkills.filter((s) => s.category === 'dark');
+
+  const schoolProfId = getSchoolProfessorId(state.school);
+  const activeClassProfId: ProfessorId =
+    classFilter === 'ward' ? 'irene' : classFilter === 'holy' ? 'seraphina' : schoolProfId;
 
   const nextRank = state.rank < 5 ? RANKS[state.rank + 1] : null;
   const canTakeExam =
     nextRank !== null &&
     state.level >= nextRank.reqLevel &&
     (nextRank.reqClearedAct === 0 || state.clearedActs.includes(nextRank.reqClearedAct));
+
+  const renderProfessorBanner = (profId: ProfessorId, badgeText?: string) => {
+    const prof = PROFESSORS[profId];
+    const line = getProfessorGreeting(profId, state);
+    return (
+      <div className="professor-banner">
+        <button
+          type="button"
+          className="wc-npc-thumb"
+          onClick={() => setInspectProfessor(profId)}
+          title={`${prof.name} 교수 원화 크게 보기`}
+          aria-label={`${prof.name} 교수 원화 크게 보기`}
+        >
+          <NpcPortrait id={profId} variant="avatar" alt={prof.name} />
+        </button>
+        <div className="professor-banner-body">
+          <div className="professor-banner-head">
+            <span className="professor-banner-name" style={{ color: prof.accent }}>
+              {prof.name}
+            </span>
+            <span className="professor-banner-role">{badgeText ?? prof.role}</span>
+            <button
+              type="button"
+              className="btn btn-sm btn-ghost professor-zoom-btn"
+              onClick={() => setInspectProfessor(profId)}
+            >
+              프로필
+            </button>
+          </div>
+          <div className="professor-banner-quote">“{line}”</div>
+        </div>
+      </div>
+    );
+  };
 
   const renderSkillCard = (skill: SkillDef) => {
     const learned = state.skills[skill.id];
@@ -225,9 +278,37 @@ export const SchoolTab: React.FC<Props> = ({
               <Flame size={14} style={{ verticalAlign: -2, marginRight: 5 }} />
               {SCHOOLS[state.school].name} &amp; 공용 교실
             </h2>
-            <span className="panel-sub">총 {normalSkills.length}종</span>
+            <span className="panel-sub">총 {filteredNormalSkills.length}종</span>
           </div>
-          <div className="item-list">{normalSkills.map(renderSkillCard)}</div>
+
+          <div className="classroom-filter-row">
+            {(
+              [
+                { id: 'all', label: '전체 교실' },
+                { id: 'school', label: `${SCHOOLS[state.school].shortName} (${PROFESSORS[schoolProfId].name})` },
+                { id: 'ward', label: '결계 (아이린)' },
+                { id: 'holy', label: '성광 (세라피나)' },
+              ] as { id: ClassroomFilter; label: string }[]
+            ).map((f) => (
+              <button
+                key={f.id}
+                type="button"
+                className={`filter-pill ${classFilter === f.id ? 'active' : ''}`}
+                onClick={() => setClassFilter(f.id)}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+
+          {renderProfessorBanner(
+            activeClassProfId,
+            activeClassProfId === schoolProfId
+              ? `${PROFESSORS[activeClassProfId].role} · 내 학파`
+              : PROFESSORS[activeClassProfId].role
+          )}
+
+          <div className="item-list">{filteredNormalSkills.map(renderSkillCard)}</div>
         </div>
       )}
 
@@ -242,6 +323,9 @@ export const SchoolTab: React.FC<Props> = ({
               보유 금서 조각: {state.tomeShards}
             </span>
           </div>
+
+          {renderProfessorBanner('martha')}
+
           {state.rank < 2 ? (
             <div className="list-card">
               <div style={{ fontSize: 12.5, color: '#c5bdb0', lineHeight: 1.6 }}>
@@ -263,10 +347,12 @@ export const SchoolTab: React.FC<Props> = ({
             <div className="panel-title-row">
               <h2 className="panel-title">
                 <GraduationCap size={15} style={{ verticalAlign: -2, marginRight: 5 }} />
-                계급 승급 시험
+                천문 교장실 &amp; 계급 승급 시험
               </h2>
               <span className="panel-sub">현재: {RANKS[state.rank].name}</span>
             </div>
+
+            {renderProfessorBanner('bernard')}
 
             {nextRank ? (
               <div className="list-card highlight">
@@ -310,9 +396,44 @@ export const SchoolTab: React.FC<Props> = ({
             )}
           </div>
 
+          {/* 아스트라 교사진 도감 (9인 전원 열람 & 대화) */}
           <div className="panel">
             <div className="panel-title-row">
-              <h2 className="panel-title">메인 에피소드 &amp; 챕터 보스 (1~6막)</h2>
+              <h2 className="panel-title">
+                <Users size={14} style={{ verticalAlign: -2, marginRight: 5 }} />
+                아스트라 교사진 도감 (9인)
+              </h2>
+              <span className="panel-sub">탭하여 원화 · 대사 보기</span>
+            </div>
+            <div className="faculty-grid">
+              {PROFESSOR_ORDER.map((pid) => {
+                const prof = PROFESSORS[pid];
+                const isMine = pid === schoolProfId;
+                const isHomeroom = pid === 'lucia';
+                return (
+                  <button
+                    key={pid}
+                    type="button"
+                    className={`faculty-card ${isMine ? 'mine' : ''}`}
+                    onClick={() => setInspectProfessor(pid)}
+                  >
+                    <div className="faculty-portrait-box">
+                      <NpcPortrait id={pid} variant="card" alt={prof.name} />
+                      {(isMine || isHomeroom) && (
+                        <span className="faculty-badge">{isHomeroom ? '담임' : '내 학파'}</span>
+                      )}
+                    </div>
+                    <div className="faculty-name">{prof.name}</div>
+                    <div className="faculty-role">{prof.role}</div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="panel">
+            <div className="panel-title-row">
+              <h2 className="panel-title">메인 에피소드 · 스토리 다시 보기 (1~6막)</h2>
               <span className="panel-sub">{state.clearedActs.length} / 6 클리어</span>
             </div>
             <div className="item-list">
@@ -376,7 +497,7 @@ export const SchoolTab: React.FC<Props> = ({
                             <button
                               type="button"
                               className="btn btn-sm btn-ghost"
-                              onClick={() => onOpenStory(act.act)}
+                              onClick={() => onOpenStory(act.act, true)}
                             >
                               스토리
                             </button>
@@ -403,7 +524,16 @@ export const SchoolTab: React.FC<Props> = ({
         <MonsterShowcaseModal
           monster={inspectBoss.monster}
           actLabel={inspectBoss.actLabel}
+          rebirthCount={state.prestige.rebirthCount}
           onClose={() => setInspectBoss(null)}
+        />
+      )}
+
+      {inspectProfessor && (
+        <ProfessorShowcaseModal
+          professorId={inspectProfessor}
+          state={state}
+          onClose={() => setInspectProfessor(null)}
         />
       )}
     </div>

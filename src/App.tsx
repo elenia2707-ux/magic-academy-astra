@@ -6,7 +6,7 @@ import { CharacterCreation } from './components/CharacterCreation';
 import { DeckGearTab } from './components/DeckGearTab';
 import { FamiliarTab } from './components/FamiliarTab';
 import { PlayerPortrait } from './components/GothicArt';
-import { HeroPortraitModal, OfflineModal, StoryModal } from './components/Modals';
+import { HeroPortraitModal, OfflineModal, StoryModal, type StoryModalPayload } from './components/Modals';
 import { SchoolTab } from './components/SchoolTab';
 import { generateAbyssNode } from './data/abyssEvents';
 import {
@@ -74,9 +74,7 @@ export default function App() {
   });
 
   const [offlineSummary, setOfflineSummary] = useState<OfflineSummary | null>(null);
-  const [storyModal, setStoryModal] = useState<{ act: number; phase: 'intro' | 'clear' } | null>(
-    null
-  );
+  const [storyModal, setStoryModal] = useState<StoryModalPayload | null>(null);
   const [heroModalOpen, setHeroModalOpen] = useState(false);
   const [rebirthPending, setRebirthPending] = useState(false);
   const [tab, setTab] = useState<TabId>('battle');
@@ -104,6 +102,33 @@ export default function App() {
     }
     combatTransitionRef.current = false;
   }, []);
+
+  const maybeTriggerStageStory = useCallback(
+    (act: number, stageIndex: number, currentState: GameState) => {
+      const viewed = currentState.viewedStoryKeys ?? [];
+      let key: string | null = null;
+      let phase: 'intro' | 'mid' | 'boss' | null = null;
+      if (stageIndex === 0 && act > 1) {
+        key = `${act}_intro`;
+        phase = 'intro';
+      } else if (stageIndex === 2) {
+        key = `${act}_mid`;
+        phase = 'mid';
+      } else if (stageIndex === 4) {
+        key = `${act}_boss`;
+        phase = 'boss';
+      }
+      if (!key || !phase || viewed.includes(key)) return;
+      const recordedKey = key;
+      setState((prev) => {
+        const prevKeys = prev.viewedStoryKeys ?? [];
+        if (prevKeys.includes(recordedKey)) return prev;
+        return { ...prev, viewedStoryKeys: [...prevKeys, recordedKey] };
+      });
+      setStoryModal({ kind: 'act', act, phase });
+    },
+    []
+  );
 
   const startCombatNow = useCallback(
     (
@@ -238,9 +263,9 @@ export default function App() {
     };
   };
 
-  // 자동 턴제 전투 틱 (전환 중 중복 틱 및 이중 보상 방지)
+  // 자동 턴제 전투 틱 (스토리 모달 열람 중 일시정지, 전환 중 중복 틱 및 이중 보상 방지)
   useEffect(() => {
-    if (!state.created || rebirthPending) return;
+    if (!state.created || rebirthPending || storyModal) return;
     const ms = state.settings.speed === 3 ? 460 : state.settings.speed === 2 ? 780 : 1320;
     const id = setInterval(() => {
       if (combatTransitionRef.current) return;
@@ -267,9 +292,11 @@ export default function App() {
         let nextTower = curCombat.towerFloor;
         let toastToShow: string | null = null;
         let clearStoryAct: number | null = null;
+        let promotedRankForModal: number | null = null;
 
         if (curCombat.mode === 'rankBoss') {
           const promoted = Math.min(5, curState.rank + 1) as RankIndex;
+          promotedRankForModal = promoted;
           toastToShow = `승급 성공! [${RANKS[promoted].name}]이(가) 되었습니다!`;
           nextMode = 'stage';
           nextAct = curState.selectedAct;
@@ -415,7 +442,9 @@ export default function App() {
 
         if (toastToShow) showToast(toastToShow);
         if (clearStoryAct !== null) {
-          setStoryModal({ act: clearStoryAct, phase: 'clear' });
+          setStoryModal({ kind: 'act', act: clearStoryAct, phase: 'clear' });
+        } else if (promotedRankForModal !== null) {
+          setStoryModal({ kind: 'rankExam', rank: promotedRankForModal, stage: 'clear' });
         }
 
         nextCombatTimerRef.current = window.setTimeout(() => {
@@ -426,6 +455,14 @@ export default function App() {
           setCombat(
             createCombatRuntime(freshState, freshStats, nextMode, nextAct, nextStage, nextTower)
           );
+          if (
+            nextMode === 'stage' &&
+            clearStoryAct === null &&
+            promotedRankForModal === null &&
+            (nextAct !== curCombat.act || nextStage !== curCombat.stageIndex)
+          ) {
+            maybeTriggerStageStory(nextAct, nextStage, freshState);
+          }
         }, Math.min(480, Math.round(ms * 0.6)));
       } else if (outcome.result === 'defeat') {
         combatTransitionRef.current = true;
@@ -462,7 +499,7 @@ export default function App() {
     }, ms);
 
     return () => clearInterval(id);
-  }, [state.created, state.settings.speed, rebirthPending, showToast]);
+  }, [state.created, state.settings.speed, rebirthPending, storyModal, showToast, maybeTriggerStageStory]);
 
   // ================= 핸들러 =================
   const handleCharacterCreate = (name: string, gender: Gender, school: SchoolId) => {
@@ -482,7 +519,7 @@ export default function App() {
     const freshStats = computePlayerStats(fresh);
     startCombatNow(fresh, freshStats, 'stage', 1, 0);
     setTab('battle');
-    setStoryModal({ act: 1, phase: 'intro' });
+    setStoryModal({ kind: 'act', act: 1, phase: 'intro' });
     saveGameToStorage(fresh);
     playSfx('victory', true);
   };
@@ -491,12 +528,14 @@ export default function App() {
     playSfx('click', state.settings.sfxEnabled);
     setState((prev) => ({ ...prev, selectedAct: act, selectedStage: stageIndex }));
     startCombatNow(state, stats, 'stage', act, stageIndex);
+    maybeTriggerStageStory(act, stageIndex, state);
   };
 
   const handleChallengeActBoss = () => {
     playSfx('click', state.settings.sfxEnabled);
     setState((prev) => ({ ...prev, selectedStage: 4 }));
     startCombatNow(state, stats, 'stage', state.selectedAct, 4);
+    maybeTriggerStageStory(state.selectedAct, 4, state);
   };
 
   const handleReturnNormalStage = () => {
@@ -510,6 +549,8 @@ export default function App() {
     playSfx('click', state.settings.sfxEnabled);
     setTab('battle');
     startCombatNow(state, stats, 'rankBoss');
+    const targetRank = Math.min(5, state.rank + 1);
+    setStoryModal({ kind: 'rankExam', rank: targetRank, stage: 'start' });
     showToast('승급 시험 보스전 개시!');
   };
 
@@ -542,14 +583,25 @@ export default function App() {
     if (!def || !def.tomeCost) return;
     if (state.tomeShards < def.tomeCost) return;
     playSfx('dark', state.settings.sfxEnabled);
-    setState((prev) => ({
-      ...prev,
-      tomeShards: prev.tomeShards - def.tomeCost!,
-      skills: {
-        ...prev.skills,
-        [skillId]: { id: skillId, level: 0, exp: 0, unlocked: false },
-      },
-    }));
+    const firstDarkUnlock = !(state.viewedStoryKeys ?? []).includes('dark_unlock');
+    setState((prev) => {
+      const prevKeys = prev.viewedStoryKeys ?? [];
+      return {
+        ...prev,
+        tomeShards: prev.tomeShards - def.tomeCost!,
+        viewedStoryKeys:
+          firstDarkUnlock && !prevKeys.includes('dark_unlock')
+            ? [...prevKeys, 'dark_unlock']
+            : prevKeys,
+        skills: {
+          ...prev.skills,
+          [skillId]: { id: skillId, level: 0, exp: 0, unlocked: false },
+        },
+      };
+    });
+    if (firstDarkUnlock) {
+      setStoryModal({ kind: 'darkUnlock' });
+    }
     showToast(`금서 [${def.name}] 해독 완료! 이제 수련 슬롯에 등록하세요.`);
   };
 
@@ -954,7 +1006,9 @@ export default function App() {
                       settings: { ...prev.settings, autoAdvance: !prev.settings.autoAdvance },
                     }))
                   }
-                  onOpenStory={(act) => setStoryModal({ act, phase: 'intro' })}
+                  onOpenStory={(act) =>
+                    setStoryModal({ kind: 'act', act, phase: 'intro', archiveMode: true })
+                  }
                   onOpenHeroModal={() => setHeroModalOpen(true)}
                 />
               )}
@@ -967,7 +1021,9 @@ export default function App() {
                   onUnlockDarkSkill={handleUnlockDarkSkill}
                   onUpgradeSkillWithStones={handleUpgradeSkillWithStones}
                   onChallengeRankExam={handleChallengeRankExam}
-                  onOpenStory={(act) => setStoryModal({ act, phase: 'intro' })}
+                  onOpenStory={(act, archiveMode) =>
+                    setStoryModal({ kind: 'act', act, phase: 'intro', archiveMode })
+                  }
                   onSelectAct={(act) => {
                     handleChangeStage(act, 0);
                     setTab('battle');
@@ -1099,8 +1155,8 @@ export default function App() {
 
             {storyModal && (
               <StoryModal
-                actNumber={storyModal.act}
-                phase={storyModal.phase}
+                state={state}
+                story={storyModal}
                 onClose={() => setStoryModal(null)}
               />
             )}
