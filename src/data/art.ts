@@ -65,7 +65,7 @@ export const HERO_ART: Record<`${SchoolId}_${Gender}`, HeroArtMeta> = {
   },
 };
 
-export const FAMILIAR_ART: Partial<Record<FamiliarId, FamiliarArtMeta>> = {
+export const FAMILIAR_ART: Record<FamiliarId, FamiliarArtMeta> = {
   raven: {
     url: './art/familiars/raven.webp',
     position: '58% 35%',
@@ -90,12 +90,24 @@ export const FAMILIAR_ART: Partial<Record<FamiliarId, FamiliarArtMeta>> = {
     badgePosition: '30% 34%',
     bgTint: '#161922',
   },
+  owl: {
+    url: './art/familiars/owl.webp',
+    position: '46% 34%',
+    badgePosition: '44% 26%',
+    bgTint: '#182028',
+  },
+  bat: {
+    url: './art/familiars/bat.webp',
+    position: '50% 40%',
+    badgePosition: '48% 36%',
+    bgTint: '#1f161b',
+  },
 };
 
 export function getHeroArt(school: SchoolId, gender: Gender): HeroArtMeta {
   return HERO_ART[`${school}_${gender}`];
 }
 
-export function getFamiliarArt(id: FamiliarId): FamiliarArtMeta | undefined {
+export function getFamiliarArt(id: FamiliarId): FamiliarArtMeta {
   return FAMILIAR_ART[id];
 }
