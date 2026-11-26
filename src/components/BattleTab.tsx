@@ -5,7 +5,7 @@ import { FAMILIARS } from '../data/familiars';
 import { CATEGORY_META, getCharacterTitle, RANKS, SCHOOLS } from '../data/schools';
 import { SKILL_MAP } from '../data/skills';
 import type { CombatRuntime, ComputedStats, GameState, StatusEffect, StatusType } from '../types/game';
-import { FamiliarSilhouetteSvg, MonsterSilhouetteSvg, PlayerPortrait } from './GothicArt';
+import { FamiliarPortrait, MonsterSilhouetteSvg, PlayerPortrait } from './GothicArt';
 
 interface Props {
   state: GameState;
@@ -210,7 +210,7 @@ export const BattleTab: React.FC<Props> = ({
               <PlayerPortrait school={state.school} gender={state.gender} variant="card" />
               {state.activeFamiliar && activeFam && (
                 <div className="familiar-mini-badge" title={FAMILIARS[state.activeFamiliar].name}>
-                  <FamiliarSilhouetteSvg id={state.activeFamiliar} size={18} />
+                  <FamiliarPortrait id={state.activeFamiliar} variant="badge" />
                 </div>
               )}
             </button>

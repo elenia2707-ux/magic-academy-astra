@@ -545,16 +545,19 @@ textarea {
 
 .familiar-mini-badge {
   position: absolute;
-  bottom: 3px;
-  right: 3px;
-  width: 24px;
-  height: 24px;
+  bottom: 4px;
+  right: 4px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   background: #131218;
-  border: 1px solid var(--border-gold);
+  border: 1.5px solid var(--border-gold);
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.72);
+  z-index: 2;
 }
 
 .combatant-name {
@@ -1063,5 +1066,62 @@ textarea {
   overflow: hidden;
   background: #0d0c11;
   box-shadow: 0 10px 28px rgba(0, 0, 0, 0.72);
+}
+
+.wc-familiar-thumb {
+  position: relative;
+  width: 68px;
+  height: 68px;
+  border-radius: 10px;
+  background: #0d0c11;
+  border: 1px solid var(--border-subtle);
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  overflow: hidden;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
+  transition: transform 0.12s ease, border-color 0.14s ease;
+}
+
+.wc-familiar-thumb.active {
+  border-color: var(--border-gold);
+}
+
+.wc-familiar-thumb:active {
+  transform: scale(0.96);
+}
+
+.wc-familiar-thumb::after,
+.wc-square-full-frame::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  box-shadow:
+    inset 0 0 0 1px rgba(235, 212, 154, 0.18),
+    inset 0 -10px 14px rgba(8, 7, 12, 0.36);
+}
+
+.wc-familiar-badge {
+  transform: scale(1.12);
+}
+
+.wc-square-full-frame {
+  position: relative;
+  width: 100%;
+  max-width: 288px;
+  aspect-ratio: 1 / 1;
+  margin: 0 auto;
+  border-radius: 11px;
+  border: 1px solid var(--border-gold);
+  overflow: hidden;
+  background: #0d0c11;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.72);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 

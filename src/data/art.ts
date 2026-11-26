@@ -1,9 +1,16 @@
-import type { Gender, SchoolId } from '../types/game';
+import type { FamiliarId, Gender, SchoolId } from '../types/game';
 
 export interface HeroArtMeta {
   url: string;
   cardPosition: string;
   avatarPosition: string;
+  bgTint: string;
+}
+
+export interface FamiliarArtMeta {
+  url: string;
+  position: string;
+  badgePosition: string;
   bgTint: string;
 }
 
@@ -58,6 +65,37 @@ export const HERO_ART: Record<`${SchoolId}_${Gender}`, HeroArtMeta> = {
   },
 };
 
+export const FAMILIAR_ART: Partial<Record<FamiliarId, FamiliarArtMeta>> = {
+  raven: {
+    url: './art/familiars/raven.webp',
+    position: '58% 35%',
+    badgePosition: '64% 22%',
+    bgTint: '#1b1a22',
+  },
+  golem: {
+    url: './art/familiars/golem.webp',
+    position: '50% 28%',
+    badgePosition: '48% 18%',
+    bgTint: '#1c1b20',
+  },
+  wisp: {
+    url: './art/familiars/wisp.webp',
+    position: '50% 45%',
+    badgePosition: '48% 48%',
+    bgTint: '#131d28',
+  },
+  wolf: {
+    url: './art/familiars/wolf.webp',
+    position: '42% 38%',
+    badgePosition: '30% 34%',
+    bgTint: '#161922',
+  },
+};
+
 export function getHeroArt(school: SchoolId, gender: Gender): HeroArtMeta {
   return HERO_ART[`${school}_${gender}`];
+}
+
+export function getFamiliarArt(id: FamiliarId): FamiliarArtMeta | undefined {
+  return FAMILIAR_ART[id];
 }

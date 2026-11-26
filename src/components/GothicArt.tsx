@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import type { FamiliarId, Gender, MagicCategory, SchoolId } from '../types/game';
-import { getHeroArt } from '../data/art';
+import { getFamiliarArt, getHeroArt } from '../data/art';
+import { FAMILIARS } from '../data/familiars';
 import { CATEGORY_META, SCHOOLS } from '../data/schools';
 
 export const PlayerPortrait: React.FC<{
@@ -35,6 +36,43 @@ export const PlayerPortrait: React.FC<{
       className={`wc-portrait wc-portrait-${variant}`}
       style={{ objectPosition: pos, backgroundColor: art.bgTint }}
       loading={variant === 'avatar' ? 'eager' : 'lazy'}
+      draggable={false}
+      onError={() => setFailed(true)}
+    />
+  );
+};
+
+export const FamiliarPortrait: React.FC<{
+  id: FamiliarId;
+  variant?: 'badge' | 'card' | 'full';
+  alt?: string;
+}> = ({ id, variant = 'card', alt }) => {
+  const art = getFamiliarArt(id);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    setFailed(false);
+  }, [art?.url]);
+
+  if (!art || failed) {
+    const fallbackSize = variant === 'badge' ? 20 : variant === 'full' ? 140 : 44;
+    return <FamiliarSilhouetteSvg id={id} size={fallbackSize} />;
+  }
+
+  const pos =
+    variant === 'badge'
+      ? art.badgePosition
+      : variant === 'full'
+        ? '50% 50%'
+        : art.position;
+
+  return (
+    <img
+      src={art.url}
+      alt={alt ?? FAMILIARS[id].name}
+      className={`wc-portrait wc-familiar-${variant}`}
+      style={{ objectPosition: pos, backgroundColor: art.bgTint }}
+      loading={variant === 'badge' ? 'eager' : 'lazy'}
       draggable={false}
       onError={() => setFailed(true)}
     />
