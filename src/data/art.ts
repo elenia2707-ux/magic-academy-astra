@@ -111,6 +111,7 @@ export interface MonsterArtMeta {
 }
 
 export const MONSTER_ART: Record<string, MonsterArtMeta> = {
+  // 1~6막 챕터 보스
   boss_golem: {
     url: './art/bosses/boss_golem.webp',
     position: '50% 30%',
@@ -140,6 +141,75 @@ export const MONSTER_ART: Record<string, MonsterArtMeta> = {
     url: './art/bosses/demon_lord.webp',
     position: '50% 26%',
     bgTint: '#14121b',
+  },
+  // 1막 수정 광산 일반 몬스터
+  m1_1_slime: {
+    url: './art/monsters/m1_1_slime.webp',
+    position: '50% 50%',
+    bgTint: '#1b1d20',
+  },
+  m1_2_bats: {
+    url: './art/monsters/m1_2_bats.webp',
+    position: '50% 45%',
+    bgTint: '#1a1920',
+  },
+  m1_3_kobold: {
+    url: './art/monsters/m1_3_kobold.webp',
+    position: '50% 40%',
+    bgTint: '#1e1918',
+  },
+  m1_4_guardian: {
+    url: './art/monsters/m1_4_guardian.webp',
+    position: '50% 36%',
+    bgTint: '#1d181a',
+  },
+  // 2막 지하 대서고 일반 몬스터
+  m2_1_parchment: {
+    url: './art/monsters/m2_1_parchment.webp',
+    position: '50% 34%',
+    bgTint: '#1b191d',
+  },
+  m2_2_candelabra: {
+    url: './art/monsters/m2_2_candelabra.webp',
+    position: '50% 42%',
+    bgTint: '#171b22',
+  },
+  m2_3_apprentice: {
+    url: './art/monsters/m2_3_apprentice.webp',
+    position: '50% 36%',
+    bgTint: '#181922',
+  },
+  m2_4_warden: {
+    url: './art/monsters/m2_4_warden.webp',
+    position: '50% 32%',
+    bgTint: '#171a22',
+  },
+  // 3막 붉은 달의 숲 일반 몬스터
+  m3_1_thorn: {
+    url: './art/monsters/m3_1_thorn.webp',
+    position: '50% 38%',
+    bgTint: '#191e1a',
+  },
+  m3_2_flame: {
+    url: './art/monsters/m3_2_flame.webp',
+    position: '50% 44%',
+    bgTint: '#201817',
+  },
+  m3_3_wolf: {
+    url: './art/monsters/m3_3_wolf.webp',
+    position: '52% 40%',
+    bgTint: '#1a1b20',
+  },
+  m3_4_gargoyle: {
+    url: './art/monsters/m3_4_gargoyle.webp',
+    position: '50% 42%',
+    bgTint: '#1c181d',
+  },
+  // 4막 폐허 왕도
+  m4_1_infantry: {
+    url: './art/monsters/m4_1_infantry.webp',
+    position: '50% 32%',
+    bgTint: '#1b191a',
   },
 };
 
