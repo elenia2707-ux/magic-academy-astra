@@ -211,6 +211,63 @@ export const MONSTER_ART: Record<string, MonsterArtMeta> = {
     position: '50% 32%',
     bgTint: '#1b191a',
   },
+  m4_2_alchemist: {
+    url: './art/monsters/m4_2_alchemist.webp',
+    position: '50% 34%',
+    bgTint: '#191d19',
+  },
+  m4_3_knight: {
+    url: './art/monsters/m4_3_knight.webp',
+    position: '50% 30%',
+    bgTint: '#1c181a',
+  },
+  m4_4_lich: {
+    url: './art/monsters/m4_4_lich.webp',
+    position: '50% 26%',
+    bgTint: '#1a1621',
+  },
+  // 5막 심연의 균열
+  m5_1_hound: {
+    url: './art/monsters/m5_1_hound.webp',
+    position: '50% 42%',
+    bgTint: '#171922',
+  },
+  m5_2_eye: {
+    url: './art/monsters/m5_2_eye.webp',
+    position: '50% 48%',
+    bgTint: '#181622',
+  },
+  m5_3_giant: {
+    url: './art/monsters/m5_3_giant.webp',
+    position: '50% 28%',
+    bgTint: '#1f1817',
+  },
+  m5_4_apostle: {
+    url: './art/monsters/m5_4_apostle.webp',
+    position: '50% 28%',
+    bgTint: '#171622',
+  },
+  // 6막 별이 잠든 왕좌
+  m6_1_obsidian_knight: {
+    url: './art/monsters/m6_1_obsidian_knight.webp',
+    position: '50% 28%',
+    bgTint: '#161820',
+  },
+  m6_2_wyrm: {
+    url: './art/monsters/m6_2_wyrm.webp',
+    position: '50% 40%',
+    bgTint: '#151824',
+  },
+  m6_3_priest: {
+    url: './art/monsters/m6_3_priest.webp',
+    position: '50% 26%',
+    bgTint: '#1c171b',
+  },
+  m6_4_orthrus: {
+    url: './art/monsters/m6_4_orthrus.webp',
+    position: '50% 38%',
+    bgTint: '#19171e',
+  },
 };
 
 export interface NpcArtMeta {

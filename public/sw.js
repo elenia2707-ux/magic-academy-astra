@@ -1,4 +1,4 @@
-const CACHE_NAME = 'astra-academy-v7';
+const CACHE_NAME = 'astra-academy-v8';
 const ASSETS = [
   './',
   './index.html',
@@ -48,6 +48,17 @@ const ASSETS = [
   './art/monsters/m3_3_wolf.webp',
   './art/monsters/m3_4_gargoyle.webp',
   './art/monsters/m4_1_infantry.webp',
+  './art/monsters/m4_2_alchemist.webp',
+  './art/monsters/m4_3_knight.webp',
+  './art/monsters/m4_4_lich.webp',
+  './art/monsters/m5_1_hound.webp',
+  './art/monsters/m5_2_eye.webp',
+  './art/monsters/m5_3_giant.webp',
+  './art/monsters/m5_4_apostle.webp',
+  './art/monsters/m6_1_obsidian_knight.webp',
+  './art/monsters/m6_2_wyrm.webp',
+  './art/monsters/m6_3_priest.webp',
+  './art/monsters/m6_4_orthrus.webp',
 ];
 
 self.addEventListener('install', (event) => {
