@@ -1,11 +1,13 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { BookOpen, ChevronLeft, ChevronRight, FastForward, Skull } from 'lucide-react';
 import { ACTS } from '../data/acts';
+import { getMonsterArt } from '../data/art';
 import { FAMILIARS } from '../data/familiars';
 import { CATEGORY_META, getCharacterTitle, RANKS, SCHOOLS } from '../data/schools';
 import { SKILL_MAP } from '../data/skills';
 import type { CombatRuntime, ComputedStats, GameState, StatusEffect, StatusType } from '../types/game';
-import { FamiliarPortrait, MonsterSilhouetteSvg, PlayerPortrait } from './GothicArt';
+import { FamiliarPortrait, MonsterPortrait, PlayerPortrait } from './GothicArt';
+import { MonsterShowcaseModal } from './Modals';
 
 interface Props {
   state: GameState;
@@ -55,6 +57,7 @@ export const BattleTab: React.FC<Props> = ({
   onOpenHeroModal,
 }) => {
   const logRef = useRef<HTMLDivElement | null>(null);
+  const [enemyModalOpen, setEnemyModalOpen] = useState(false);
 
   useEffect(() => {
     if (logRef.current) {
@@ -284,13 +287,26 @@ export const BattleTab: React.FC<Props> = ({
                 </div>
               </div>
             )}
-            <div className="portrait-frame">
-              <MonsterSilhouetteSvg
+            <button
+              type="button"
+              className={`portrait-frame ${
+                getMonsterArt(combat.enemy.artKey)
+                  ? combat.enemy.isBoss
+                    ? 'portrait-frame-art portrait-frame-boss-art'
+                    : 'portrait-frame-art'
+                  : ''
+              }`}
+              onClick={() => setEnemyModalOpen(true)}
+              title="탭하여 몬스터 원화 및 정보 크게 보기"
+              aria-label="몬스터 원화 크게 보기"
+            >
+              <MonsterPortrait
                 artKey={combat.enemy.artKey}
                 isBoss={combat.enemy.isBoss}
-                size={76}
+                variant="card"
+                alt={combat.enemy.name}
               />
-            </div>
+            </button>
             <div className="combatant-name">{combat.enemy.name}</div>
             <div className="combatant-role">{combat.enemy.title}</div>
 
@@ -382,6 +398,13 @@ export const BattleTab: React.FC<Props> = ({
           </div>
         </div>
       </div>
+
+      {enemyModalOpen && (
+        <MonsterShowcaseModal
+          monster={combat.enemy}
+          onClose={() => setEnemyModalOpen(false)}
+        />
+      )}
     </div>
   );
 };

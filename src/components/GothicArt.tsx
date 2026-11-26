@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import type { FamiliarId, Gender, MagicCategory, SchoolId } from '../types/game';
-import { getFamiliarArt, getHeroArt } from '../data/art';
+import { getFamiliarArt, getHeroArt, getMonsterArt } from '../data/art';
 import { FAMILIARS } from '../data/familiars';
 import { CATEGORY_META, SCHOOLS } from '../data/schools';
 
@@ -73,6 +73,40 @@ export const FamiliarPortrait: React.FC<{
       className={`wc-portrait wc-familiar-${variant}`}
       style={{ objectPosition: pos, backgroundColor: art.bgTint }}
       loading={variant === 'badge' ? 'eager' : 'lazy'}
+      draggable={false}
+      onError={() => setFailed(true)}
+    />
+  );
+};
+
+export const MonsterPortrait: React.FC<{
+  artKey: string;
+  isBoss?: boolean;
+  variant?: 'card' | 'thumb' | 'full';
+  alt?: string;
+}> = ({ artKey, isBoss, variant = 'card', alt }) => {
+  const art = getMonsterArt(artKey);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    setFailed(false);
+  }, [art?.url]);
+
+  if (!art || failed) {
+    const fallbackSize = variant === 'thumb' ? 42 : variant === 'full' ? 150 : 76;
+    return <MonsterSilhouetteSvg artKey={artKey} isBoss={isBoss} size={fallbackSize} />;
+  }
+
+  return (
+    <img
+      src={art.url}
+      alt={alt ?? '몬스터 원화'}
+      className={`wc-portrait wc-monster-${variant}`}
+      style={{
+        objectPosition: variant === 'full' ? '50% 50%' : art.position,
+        backgroundColor: art.bgTint,
+      }}
+      loading={variant === 'card' ? 'eager' : 'lazy'}
       draggable={false}
       onError={() => setFailed(true)}
     />

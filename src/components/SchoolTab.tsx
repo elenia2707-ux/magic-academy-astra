@@ -4,8 +4,9 @@ import { ACTS } from '../data/acts';
 import { CATEGORY_META, RANK_EXAM_BOSSES, RANKS, SCHOOLS } from '../data/schools';
 import { getSkillsForPlayer, SKILL_MAP } from '../data/skills';
 import { getSkillUpgradeCost } from '../engine/stats';
-import type { ComputedStats, GameState, SkillDef } from '../types/game';
-import { CategoryDot } from './GothicArt';
+import type { ComputedStats, GameState, MonsterDef, SkillDef } from '../types/game';
+import { CategoryDot, MonsterPortrait } from './GothicArt';
+import { MonsterShowcaseModal } from './Modals';
 
 interface Props {
   state: GameState;
@@ -29,6 +30,9 @@ export const SchoolTab: React.FC<Props> = ({
   onSelectAct,
 }) => {
   const [sub, setSub] = useState<'class' | 'forbidden' | 'headmaster'>('class');
+  const [inspectBoss, setInspectBoss] = useState<{ monster: MonsterDef; actLabel: string } | null>(
+    null
+  );
 
   const allSkills = getSkillsForPlayer(state.school);
   const normalSkills = allSkills.filter((s) => s.category !== 'dark');
@@ -308,32 +312,65 @@ export const SchoolTab: React.FC<Props> = ({
 
           <div className="panel">
             <div className="panel-title-row">
-              <h2 className="panel-title">메인 에피소드 (1막 ~ 6막)</h2>
+              <h2 className="panel-title">메인 에피소드 &amp; 챕터 보스 (1~6막)</h2>
               <span className="panel-sub">{state.clearedActs.length} / 6 클리어</span>
             </div>
             <div className="item-list">
               {ACTS.map((act) => {
                 const locked = act.act > state.highestAct;
                 const cleared = state.clearedActs.includes(act.act);
+                const boss = act.stages[4];
                 return (
                   <div key={act.act} className="list-card">
-                    <div className="list-top">
-                      <span className="list-title">{act.title}</span>
-                      <span
-                        className="tag"
-                        style={{ color: cleared ? '#8ad0a2' : locked ? '#8b8479' : '#e3c481' }}
+                    <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 7 }}>
+                      <button
+                        type="button"
+                        className="wc-boss-thumb"
+                        onClick={() =>
+                          setInspectBoss({ monster: boss, actLabel: `제 ${act.act}막 보스` })
+                        }
+                        title={`${boss.name} 보스 원화 크게 보기`}
+                        aria-label={`${boss.name} 보스 원화 크게 보기`}
                       >
-                        {cleared ? '클리어' : locked ? '잠김' : '진행중'}
-                      </span>
-                    </div>
-                    <div className="list-desc">
-                      {act.location} — {act.subtitle}
+                        <MonsterPortrait
+                          artKey={boss.artKey}
+                          isBoss
+                          variant="thumb"
+                          alt={boss.name}
+                        />
+                      </button>
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <div className="list-top" style={{ marginBottom: 2 }}>
+                          <span className="list-title">{act.title}</span>
+                          <span
+                            className="tag"
+                            style={{ color: cleared ? '#8ad0a2' : locked ? '#8b8479' : '#e3c481' }}
+                          >
+                            {cleared ? '클리어' : locked ? '잠김' : '진행중'}
+                          </span>
+                        </div>
+                        <div style={{ fontSize: 11.5, color: '#c5bdb0', marginBottom: 2 }}>
+                          {act.location} — {act.subtitle}
+                        </div>
+                        <div style={{ fontSize: 11, color: '#e07b7f' }}>
+                          보스: {boss.name}
+                        </div>
+                      </div>
                     </div>
                     <div className="list-actions">
                       <span style={{ fontSize: 11, color: '#8b8479' }}>
-                        권장 계급: {RANKS[act.requiredRank].name}
+                        권장: {RANKS[act.requiredRank].name}
                       </span>
                       <div style={{ display: 'flex', gap: 5 }}>
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-ghost"
+                          onClick={() =>
+                            setInspectBoss({ monster: boss, actLabel: `제 ${act.act}막 보스` })
+                          }
+                        >
+                          보스 원화
+                        </button>
                         {!locked && (
                           <>
                             <button
@@ -345,7 +382,7 @@ export const SchoolTab: React.FC<Props> = ({
                             </button>
                             <button
                               type="button"
-                              className="btn btn-sm"
+                              className="btn btn-sm btn-gold"
                               onClick={() => onSelectAct(act.act)}
                             >
                               출격
@@ -360,6 +397,14 @@ export const SchoolTab: React.FC<Props> = ({
             </div>
           </div>
         </>
+      )}
+
+      {inspectBoss && (
+        <MonsterShowcaseModal
+          monster={inspectBoss.monster}
+          actLabel={inspectBoss.actLabel}
+          onClose={() => setInspectBoss(null)}
+        />
       )}
     </div>
   );

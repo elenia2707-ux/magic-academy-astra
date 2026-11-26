@@ -104,10 +104,53 @@ export const FAMILIAR_ART: Record<FamiliarId, FamiliarArtMeta> = {
   },
 };
 
+export interface MonsterArtMeta {
+  url: string;
+  position: string;
+  bgTint: string;
+}
+
+export const MONSTER_ART: Record<string, MonsterArtMeta> = {
+  boss_golem: {
+    url: './art/bosses/boss_golem.webp',
+    position: '50% 30%',
+    bgTint: '#1c1518',
+  },
+  boss_wraith: {
+    url: './art/bosses/boss_wraith.webp',
+    position: '50% 28%',
+    bgTint: '#17161e',
+  },
+  boss_witch: {
+    url: './art/bosses/boss_witch.webp',
+    position: '52% 28%',
+    bgTint: '#1f1419',
+  },
+  boss_knight: {
+    url: './art/bosses/boss_knight.webp',
+    position: '50% 24%',
+    bgTint: '#1a1518',
+  },
+  boss_demon: {
+    url: './art/bosses/boss_demon.webp',
+    position: '50% 34%',
+    bgTint: '#17151c',
+  },
+  demon_lord: {
+    url: './art/bosses/demon_lord.webp',
+    position: '50% 26%',
+    bgTint: '#14121b',
+  },
+};
+
 export function getHeroArt(school: SchoolId, gender: Gender): HeroArtMeta {
   return HERO_ART[`${school}_${gender}`];
 }
 
 export function getFamiliarArt(id: FamiliarId): FamiliarArtMeta {
   return FAMILIAR_ART[id];
+}
+
+export function getMonsterArt(artKey: string): MonsterArtMeta | undefined {
+  return MONSTER_ART[artKey];
 }

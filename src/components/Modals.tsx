@@ -2,8 +2,8 @@ import React from 'react';
 import { ACTS } from '../data/acts';
 import { getCharacterQuote, getCharacterTitle, RANKS, SCHOOLS } from '../data/schools';
 import { formatDuration } from '../engine/offline';
-import type { ComputedStats, GameState, OfflineSummary } from '../types/game';
-import { PlayerPortrait } from './GothicArt';
+import type { ComputedStats, GameState, MonsterDef, OfflineSummary } from '../types/game';
+import { MonsterPortrait, PlayerPortrait } from './GothicArt';
 
 export const OfflineModal: React.FC<{
   summary: OfflineSummary;
@@ -132,3 +132,60 @@ export const HeroPortraitModal: React.FC<{
     </div>
   );
 };
+
+export const MonsterShowcaseModal: React.FC<{
+  monster: MonsterDef;
+  actLabel?: string;
+  onClose: () => void;
+}> = ({ monster, actLabel, onClose }) => (
+  <div className="modal-backdrop" onClick={onClose}>
+    <div className="modal-card hero-showcase-modal" onClick={(e) => e.stopPropagation()}>
+      <div className="wc-square-full-frame wc-boss-full-frame">
+        <MonsterPortrait
+          artKey={monster.artKey}
+          isBoss={monster.isBoss}
+          variant="full"
+          alt={monster.name}
+        />
+      </div>
+      <div style={{ textAlign: 'center', marginTop: 10 }}>
+        <div style={{ fontSize: 11, color: monster.isBoss ? '#e07b7f' : '#9a9386', fontWeight: 700 }}>
+          {actLabel ? `${actLabel} · ` : ''}
+          {monster.title}
+        </div>
+        <h3 className="modal-title" style={{ margin: '3px 0 6px', textAlign: 'center' }}>
+          {monster.name}
+        </h3>
+      </div>
+      <div className="stat-grid" style={{ marginBottom: 9 }}>
+        <div className="stat-box">
+          <span>체력</span>
+          <strong>{monster.hp.toLocaleString()}</strong>
+        </div>
+        <div className="stat-box">
+          <span>공격 / 방어</span>
+          <strong>
+            {monster.atk.toLocaleString()} / {monster.def.toLocaleString()}
+          </strong>
+        </div>
+        <div className="stat-box">
+          <span>보상 EXP</span>
+          <strong>{monster.expReward.toLocaleString()}</strong>
+        </div>
+        <div className="stat-box">
+          <span>보상 마석</span>
+          <strong style={{ color: '#e3c481' }}>{monster.stoneReward.toLocaleString()}</strong>
+        </div>
+      </div>
+      {monster.heavyName && (
+        <div className="list-card" style={{ marginBottom: 10, fontSize: 11.5 }}>
+          <span style={{ color: '#e07b7f', fontWeight: 700 }}>보스 필살기</span> ·{' '}
+          <strong>{monster.heavyName}</strong> ({monster.heavyInterval ?? 3}턴 주기)
+        </div>
+      )}
+      <button type="button" className="btn btn-gold btn-block" onClick={onClose}>
+        닫기
+      </button>
+    </div>
+  </div>
+);
