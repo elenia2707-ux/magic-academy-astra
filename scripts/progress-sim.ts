@@ -7,7 +7,7 @@
  * 실행: npm run sim:progress
  */
 import { ACTS } from '../src/data/acts';
-import { ECON } from '../src/data/economy';
+import { ECON, EXP_CURVE } from '../src/data/economy';
 import { generateEquipment, getEnhanceCost, planBestLoadout, RARITY_META, rollRarity } from '../src/data/equipment';
 import { RANKS } from '../src/data/schools';
 import { ACT_RAMP, BOSS_TUNING, MOB_TUNING, createCombatRuntime, stepCombatTurn } from '../src/engine/combat';
@@ -28,6 +28,11 @@ ECON.stoneScale = envNum('SIM_STONE_SCALE') ?? ECON.stoneScale;
 ECON.stoneExp = envNum('SIM_STONE_EXP') ?? ECON.stoneExp;
 ECON.skillRankMult = envNum('SIM_SKILL_RANK') ?? ECON.skillRankMult;
 ECON.enhTierGrowth = envNum('SIM_ENH_TIER') ?? ECON.enhTierGrowth;
+EXP_CURVE.base = envNum('SIM_EXP_BASE') ?? EXP_CURVE.base;
+EXP_CURVE.growth = envNum('SIM_EXP_GROWTH') ?? EXP_CURVE.growth;
+EXP_CURVE.linear = envNum('SIM_EXP_LINEAR') ?? EXP_CURVE.linear;
+EXP_CURVE.midStart = envNum('SIM_EXP_MID_START') ?? EXP_CURVE.midStart;
+EXP_CURVE.midQuad = envNum('SIM_EXP_MID_QUAD') ?? EXP_CURVE.midQuad;
 const LAST_ACT = Number(process.env.SIM_ACTS ?? 4);
 if (process.env.SIM_MOB_ATK) MOB_TUNING.atkMult = Number(process.env.SIM_MOB_ATK);
 if (process.env.SIM_MOB_HP) MOB_TUNING.hpMult = Number(process.env.SIM_MOB_HP);

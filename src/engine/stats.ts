@@ -12,12 +12,17 @@ import type {
   SchoolId,
 } from '../types/game';
 
-import { ECON } from '../data/economy';
+import { ECON, EXP_CURVE } from '../data/economy';
 
 export const SAVE_VERSION = 1;
 
 export function expForNextLevel(level: number): number {
-  return Math.round(65 * Math.pow(1.22, level - 1) + level * 20);
+  const mid = Math.max(0, level - EXP_CURVE.midStart);
+  return Math.round(
+    EXP_CURVE.base * Math.pow(EXP_CURVE.growth, level - 1) +
+      level * EXP_CURVE.linear +
+      EXP_CURVE.midQuad * mid * mid
+  );
 }
 
 export function getSkillPowerMultiplier(level: number): number {

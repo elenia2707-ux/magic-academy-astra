@@ -15,6 +15,21 @@ export const ECON = {
   stoneExp: 0.75,
 };
 
+/**
+ * P1-1: 경험치 곡선 튜닝값 (1막 튜토리얼은 경쾌하게 유지하고, 2~4막 페이싱을 25~40분으로 조정).
+ * 공식: base × growth^(L-1) + linear × L + midQuad × max(0, L - midStart)^2
+ * - L <= 7 (1막): 기존과 동일한 경쾌한 레벨업 (시전자 승급 ~1~2분)
+ * - L = 8~44 (2~4막): midQuad 항이 2~4막 구간을 묵직하게 늘려 4막 도달 25~40분 형성
+ * - L >= 45 (5~6막): 지수(1.22 → 1.20) 완화로 5막 후반 폭증을 막고 계단식 엔딩 페이싱 유지
+ */
+export const EXP_CURVE = {
+  base: 65,
+  growth: 1.2,
+  linear: 20,
+  midStart: 7,
+  midQuad: 260,
+};
+
 /** 몬스터 원본 마석 보상 → 실제 지급량 */
 export function effectiveStoneReward(base: number): number {
   return Math.max(1, Math.round(ECON.stoneScale * Math.pow(Math.max(0, base), ECON.stoneExp)));
