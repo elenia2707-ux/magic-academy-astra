@@ -2418,3 +2418,144 @@ body,
   border: 1.5px solid var(--wood-edge);
   box-shadow: 0 0 6px rgba(217, 54, 62, 0.7);
 }
+
+/* =====================================================================
+   🎨 P0-9-5 · ARPIA TAB SCREENS — 학교·덱/장비·사역마·심연 안쪽 파츠
+   (글자색 inline 지정이 많은 리스트는 어두운 가죽 카드, 대사·소개는 양피지)
+   ===================================================================== */
+
+/* 패널 제목줄: 아래에 황동 실선 + 다이아 장식 */
+.panel-title-row {
+  position: relative;
+  padding-bottom: 7px;
+  margin-bottom: 11px;
+  border-bottom: 1px solid rgba(184, 146, 90, 0.28);
+}
+.panel-title-row::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -4px;
+  width: 7px;
+  height: 7px;
+  transform: translateX(-50%) rotate(45deg);
+  background: var(--brass);
+  border: 1px solid var(--wood-edge);
+}
+.panel-sub { color: #a8907c; }
+
+/* 가죽 리스트 카드: 짙은 와인 가죽 + 황동 헤어라인 + 바닥 턱 */
+.list-card {
+  position: relative;
+  border: 1px solid var(--wood-edge);
+  border-radius: 12px;
+  background:
+    radial-gradient(ellipse at 15% 0%, rgba(255, 230, 200, 0.06) 0%, transparent 55%),
+    linear-gradient(180deg, #2a1a20 0%, #20141a 100%);
+  box-shadow:
+    inset 0 0 0 1px rgba(184, 146, 90, 0.2),
+    inset 0 1px 0 1px rgba(255, 236, 200, 0.05),
+    0 2px 0 var(--wood-edge),
+    0 4px 8px rgba(0, 0, 0, 0.35);
+}
+.list-card.highlight {
+  border-color: #3f2c12;
+  box-shadow:
+    inset 0 0 0 1px rgba(226, 196, 140, 0.55),
+    0 2px 0 var(--wood-edge),
+    0 0 12px rgba(226, 196, 140, 0.12);
+}
+.list-title { font-family: var(--font-round); font-weight: 400; font-size: 14px; }
+.list-desc { color: #cdb9a6; }
+
+/* 태그: 작은 잉크 알약 */
+.tag {
+  border-radius: var(--r-pill);
+  padding: 2px 8px;
+  background: rgba(10, 4, 6, 0.45);
+  border: 1px solid rgba(184, 146, 90, 0.25);
+  color: #dcc7ad;
+}
+
+/* 진행 바 → 캡슐 */
+.progress-bar {
+  height: 10px;
+  background: linear-gradient(180deg, #12070a 0%, #22100f 100%);
+  border: 1px solid var(--wood-edge);
+  box-shadow: inset 0 2px 3px rgba(0, 0, 0, 0.7), 0 1px 0 rgba(226, 196, 140, 0.18);
+}
+.progress-fill {
+  border-radius: 99px;
+  background: linear-gradient(180deg, #e6c47e 0%, #b88b43 60%, #7d5a26 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+/* 스탯 칸: 파인 나무 홈 */
+.stat-box {
+  border: 1px solid var(--wood-edge);
+  border-radius: 9px;
+  background: linear-gradient(180deg, #1a0d11 0%, #24131a 100%);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.55), 0 1px 0 rgba(226, 196, 140, 0.12);
+}
+.stat-box span:first-child { color: #a8907c; }
+.stat-box strong { font-family: var(--font-round); font-weight: 400; font-size: 13px; color: #f3e3c0; }
+
+/* 필터 알약: 서브탭과 같은 문법 */
+.filter-pill {
+  font-family: var(--font-round);
+  font-weight: 400;
+  font-size: 12px;
+  padding: 4px 11px;
+  color: #c9a9a0;
+  background: linear-gradient(180deg, #2e1419 0%, #200d11 100%);
+  border: 1px solid var(--wood-edge);
+  box-shadow: inset 0 1px 0 rgba(255, 220, 200, 0.08), 0 1px 0 var(--wood-edge);
+}
+.filter-pill.active {
+  color: var(--parch-ink);
+  border-color: #4a3420;
+  background: linear-gradient(180deg, #e6d4ae 0%, var(--parch) 60%, var(--parch-dark) 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 250, 235, 0.7), 0 1px 0 var(--wood-edge);
+}
+
+/* 교수 소개: 양피지 대사 카드 */
+.professor-banner {
+  border: 1px solid #4a3420;
+  border-radius: 10px;
+  background:
+    radial-gradient(ellipse at 20% 15%, rgba(255, 248, 228, 0.32) 0%, transparent 55%),
+    radial-gradient(ellipse at 85% 95%, rgba(90, 60, 30, 0.3) 0%, transparent 60%),
+    linear-gradient(180deg, #dcc8a2 0%, var(--parch) 50%, #c0a77e 100%);
+  box-shadow: inset 0 0 18px rgba(80, 52, 24, 0.38), 0 2px 0 rgba(0, 0, 0, 0.45);
+}
+.professor-banner-name { font-family: var(--font-round); font-weight: 400; font-size: 15px; color: var(--parch-ink) !important; }
+.professor-banner-role { color: var(--parch-ink-soft); }
+.professor-banner-quote { color: var(--parch-ink); }
+.professor-banner .btn-ghost { color: var(--parch-ink); border-color: rgba(74, 52, 32, 0.5); background: rgba(255, 248, 228, 0.25); }
+.wc-npc-thumb { border: 2px solid #4a3420; box-shadow: 0 0 0 1px rgba(255, 245, 220, 0.35), 0 2px 4px rgba(40, 24, 10, 0.5); }
+
+/* 교수진 그리드: 황동 액자 */
+.faculty-card {
+  border: 1px solid var(--wood-edge);
+  border-radius: 11px;
+  background: linear-gradient(180deg, #2a1a20 0%, #1d1217 100%);
+  box-shadow: inset 0 0 0 1px rgba(184, 146, 90, 0.22), 0 2px 0 var(--wood-edge);
+}
+.faculty-card.mine { box-shadow: inset 0 0 0 1px var(--brass-light), 0 2px 0 var(--wood-edge), 0 0 10px rgba(226, 196, 140, 0.18); }
+.faculty-portrait-box { border: 1px solid #4a3420; }
+
+/* 스킬 아이콘 상자: 리스트에서도 둥근 황동 메달 느낌 */
+.list-card .skill-icon-box {
+  border-radius: 50%;
+  border: 2px solid var(--brass);
+  box-shadow: 0 0 0 1px var(--wood-edge), 0 2px 0 1px var(--wood-edge), inset 0 -3px 4px rgba(0, 0, 0, 0.4);
+}
+
+/* 입력/선택 */
+select,
+.code-area {
+  background: #160b0e;
+  border: 1px solid var(--wood-edge);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.55), 0 1px 0 rgba(226, 196, 140, 0.15);
+  border-radius: 10px;
+}
