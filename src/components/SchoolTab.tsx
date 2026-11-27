@@ -112,7 +112,7 @@ export const SchoolTab: React.FC<Props> = ({
       : skill.trainCostSec;
     const pct = learned ? Math.min(100, Math.round((learned.exp / Math.max(1, reqSec)) * 100)) : 0;
     const isMax = unlocked && (learned?.level ?? 1) >= stats.maxSkillLevel;
-    const stoneCost = unlocked ? getSkillUpgradeCost(learned.level) : 0;
+    const stoneCost = unlocked ? getSkillUpgradeCost(learned.level, learned.id) : 0;
 
     const handleStartTrain = () => {
       if (isTraining) {

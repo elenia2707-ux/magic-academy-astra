@@ -1,3 +1,4 @@
+import { effectiveStoneReward } from '../data/economy';
 import React, { useEffect, useState } from 'react';
 import { ACTS } from '../data/acts';
 import { hasAwakenedHeroArt } from '../data/art';
@@ -431,7 +432,7 @@ export const MonsterShowcaseModal: React.FC<{
           </div>
           <div className="stat-box">
             <span>보상 마석</span>
-            <strong style={{ color: '#e3c481' }}>{monster.stoneReward.toLocaleString()}</strong>
+            <strong style={{ color: '#e3c481' }}>{effectiveStoneReward(monster.stoneReward).toLocaleString()}</strong>
           </div>
         </div>
         {monster.heavyName && (

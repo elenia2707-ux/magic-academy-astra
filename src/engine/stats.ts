@@ -12,6 +12,8 @@ import type {
   SchoolId,
 } from '../types/game';
 
+import { ECON } from '../data/economy';
+
 export const SAVE_VERSION = 1;
 
 export function expForNextLevel(level: number): number {
@@ -22,8 +24,12 @@ export function getSkillPowerMultiplier(level: number): number {
   return 1 + (level - 1) * 0.14;
 }
 
-export function getSkillUpgradeCost(level: number): number {
-  return Math.round(55 * Math.pow(1.36, level - 1));
+export function getSkillUpgradeCost(level: number, skillId?: string): number {
+  // P0-6: 상위 계급 스킬일수록 강화비 상승
+  const rankTier = skillId ? (SKILL_MAP[skillId]?.requiredRank ?? 0) : 0;
+  return Math.round(
+    ECON.skillBase * Math.pow(ECON.skillGrowth, level - 1) * Math.pow(ECON.skillRankMult, rankTier)
+  );
 }
 
 export function createDefaultPrestige(): PrestigeState {

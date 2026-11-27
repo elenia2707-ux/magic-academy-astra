@@ -659,7 +659,7 @@ export default function App() {
   const handleUpgradeSkillWithStones = (skillId: string) => {
     const learned = state.skills[skillId];
     if (!learned?.unlocked || learned.level >= stats.maxSkillLevel) return;
-    const cost = getSkillUpgradeCost(learned.level);
+    const cost = getSkillUpgradeCost(learned.level, skillId);
     if (state.stones < cost) return;
     playSfx('heal', state.settings.sfxEnabled);
     setState((prev) => ({

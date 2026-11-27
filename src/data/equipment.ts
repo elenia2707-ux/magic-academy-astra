@@ -1,3 +1,4 @@
+import { ECON } from './economy';
 import type { EquipmentItem, EquipSlot, MagicCategory, Rarity } from '../types/game';
 
 export const SLOT_LABELS: Record<EquipSlot, string> = {
@@ -117,8 +118,8 @@ export function getEnhanceMultiplier(enhance: number): number {
 }
 
 export function getEnhanceCost(item: EquipmentItem): number {
-  const base = 35 * Math.pow(1.48, item.tier - 1) * RARITY_META[item.rarity].mult;
-  return Math.round(base * Math.pow(1.32, item.enhance));
+  const base = ECON.enhBase * Math.pow(ECON.enhTierGrowth, item.tier - 1) * RARITY_META[item.rarity].mult;
+  return Math.round(base * Math.pow(ECON.enhGrowth, item.enhance));
 }
 
 export function getItemPowerScore(item: EquipmentItem): number {

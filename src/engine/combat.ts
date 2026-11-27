@@ -1,3 +1,4 @@
+import { effectiveStoneReward } from '../data/economy';
 import { ACTS, createAbyssEliteMonster, createTowerMonster } from '../data/acts';
 import { FAMILIARS } from '../data/familiars';
 import { RANK_EXAM_BOSSES } from '../data/schools';
@@ -73,21 +74,41 @@ export const MOB_TUNING = {
   atkMult: 2.3,
 };
 
+/**
+ * P0-6 막별 난이도 램프 — 승급 요구 레벨(Lv30/44/60) 때문에 3막 이후엔 플레이어가 데이터 설계보다
+ * 고레벨로 입장해 전투가 1~2턴 컷이 되던 문제 보정. 막 사냥터(일반몹+막 보스)의 HP·공격·EXP에 곱한다.
+ * EXP도 같이 올려서 "전투는 길어지지만 레벨업 속도(분당 EXP)는 유지".
+ */
+export const ACT_RAMP = {
+  /** 3막부터 막마다 곱해지는 배율 (3막=r, 4막=r², 5막=r³, 6막=r⁴) */
+  perAct: 1.5,
+  atkShare: 0.6,
+};
+
+export function getActRamp(act: number): { hp: number; atk: number; exp: number } {
+  const steps = Math.max(0, act - 2);
+  const hp = Math.pow(ACT_RAMP.perAct, steps);
+  return { hp, atk: 1 + (hp - 1) * ACT_RAMP.atkShare, exp: hp };
+}
+
 /** 원본 데이터는 그대로 두고 전투 런타임용 사본에만 배율 적용 */
-function applyBossTuning(enemy: MonsterDef, mode: CombatMode): MonsterDef {
+function applyBossTuning(enemy: MonsterDef, mode: CombatMode, act: number): MonsterDef {
+  const ramp = mode === 'stage' ? getActRamp(act) : { hp: 1, atk: 1, exp: 1 };
   if (mode === 'stage' && !enemy.isBoss) {
     return {
       ...enemy,
-      hp: Math.round(enemy.hp * MOB_TUNING.hpMult),
-      atk: Math.round(enemy.atk * MOB_TUNING.atkMult),
+      hp: Math.round(enemy.hp * MOB_TUNING.hpMult * ramp.hp),
+      atk: Math.round(enemy.atk * MOB_TUNING.atkMult * ramp.atk),
+      expReward: Math.round(enemy.expReward * ramp.exp),
     };
   }
   if (!isThreatBoss(enemy, mode)) return enemy;
   const isRank = mode === 'rankBoss';
   return {
     ...enemy,
-    hp: Math.round(enemy.hp * (isRank ? BOSS_TUNING.rankHpMult : BOSS_TUNING.hpMult)),
-    atk: Math.round(enemy.atk * (isRank ? BOSS_TUNING.rankAtkMult : BOSS_TUNING.atkMult)),
+    hp: Math.round(enemy.hp * (isRank ? BOSS_TUNING.rankHpMult : BOSS_TUNING.hpMult) * ramp.hp),
+    atk: Math.round(enemy.atk * (isRank ? BOSS_TUNING.rankAtkMult : BOSS_TUNING.atkMult) * ramp.atk),
+    expReward: Math.round(enemy.expReward * ramp.exp),
   };
 }
 
@@ -99,7 +120,9 @@ export function createCombatRuntime(
   stageIndex = state.selectedStage,
   towerFloor = state.towerFloor
 ): CombatRuntime {
-  const enemy = applyBossTuning(getMonsterForMode(state, mode, act, stageIndex, towerFloor), mode);
+  const tuned = applyBossTuning(getMonsterForMode(state, mode, act, stageIndex, towerFloor), mode, act);
+  // P0-6: 마석 보상 곡선 압축 (전투 화면 표시·실제 지급 모두 이 값 사용)
+  const enemy = { ...tuned, stoneReward: effectiveStoneReward(tuned.stoneReward) };
   const introMsg =
     mode === 'rankBoss'
       ? `승급 시험 개시! [${enemy.name}]이(가) 앞을 가로막습니다.`

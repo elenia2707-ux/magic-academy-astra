@@ -1,3 +1,4 @@
+import { effectiveStoneReward } from '../data/economy';
 import { ACTS } from '../data/acts';
 import { generateEquipment, RARITY_META } from '../data/equipment';
 import type { GameState, OfflineSummary } from '../types/game';
@@ -33,7 +34,7 @@ export function processOfflineProgress(
   const rewardMult = getRewardMultiplier(state);
 
   const expGained = Math.round(monster.expReward * kills * 0.85 * rewardMult);
-  const stonesGained = Math.round(monster.stoneReward * kills * 0.85 * rewardMult);
+  const stonesGained = Math.round(effectiveStoneReward(monster.stoneReward) * kills * 0.85 * rewardMult);
 
   const { level, exp } = applyExpAndLevelUp(state.level, state.exp, expGained);
   const trained = advanceTraining(state, elapsedSec, stats);
