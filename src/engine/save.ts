@@ -62,6 +62,15 @@ function hydrateState(parsed: Partial<GameState>): GameState | null {
     abyss: {
       ...fallback.abyss,
       ...(parsed.abyss ?? {}),
+      boardPos:
+        typeof parsed.abyss?.boardPos === 'number'
+          ? ((parsed.abyss.boardPos % 16) + 16) % 16
+          : (parsed.abyss?.depth ?? 0) % 16,
+      laps:
+        typeof parsed.abyss?.laps === 'number'
+          ? parsed.abyss.laps
+          : Math.floor((parsed.abyss?.depth ?? 0) / 16),
+      lastRoll: parsed.abyss?.lastRoll ?? null,
     },
     settings: migrateGearSettings({
       ...fallback.settings,

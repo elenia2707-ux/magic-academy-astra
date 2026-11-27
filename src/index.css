@@ -3155,5 +3155,252 @@ select,
   flex-shrink: 0;
 }
 
+/* =====================================================================
+   🎲 P1-5 · 주사위판 심연 (5×5 외곽 16칸 순환 보드 · 황동 양피지 주사위)
+   ===================================================================== */
+.abyss-board-sub {
+  font-size: 11px;
+  color: #a99884;
+  margin-bottom: 9px;
+  line-height: 1.45;
+}
+
+.abyss-board {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-rows: repeat(5, 52px);
+  gap: 4px;
+  padding: 6px;
+  border-radius: 12px;
+  background:
+    radial-gradient(ellipse at 50% 50%, rgba(28, 18, 26, 0.92) 0%, #130b10 100%);
+  border: 1px solid var(--wood-edge);
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.7), 0 1px 0 rgba(226, 196, 140, 0.15);
+  margin-bottom: 10px;
+}
+
+.abyss-tile {
+  position: relative;
+  border-radius: 8px;
+  border: 1px solid rgba(184, 146, 90, 0.28);
+  background: linear-gradient(180deg, #2b1a21 0%, #1d1117 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 2px;
+  box-shadow: inset 0 1px 0 rgba(255, 236, 200, 0.08), 0 1px 0 var(--wood-edge);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.abyss-tile-glyph {
+  font-size: 14px;
+  line-height: 1;
+  color: #e2c48c;
+}
+
+.abyss-tile-label {
+  font-family: var(--font-round);
+  font-size: 10px;
+  line-height: 1;
+  color: #cbb8a2;
+  white-space: nowrap;
+}
+
+.abyss-tile.tile-start {
+  background: linear-gradient(180deg, #4a3519 0%, #2d1e0d 100%);
+  border-color: rgba(226, 196, 140, 0.6);
+}
+.abyss-tile.tile-start .abyss-tile-glyph { color: #fce3a6; }
+
+.abyss-tile.tile-chest { border-color: rgba(220, 178, 92, 0.45); }
+.abyss-tile.tile-chest .abyss-tile-glyph { color: #e9c46a; }
+
+.abyss-tile.tile-altar { border-color: rgba(181, 82, 100, 0.5); }
+.abyss-tile.tile-altar .abyss-tile-glyph { color: #d87a8c; }
+
+.abyss-tile.tile-shrine { border-color: rgba(114, 178, 206, 0.45); }
+.abyss-tile.tile-shrine .abyss-tile-glyph { color: #8cd0eb; }
+
+.abyss-tile.tile-mystery { border-color: rgba(112, 174, 130, 0.45); }
+.abyss-tile.tile-mystery .abyss-tile-glyph { color: #8fd2a0; }
+
+.abyss-tile.tile-merchant { border-color: rgba(196, 152, 92, 0.42); }
+.abyss-tile.tile-merchant .abyss-tile-glyph { color: #dfc08a; }
+
+.abyss-tile.tile-trap {
+  background: linear-gradient(180deg, #2a1816 0%, #1a0f0e 100%);
+  border-color: rgba(176, 86, 62, 0.45);
+}
+.abyss-tile.tile-trap .abyss-tile-glyph { color: #d67a5c; }
+
+.abyss-tile.tile-elite {
+  background: linear-gradient(180deg, #3b171f 0%, #230d13 100%);
+  border-color: rgba(206, 68, 76, 0.58);
+}
+.abyss-tile.tile-elite .abyss-tile-glyph { color: #f07b80; }
+
+.abyss-tile.current {
+  border: 2px solid #f4d898;
+  box-shadow:
+    0 0 0 1px var(--wood-edge),
+    0 0 12px rgba(244, 216, 152, 0.45),
+    inset 0 0 8px rgba(244, 216, 152, 0.22);
+  transform: scale(1.03);
+  z-index: 2;
+}
+
+.abyss-pawn {
+  position: absolute;
+  top: -5px;
+  right: -4px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid #fff3d2;
+  box-shadow: 0 0 0 1px #2a160a, 0 2px 5px rgba(0, 0, 0, 0.75);
+}
+
+.abyss-board-center {
+  grid-row: 2 / 5;
+  grid-column: 2 / 5;
+  border-radius: 10px;
+  padding: 8px 6px;
+  background:
+    radial-gradient(ellipse at 50% 25%, rgba(226, 196, 140, 0.08) 0%, transparent 65%),
+    linear-gradient(180deg, #21151c 0%, #150d12 100%);
+  border: 1px solid rgba(184, 146, 90, 0.34);
+  box-shadow: inset 0 0 14px rgba(0, 0, 0, 0.55);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  gap: 5px;
+}
+
+.abyss-center-meta {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-round);
+  font-size: 11.5px;
+  color: #e3c481;
+}
+
+.abyss-die {
+  width: 54px;
+  height: 54px;
+  padding: 7px;
+  border-radius: 11px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  place-items: center;
+  background: linear-gradient(160deg, #ead8b2 0%, var(--parch) 55%, #b2976d 100%);
+  border: 2px solid #5a3c1a;
+  box-shadow:
+    inset 0 2px 0 rgba(255, 250, 236, 0.75),
+    inset 0 -3px 4px rgba(74, 48, 22, 0.38),
+    0 3px 0 #2e1b0c,
+    0 6px 12px rgba(0, 0, 0, 0.55);
+  transition: transform 0.12s ease;
+}
+
+.abyss-die.rolling {
+  animation: dieTumble 0.14s linear infinite;
+}
+
+@keyframes dieTumble {
+  0% { transform: rotate(-10deg) scale(1.06); }
+  50% { transform: rotate(10deg) scale(0.96); }
+  100% { transform: rotate(-10deg) scale(1.06); }
+}
+
+.die-pip {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  opacity: 0;
+}
+
+.die-pip.on {
+  opacity: 1;
+  background: radial-gradient(circle at 35% 30%, #5a2b24 0%, #2b1412 75%);
+  box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.6), 0 1px 0 rgba(255, 248, 228, 0.45);
+}
+
+.abyss-roll-btn {
+  width: 100%;
+  justify-content: center;
+  padding: 6px 6px;
+  font-size: 11.5px;
+  gap: 4px;
+}
+
+.abyss-result-banner {
+  padding: 8px 10px;
+  border-radius: 9px;
+  font-size: 11.5px;
+  line-height: 1.5;
+  margin-bottom: 9px;
+  font-weight: 600;
+}
+
+.abyss-event-card {
+  padding: 11px 11px 10px;
+  border-radius: 10px;
+  border: 1px solid #5a4126;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.abyss-event-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.abyss-event-title {
+  font-family: var(--font-round);
+  font-size: 14px;
+  color: var(--parch-ink);
+}
+
+.abyss-event-desc {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--parch-ink);
+}
+
+.abyss-choice-btn {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid #5a4126;
+  background: linear-gradient(180deg, rgba(255, 249, 232, 0.6) 0%, rgba(214, 194, 156, 0.36) 100%);
+  color: var(--parch-ink);
+  text-align: left;
+  cursor: pointer;
+  box-shadow: inset 0 1px 0 rgba(255, 250, 236, 0.68), 0 1px 0 rgba(46, 31, 21, 0.35);
+}
+
+.abyss-choice-label {
+  font-family: var(--font-round);
+  font-size: 12.5px;
+  color: var(--parch-ink);
+}
+
+.abyss-choice-hint {
+  font-size: 10.5px;
+  color: var(--parch-ink-soft);
+}
+
+
 
 

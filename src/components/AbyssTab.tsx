@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Compass,
   Copy,
-  Flame,
+  Dices,
   Lock,
   RotateCcw,
   Save,
@@ -11,18 +11,30 @@ import {
   Volume2,
   VolumeX,
 } from 'lucide-react';
+import { ABYSS_BOARD_TILES } from '../data/abyssEvents';
 import {
   calculateRebirthReward,
   getPrestigeUpgradeCost,
   PRESTIGE_UPGRADES,
 } from '../data/prestige';
+import { SCHOOLS } from '../data/schools';
 import { exportSaveCode } from '../engine/save';
 import type { AbyssChoice, ComputedStats, GameState, PrestigeUpgradeId } from '../types/game';
+
+/** 3x3 주사위 눈 도트 위치 (0..8) */
+const DIE_PIPS: Record<number, number[]> = {
+  1: [4],
+  2: [2, 6],
+  3: [2, 4, 6],
+  4: [0, 2, 6, 8],
+  5: [0, 2, 4, 6, 8],
+  6: [0, 2, 3, 5, 6, 8],
+};
 
 interface Props {
   state: GameState;
   stats: ComputedStats;
-  onExploreAbyssStep: () => void;
+  onExploreAbyssStep: (rolledFace?: number) => void;
   onResolveAbyssChoice: (choice: AbyssChoice) => void;
   onChallengeTower: () => void;
   onBuyPrestigeUpgrade: (id: PrestigeUpgradeId) => void;
@@ -47,10 +59,46 @@ export const AbyssTab: React.FC<Props> = ({
   const [sub, setSub] = useState<'explore' | 'tower' | 'rebirth' | 'system'>('explore');
   const [importText, setImportText] = useState('');
   const [copyMsg, setCopyMsg] = useState<string | null>(null);
+  const [isRolling, setIsRolling] = useState(false);
+  const [rollingFace, setRollingFace] = useState<number>(state.abyss.lastRoll ?? 1);
+  const rollTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (rollTimerRef.current !== null) window.clearTimeout(rollTimerRef.current);
+    };
+  }, []);
 
   const towerUnlocked = state.clearedActs.includes(6) || state.prestige.rebirthCount > 0;
   const rebirthReward = calculateRebirthReward(state);
   const canRebirth = rebirthReward > 0;
+
+  const boardPos = ((state.abyss.boardPos ?? state.abyss.depth % 16) % 16 + 16) % 16;
+  const laps = state.abyss.laps ?? Math.floor(state.abyss.depth / 16);
+  const displayFace = isRolling ? rollingFace : (state.abyss.lastRoll ?? 1);
+  const activePips = DIE_PIPS[displayFace] ?? DIE_PIPS[1];
+  const schoolColor = SCHOOLS[state.school].color;
+  const canRoll = !isRolling && state.abyss.lanterns > 0 && !state.abyss.activeNode;
+
+  const handleRollDice = () => {
+    if (!canRoll) return;
+    const finalRoll = 1 + Math.floor(Math.random() * 6);
+    setIsRolling(true);
+    let ticks = 0;
+    const step = () => {
+      ticks += 1;
+      if (ticks < 4) {
+        setRollingFace(1 + Math.floor(Math.random() * 6));
+        rollTimerRef.current = window.setTimeout(step, 70);
+      } else {
+        setRollingFace(finalRoll);
+        setIsRolling(false);
+        rollTimerRef.current = null;
+        onExploreAbyssStep(finalRoll);
+      }
+    };
+    step();
+  };
 
   const handleCopySave = () => {
     const code = exportSaveCode(state);
@@ -102,74 +150,107 @@ export const AbyssTab: React.FC<Props> = ({
         </button>
       </div>
 
-      {/* 1. 서브: 심연 탐험 */}
+      {/* 1. 서브: P1-5 주사위판 심연 미궁 */}
       {sub === 'explore' && (
         <div className="panel">
           <div className="panel-title-row">
             <h2 className="panel-title">
               <Compass size={14} style={{ verticalAlign: -2, marginRight: 5 }} />
-              심연 미궁 탐험 (서브)
+              심연 미궁 주사위판
             </h2>
             <span className="panel-sub" style={{ color: '#e3c481' }}>
               등불 {state.abyss.lanterns} / {state.abyss.maxLanterns}
             </span>
           </div>
-          <div style={{ fontSize: 11.5, color: '#9a9386', marginBottom: 10 }}>
-            메인 스토리와 무관한 선택형 미궁입니다. 20분마다 등불이 1개 회복되며, 금서 조각·알
-            조각·희귀 마도구를 얻을 수 있습니다. (현재 심도: {state.abyss.depth}칸)
+          <div className="abyss-board-sub">
+            20분마다 등불 +1 · 한 바퀴(16칸) 완주마다 금서·알 조각·마석 보너스!
+          </div>
+
+          {/* 5×5 외곽 16칸 순환 보드 + 중앙 3×3 주사위 허브 */}
+          <div className="abyss-board" role="region" aria-label="심연 주사위판">
+            {ABYSS_BOARD_TILES.map((tile) => {
+              const isCurrent = tile.index === boardPos;
+              return (
+                <div
+                  key={tile.index}
+                  className={`abyss-tile tile-${tile.kind} ${isCurrent ? 'current' : ''}`}
+                  style={{ gridRow: tile.row, gridColumn: tile.col }}
+                  title={`${tile.index}번 칸 · ${tile.title}`}
+                >
+                  <span className="abyss-tile-glyph">{tile.glyph}</span>
+                  <span className="abyss-tile-label">{tile.shortLabel}</span>
+                  {isCurrent && (
+                    <span
+                      className="abyss-pawn"
+                      style={{ backgroundColor: schoolColor }}
+                      aria-label="현재 위치"
+                    />
+                  )}
+                </div>
+              );
+            })}
+
+            <div className="abyss-board-center">
+              <div className="abyss-center-meta">
+                <span>{laps + 1}바퀴</span>
+                <span>·</span>
+                <span>누적 {state.abyss.depth}칸</span>
+              </div>
+
+              <div className={`abyss-die ${isRolling ? 'rolling' : ''}`} aria-label={`주사위 ${displayFace}`}>
+                {Array.from({ length: 9 }).map((_, idx) => (
+                  <span
+                    key={idx}
+                    className={`die-pip ${activePips.includes(idx) ? 'on' : ''}`}
+                  />
+                ))}
+              </div>
+
+              <button
+                type="button"
+                className="btn btn-gold btn-sm abyss-roll-btn"
+                disabled={!canRoll}
+                onClick={handleRollDice}
+              >
+                <Dices size={13} />
+                {isRolling
+                  ? '굴리는 중…'
+                  : state.abyss.activeNode
+                    ? '선택지 확인'
+                    : state.abyss.lanterns <= 0
+                      ? '등불 부족'
+                      : '굴리기 (등불 1)'}
+              </button>
+            </div>
           </div>
 
           {state.abyss.lastResult && (
-            <div
-              className="list-card"
-              style={{ marginBottom: 10, borderColor: 'var(--border-gold)', fontSize: 12 }}
-            >
-              {state.abyss.lastResult}
-            </div>
+            <div className="abyss-result-banner parchment">{state.abyss.lastResult}</div>
           )}
 
-          {state.abyss.activeNode ? (
-            <div className="list-card highlight">
-              <div className="list-top">
-                <span className="list-title" style={{ color: '#e3c481' }}>
-                  [{state.abyss.activeNode.step}칸] {state.abyss.activeNode.title}
+          {state.abyss.activeNode && (
+            <div className="abyss-event-card parchment">
+              <div className="abyss-event-head">
+                <span className="event-badge">
+                  {state.abyss.lastRoll ? `🎲 ${state.abyss.lastRoll}칸 이동` : '심연 조우'}
                 </span>
+                <span className="abyss-event-title">{state.abyss.activeNode.title}</span>
               </div>
-              <div className="list-desc" style={{ lineHeight: 1.55 }}>
-                {state.abyss.activeNode.description}
-              </div>
-              <div className="item-list">
+              <div className="abyss-event-desc">{state.abyss.activeNode.description}</div>
+              <div className="event-choices">
                 {state.abyss.activeNode.choices.map((ch, idx) => (
                   <button
                     key={idx}
                     type="button"
-                    className="btn btn-block"
-                    style={{
-                      flexDirection: 'column',
-                      alignItems: 'flex-start',
-                      gap: 2,
-                      padding: '9px 11px',
-                    }}
+                    className="abyss-choice-btn"
                     onClick={() => onResolveAbyssChoice(ch)}
                   >
-                    <span style={{ fontSize: 12.5 }}>{ch.label}</span>
-                    <span style={{ fontSize: 10.5, color: '#9a9386', fontWeight: 400 }}>
-                      {ch.hint}
-                    </span>
+                    <span className="abyss-choice-label">{ch.label}</span>
+                    <span className="abyss-choice-hint">{ch.hint}</span>
                   </button>
                 ))}
               </div>
             </div>
-          ) : (
-            <button
-              type="button"
-              className="btn btn-gold btn-block"
-              disabled={state.abyss.lanterns <= 0}
-              onClick={onExploreAbyssStep}
-            >
-              <Flame size={14} />
-              등불 1개를 밝혀 안개 속으로 전진
-            </button>
           )}
         </div>
       )}

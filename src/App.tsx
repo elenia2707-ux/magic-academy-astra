@@ -8,7 +8,11 @@ import { FamiliarTab } from './components/FamiliarTab';
 import { PlayerPortrait } from './components/GothicArt';
 import { HeroPortraitModal, OfflineModal, StoryModal, type StoryModalPayload } from './components/Modals';
 import { SchoolTab } from './components/SchoolTab';
-import { generateAbyssNode } from './data/abyssEvents';
+import {
+  ABYSS_BOARD_SIZE,
+  ABYSS_BOARD_TILES,
+  generateAbyssNodeForTile,
+} from './data/abyssEvents';
 import {
   formatEventReward,
   pickBlackComedyEvent,
@@ -1074,20 +1078,58 @@ export default function App() {
     showToast(`사역마 각성! [${FAMILIARS[id].evolvedNames[nextEvo]}]`);
   };
 
-  const handleExploreAbyssStep = () => {
+  // P1-5: 주사위판 심연 — 등불 1개 소모해 주사위(1~6) 굴려 16칸 순환 보드 이동 + 완주 보너스
+  const handleExploreAbyssStep = (rolledFace?: number) => {
     if (state.abyss.lanterns <= 0 || state.abyss.activeNode) return;
-    playSfx('click', state.settings.sfxEnabled);
-    const node = generateAbyssNode(state.abyss.depth);
-    setState((prev) => ({
-      ...prev,
-      abyss: {
-        ...prev.abyss,
-        lanterns: prev.abyss.lanterns - 1,
-        depth: prev.abyss.depth + 1,
-        activeNode: node,
-        lastResult: null,
-      },
-    }));
+    const roll =
+      typeof rolledFace === 'number' && rolledFace >= 1 && rolledFace <= 6
+        ? rolledFace
+        : 1 + Math.floor(Math.random() * 6);
+    const curPos = ((state.abyss.boardPos ?? state.abyss.depth % ABYSS_BOARD_SIZE) % ABYSS_BOARD_SIZE + ABYSS_BOARD_SIZE) % ABYSS_BOARD_SIZE;
+    const rawNext = curPos + roll;
+    const lapCleared = rawNext >= ABYSS_BOARD_SIZE;
+    const nextPos = rawNext % ABYSS_BOARD_SIZE;
+    const nextDepth = state.abyss.depth + roll;
+    const nextLaps = (state.abyss.laps ?? Math.floor(state.abyss.depth / ABYSS_BOARD_SIZE)) + (lapCleared ? 1 : 0);
+    const tile = ABYSS_BOARD_TILES[nextPos];
+    const lapStone = Math.round(180 * Math.pow(1.5, state.highestAct - 1));
+    const landedOnStart = tile.kind === 'start';
+
+    playSfx(lapCleared ? 'victory' : 'click', state.settings.sfxEnabled);
+
+    const node = generateAbyssNodeForTile(tile, nextDepth);
+    setState((prev) => {
+      const bonusLantern = landedOnStart ? 1 : 0;
+      const nextLanterns = Math.min(
+        prev.abyss.maxLanterns,
+        Math.max(0, prev.abyss.lanterns - 1 + bonusLantern)
+      );
+      const lapMsg = lapCleared
+        ? `✦ 심연 보드 ${nextLaps}바퀴 완주! 마석 +${lapStone.toLocaleString()} · 금서 조각 +2 · 알 조각 +2${
+            landedOnStart ? ' (성소 정착 축복: 등불 +1 회복!)' : ''
+          }`
+        : null;
+      return {
+        ...prev,
+        stones: prev.stones + (lapCleared ? lapStone : 0),
+        tomeShards: prev.tomeShards + (lapCleared ? 2 : 0),
+        eggShards: prev.eggShards + (lapCleared ? 2 : 0),
+        abyss: {
+          ...prev.abyss,
+          lanterns: nextLanterns,
+          depth: nextDepth,
+          boardPos: nextPos,
+          laps: nextLaps,
+          lastRoll: roll,
+          activeNode: node,
+          lastResult: lapMsg,
+        },
+      };
+    });
+
+    if (lapCleared) {
+      showToast(`🎲 주사위 ${roll}! ${nextLaps}바퀴 완주 보너스 획득!`);
+    }
   };
 
   const handleResolveAbyssChoice = (choice: AbyssChoice) => {
@@ -1111,6 +1153,8 @@ export default function App() {
       let inventory = prev.inventory;
       let level = prev.level;
       let exp = prev.exp;
+      let lanterns = prev.abyss.lanterns;
+      let boardPos = prev.abyss.boardPos ?? prev.abyss.depth % ABYSS_BOARD_SIZE;
       let result = '';
 
       if (choice.outcomeType === 'tome') {
@@ -1141,12 +1185,20 @@ export default function App() {
         eggShards += 2;
         result = `따뜻한 둥지에서 사역마 알 조각 +2 획득!`;
       } else if (choice.outcomeType === 'heal') {
-        const expGain = Math.round(expForNextLevel(prev.level) * 0.35);
+        const expGain = Math.round(expForNextLevel(prev.level) * 0.25);
         const lvRes = applyExpAndLevelUp(prev.level, prev.exp, expGain);
         level = lvRes.level;
         exp = lvRes.exp;
         arcaneDust += 40;
-        result = `마력 잔해를 흡수해 경험치 +${expGain.toLocaleString()}, 마력 가루 +40 획득!`;
+        const refunded = lanterns < prev.abyss.maxLanterns && Math.random() < 0.25;
+        if (refunded) lanterns += 1;
+        result = `별빛 잔재를 흡수해 EXP +${expGain.toLocaleString()}, 마력 가루 +40 획득!${
+          refunded ? ' (등불 불꽃 +1 되살아남!)' : ''
+        }`;
+      } else if (choice.outcomeType === 'trapBack') {
+        boardPos = (boardPos + ABYSS_BOARD_SIZE - 1) % ABYSS_BOARD_SIZE;
+        arcaneDust += 65;
+        result = `석판이 꺼져 1칸 뒤로 물러났습니다. 대신 잔해에서 마력 가루 +65를 건졌습니다!`;
       } else {
         const expGain = Math.round(expForNextLevel(prev.level) * 0.12);
         const lvRes = applyExpAndLevelUp(prev.level, prev.exp, expGain);
@@ -1164,7 +1216,13 @@ export default function App() {
         eggShards,
         arcaneDust,
         inventory,
-        abyss: { ...prev.abyss, activeNode: null, lastResult: result },
+        abyss: {
+          ...prev.abyss,
+          lanterns,
+          boardPos,
+          activeNode: null,
+          lastResult: result,
+        },
       };
     });
   };

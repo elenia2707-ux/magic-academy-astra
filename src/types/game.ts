@@ -226,15 +226,25 @@ export interface CombatRuntime {
   victoryBanner?: string | null;
 }
 
+export type AbyssTileKind =
+  | 'start'
+  | 'altar'
+  | 'merchant'
+  | 'chest'
+  | 'shrine'
+  | 'elite'
+  | 'mystery'
+  | 'trap';
+
 export interface AbyssChoice {
   label: string;
   hint: string;
-  outcomeType: 'treasure' | 'gamble' | 'heal' | 'tome' | 'egg' | 'fight' | 'leave';
+  outcomeType: 'treasure' | 'gamble' | 'heal' | 'tome' | 'egg' | 'fight' | 'leave' | 'trapBack';
 }
 
 export interface AbyssNode {
   step: number;
-  kind: 'altar' | 'merchant' | 'chest' | 'shrine' | 'elite' | 'mystery';
+  kind: 'altar' | 'merchant' | 'chest' | 'shrine' | 'elite' | 'mystery' | 'trap';
   title: string;
   description: string;
   choices: AbyssChoice[];
@@ -245,6 +255,9 @@ export interface AbyssState {
   maxLanterns: number;
   lastLanternTick: number;
   depth: number;
+  boardPos?: number; // 0..15 순환 보드 현재 칸
+  laps?: number; // 보드 완주 바퀴 수
+  lastRoll?: number | null; // 마지막 주사위 눈 (1..6)
   activeNode: AbyssNode | null;
   lastResult: string | null;
 }
