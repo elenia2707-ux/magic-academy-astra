@@ -1,4 +1,4 @@
-const CACHE_NAME = 'astra-academy-v10';
+const CACHE_NAME = 'astra-academy-v11';
 const ASSETS = [
   './',
   './index.html',
@@ -19,6 +19,9 @@ const ASSETS = [
   './art/heroes/aw_frost_female.webp',
   './art/heroes/aw_earth_female.webp',
   './art/heroes/aw_flame_male.webp',
+  './art/heroes/aw_thunder_male.webp',
+  './art/heroes/aw_frost_male.webp',
+  './art/heroes/aw_earth_male.webp',
   './art/familiars/raven.webp',
   './art/familiars/golem.webp',
   './art/familiars/wisp.webp',
