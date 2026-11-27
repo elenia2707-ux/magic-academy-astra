@@ -8,7 +8,8 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "sim": "esbuild scripts/balance-sim.ts --bundle --platform=node --outfile=/tmp/astra-sim.cjs --log-level=warning && node /tmp/astra-sim.cjs"
+    "sim": "esbuild scripts/balance-sim.ts --bundle --platform=node --outfile=/tmp/astra-sim.cjs --log-level=warning && node /tmp/astra-sim.cjs",
+    "sim:progress": "esbuild scripts/progress-sim.ts --bundle --platform=node --outfile=/tmp/astra-prog.cjs --log-level=warning && node /tmp/astra-prog.cjs"
   },
   "dependencies": {
     "lucide-react": "^1.79.0",

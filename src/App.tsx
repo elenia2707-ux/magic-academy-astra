@@ -484,21 +484,31 @@ export default function App() {
       } else if (outcome.result === 'defeat') {
         combatTransitionRef.current = true;
         const wasSpecial = curCombat.mode !== 'stage';
-        const fallbackStage =
-          curCombat.mode === 'stage' && curCombat.stageIndex === 4
-            ? 3
+        const isActBossLoss = curCombat.mode === 'stage' && curCombat.stageIndex === 4;
+        // P0-3: 일반몹에게 패배하면 (자동 전진 ON일 때) 한 단계 물러나 재정비 → 무한 패배 루프 방지
+        const isMobStepBack =
+          curCombat.mode === 'stage' &&
+          curCombat.stageIndex > 0 &&
+          curCombat.stageIndex < 4 &&
+          curState.settings.autoAdvance;
+        const fallbackStage = isActBossLoss
+          ? 3
+          : isMobStepBack
+            ? curCombat.stageIndex - 1
             : curState.selectedStage;
 
-        if (curCombat.mode === 'stage' && curCombat.stageIndex === 4) {
+        if (isActBossLoss) {
           bossRetryRef.current = BOSS_RETRY_KILLS;
           setBossRetryIn(BOSS_RETRY_KILLS);
           showToast(`보스에게 패배… ${BOSS_RETRY_KILLS}번 더 수련한 뒤 자동 재도전합니다.`);
         } else if (wasSpecial) {
           showToast('강적에게 패배하여 안전한 사냥터로 귀환합니다.');
+        } else if (isMobStepBack) {
+          showToast('쓰러졌습니다… 한 구역 물러나 재정비합니다.');
         }
 
-        if (curCombat.mode === 'stage' && curCombat.stageIndex === 4) {
-          setState((prev) => ({ ...prev, selectedStage: 3 }));
+        if (isActBossLoss || isMobStepBack) {
+          setState((prev) => ({ ...prev, selectedStage: fallbackStage }));
         }
 
         nextCombatTimerRef.current = window.setTimeout(() => {

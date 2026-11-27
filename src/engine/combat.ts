@@ -63,8 +63,25 @@ function isThreatBoss(enemy: MonsterDef, mode: CombatMode): boolean {
   return mode === 'stage' && Boolean(enemy.isBoss);
 }
 
+/**
+ * P0-3 일반몹 위협감 튜닝 — 막 사냥터(x-1 ~ x-4) 일반 몬스터.
+ * scripts/progress-sim.ts 기준 목표: 적정 레벨 전투 4~6턴 · 전투당 HP 손실 15~35%
+ * 결과(공격 ×2.3): 평균 4.8~7.6턴 · HP 손실 11~43% (대지 최저 · 빙결 최고) · 패배 시 한 구역 후퇴
+ */
+export const MOB_TUNING = {
+  hpMult: 1.0,
+  atkMult: 2.3,
+};
+
 /** 원본 데이터는 그대로 두고 전투 런타임용 사본에만 배율 적용 */
 function applyBossTuning(enemy: MonsterDef, mode: CombatMode): MonsterDef {
+  if (mode === 'stage' && !enemy.isBoss) {
+    return {
+      ...enemy,
+      hp: Math.round(enemy.hp * MOB_TUNING.hpMult),
+      atk: Math.round(enemy.atk * MOB_TUNING.atkMult),
+    };
+  }
   if (!isThreatBoss(enemy, mode)) return enemy;
   const isRank = mode === 'rankBoss';
   return {
