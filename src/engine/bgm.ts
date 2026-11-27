@@ -19,20 +19,20 @@ export interface BgmTrackMeta {
 export const BGM_TRACKS: Record<BgmTrackId, BgmTrackMeta> = {
   academy: {
     id: 'academy',
-    title: '별빛이 내리는 교정',
-    subtitle: '아스트라 마법학교 · 왈츠 테마',
+    title: '달빛이 머무는 교정',
+    subtitle: '아스트라 마법학교 · 몽환 오르골 테마',
     filename: 'audio/bgm_academy.mp3',
   },
   battle: {
     id: 'battle',
-    title: '검은 안개를 가르는 발걸음',
-    subtitle: '모험 · 사냥터 · 심연 테마',
+    title: '빗방울 숲의 모험가',
+    subtitle: '모험 · 사냥터 · 심연 필드 테마',
     filename: 'audio/bgm_battle.mp3',
   },
   boss: {
     id: 'boss',
-    title: '붉은 달의 심판',
-    subtitle: '보스 · 승급 시험 · 탑 테마',
+    title: '시간이 멈춘 회랑',
+    subtitle: '보스 · 승급 시험 · 시간의 시련 테마',
     filename: 'audio/bgm_boss.mp3',
   },
 };
