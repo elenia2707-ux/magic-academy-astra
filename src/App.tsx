@@ -1059,46 +1059,80 @@ export default function App() {
         ) : (
           <>
             {/* 상단 상태 헤더 */}
-            <header className="top-header">
-              <div className="header-row">
-                <div className="player-badge">
-                  <button
-                    type="button"
-                    className="player-avatar-mini"
-                    onClick={() => setHeroModalOpen(true)}
-                    title="캐릭터 원화 크게 보기"
-                    aria-label="캐릭터 원화 크게 보기"
-                  >
-                    <PlayerPortrait
-                      school={state.school}
-                      gender={state.gender}
-                      awakened={state.rank >= 3}
-                      variant="avatar"
-                    />
-                  </button>
+            <header className="top-header arpia-status">
+              <button
+                type="button"
+                className="status-medal"
+                onClick={() => setHeroModalOpen(true)}
+                title="캐릭터 원화 크게 보기"
+                aria-label="캐릭터 원화 크게 보기"
+              >
+                <span className="status-medal-inner">
+                  <PlayerPortrait
+                    school={state.school}
+                    gender={state.gender}
+                    awakened={state.rank >= 3}
+                    variant="avatar"
+                  />
+                </span>
+                <span className="status-lv">Lv.{state.level}</span>
+              </button>
+
+              <div className="status-body">
+                <div className="status-top">
                   <div className="player-meta">
                     <div className="player-name-line">
                       <span className="player-name">{state.playerName}</span>
                       <span className="rank-tag">{RANKS[state.rank].name}</span>
                     </div>
                     <div className="player-sub">
-                      Lv.{state.level} · {SCHOOLS[state.school].name}
+                      {SCHOOLS[state.school].name}
                       {state.prestige.rebirthCount > 0 ? ` · ${state.prestige.rebirthCount}회귀` : ''}
                     </div>
                   </div>
+                  <div className="currency-strip">
+                    <span className="curr-pill gold" title="마석">
+                      <i className="curr-gem stone" />
+                      {state.stones.toLocaleString()}
+                    </span>
+                    <span className="curr-pill tome" title="금서 조각">
+                      <i className="curr-gem tome" />
+                      {state.tomeShards}
+                    </span>
+                  </div>
                 </div>
 
-                <div className="currency-strip">
-                  <span className="curr-pill gold" title="마석">
-                    ◆ {state.stones.toLocaleString()}
-                  </span>
-                  <span className="curr-pill tome" title="금서 조각">
-                    ✦ {state.tomeShards}
-                  </span>
+                <div className="capsule-row">
+                  <div className="capsule hp" title="HP">
+                    <span
+                      className="capsule-fill"
+                      style={{
+                        width: `${Math.max(0, Math.min(100, (combat.playerHp / Math.max(1, combat.playerMaxHp)) * 100))}%`,
+                      }}
+                    />
+                    <span className="capsule-label">HP</span>
+                    <span className="capsule-num">
+                      {Math.max(0, Math.round(combat.playerHp))}/{combat.playerMaxHp}
+                    </span>
+                  </div>
+                  <div className="capsule mp" title="MP">
+                    <span
+                      className="capsule-fill"
+                      style={{
+                        width: `${Math.max(0, Math.min(100, (combat.playerMp / Math.max(1, combat.playerMaxMp)) * 100))}%`,
+                      }}
+                    />
+                    <span className="capsule-label">MP</span>
+                    <span className="capsule-num">
+                      {Math.max(0, Math.round(combat.playerMp))}/{combat.playerMaxMp}
+                    </span>
+                  </div>
                 </div>
-              </div>
-              <div className="exp-thin-bar">
-                <div className="exp-thin-fill" style={{ width: `${expPct}%` }} />
+                <div className="capsule exp" title="경험치">
+                  <span className="capsule-fill" style={{ width: `${expPct}%` }} />
+                  <span className="capsule-label">EXP</span>
+                  <span className="capsule-num">{expPct}%</span>
+                </div>
               </div>
             </header>
 
