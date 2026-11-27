@@ -72,6 +72,8 @@ type TabId = 'battle' | 'school' | 'deck' | 'familiar' | 'abyss';
 const LANTERN_INTERVAL_MS = 20 * 60 * 1000;
 /** 막 보스 패배 후 자동 재도전까지 필요한 4번째 사냥터 처치 수 */
 const BOSS_RETRY_KILLS = 5;
+/** P0-7: 자동 스토리(막 도입·중간) 사이 최소 숨 고르기 — 직전 스토리를 닫은 뒤 이만큼 전투를 보여준다 */
+const STORY_GAP_MS = 25_000;
 
 export default function App() {
   const [state, setState] = useState<GameState>(() => {
@@ -111,6 +113,48 @@ export default function App() {
     combatTransitionRef.current = false;
   }, []);
 
+  // P0-7: 스토리 템포 — 자동 스토리(막 도입·중간)는 직전 스토리를 닫은 뒤 최소 STORY_GAP_MS 동안
+  // 전투를 보여준 다음에 띄운다. 보스 조우·막 클리어·승급은 맥락상 즉시(immediate) 표시.
+  const storyQueueRef = useRef<{ payload: StoryModalPayload; key?: string; immediate: boolean }[]>([]);
+  const lastStoryClosedRef = useRef(0);
+
+  const storyModalRef = useRef<StoryModalPayload | null>(null);
+  storyModalRef.current = storyModal;
+  const offlineOpenRef = useRef(false);
+  offlineOpenRef.current = offlineSummary !== null;
+
+  /** 대기열에서 다음 스토리를 꺼내 표시 (즉시 항목이 있으면 순서대로 바로, 아니면 숨 고르기 간격 후) */
+  const pumpStory = useCallback(() => {
+    if (storyModalRef.current || offlineOpenRef.current) return;
+    const q = storyQueueRef.current;
+    while (q.length > 0) {
+      const hasImmediate = q.some((x) => x.immediate);
+      if (!hasImmediate && Date.now() - lastStoryClosedRef.current < STORY_GAP_MS) return;
+      const next = q.shift()!;
+      if (next.key) {
+        const recordedKey = next.key;
+        if ((stateRef.current.viewedStoryKeys ?? []).includes(recordedKey)) continue;
+        setState((prev) => {
+          const prevKeys = prev.viewedStoryKeys ?? [];
+          if (prevKeys.includes(recordedKey)) return prev;
+          return { ...prev, viewedStoryKeys: [...prevKeys, recordedKey] };
+        });
+      }
+      storyModalRef.current = next.payload;
+      setStoryModal(next.payload);
+      return;
+    }
+  }, []);
+
+  const queueStory = useCallback(
+    (payload: StoryModalPayload, immediate: boolean, key?: string) => {
+      if (key && storyQueueRef.current.some((q) => q.key === key)) return;
+      storyQueueRef.current.push({ payload, key, immediate });
+      pumpStory();
+    },
+    [pumpStory]
+  );
+
   const maybeTriggerStageStory = useCallback(
     (act: number, stageIndex: number, currentState: GameState) => {
       const viewed = currentState.viewedStoryKeys ?? [];
@@ -127,16 +171,17 @@ export default function App() {
         phase = 'boss';
       }
       if (!key || !phase || viewed.includes(key)) return;
-      const recordedKey = key;
-      setState((prev) => {
-        const prevKeys = prev.viewedStoryKeys ?? [];
-        if (prevKeys.includes(recordedKey)) return prev;
-        return { ...prev, viewedStoryKeys: [...prevKeys, recordedKey] };
-      });
-      setStoryModal({ kind: 'act', act, phase });
+      queueStory({ kind: 'act', act, phase }, phase === 'boss', key);
     },
-    []
+    [queueStory]
   );
+
+  // 숨 고르기 간격이 끝난 대기 스토리를 주기적으로 확인
+  useEffect(() => {
+    if (!state.created || rebirthPending) return;
+    const id = window.setInterval(pumpStory, 500);
+    return () => window.clearInterval(id);
+  }, [state.created, rebirthPending, pumpStory]);
 
   const startCombatNow = useCallback(
     (
@@ -345,6 +390,13 @@ export default function App() {
             if (bossRetryRef.current > 0) {
               bossRetryRef.current -= 1;
               setBossRetryIn(bossRetryRef.current);
+            } else if (
+              // P0-7: 첫 보스 조우 스토리는 직전 스토리와 숨 고르기 간격을 둔 뒤에 (대기 스토리가 먼저)
+              storyQueueRef.current.length > 0 ||
+              (!(curState.viewedStoryKeys ?? []).includes(`${curCombat.act}_boss`) &&
+                Date.now() - lastStoryClosedRef.current < STORY_GAP_MS)
+            ) {
+              // 4번째 사냥터에서 계속 수련
             } else {
               autoBossNow = true;
               nextStage = 4;
@@ -490,10 +542,9 @@ export default function App() {
           setCombat(
             createCombatRuntime(freshState, freshStats, nextMode, nextAct, nextStage, nextTower)
           );
+          // P0-7: 막 클리어 직후의 다음 막 도입 스토리도 대기열로 (예전엔 모달 중복을 피하려고 아예 건너뜀)
           if (
             nextMode === 'stage' &&
-            clearStoryAct === null &&
-            promotedRankForModal === null &&
             (nextAct !== curCombat.act || nextStage !== curCombat.stageIndex)
           ) {
             maybeTriggerStageStory(nextAct, nextStage, freshState);
@@ -1230,7 +1281,13 @@ export default function App() {
               <StoryModal
                 state={state}
                 story={storyModal}
-                onClose={() => setStoryModal(null)}
+                onClose={() => {
+                  lastStoryClosedRef.current = Date.now();
+                  storyModalRef.current = null;
+                  setStoryModal(null);
+                  // 보스 조우처럼 즉시 이어져야 할 스토리가 대기 중이면 바로 표시
+                  window.setTimeout(pumpStory, 0);
+                }}
               />
             )}
 
