@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { BookOpen, ChevronLeft, ChevronRight, FastForward, FlaskConical, Skull, X } from 'lucide-react';
 import { ACTS } from '../data/acts';
 import { getMonsterArt } from '../data/art';
+import type { AcademyEventDef } from '../data/blackComedyEvents';
 import { FAMILIARS } from '../data/familiars';
 import { getActiveInfirmaryEffect } from '../data/infirmary';
 import { CATEGORY_META, getCharacterTitle, RANKS, SCHOOLS } from '../data/schools';
@@ -25,6 +26,9 @@ interface Props {
   onOpenStory: (act: number) => void;
   onOpenHeroModal: () => void;
   onToggleInfirmaryDismiss: () => void;
+  activeEvent: AcademyEventDef | null;
+  onResolveEvent: (choiceId: string) => void;
+  onDismissEvent: () => void;
 }
 
 const STATUS_LABEL: Record<StatusType, string> = {
@@ -62,6 +66,9 @@ export const BattleTab: React.FC<Props> = ({
   onOpenStory,
   onOpenHeroModal,
   onToggleInfirmaryDismiss,
+  activeEvent,
+  onResolveEvent,
+  onDismissEvent,
 }) => {
   const logRef = useRef<HTMLDivElement | null>(null);
   const [enemyModalOpen, setEnemyModalOpen] = useState(false);
@@ -432,6 +439,53 @@ export const BattleTab: React.FC<Props> = ({
             </div>
           </div>
         )
+      )}
+
+      {/* P1-4: 전투 중 블랙코미디 교내 이벤트 양피지 카드 */}
+      {activeEvent && (
+        <div className="event-card parchment">
+          <div className="infirmary-head">
+            <div className="infirmary-avatar">
+              <NpcPortrait
+                id={activeEvent.professorId}
+                variant="avatar"
+                alt={activeEvent.speaker}
+              />
+            </div>
+            <div className="infirmary-body">
+              <div className="infirmary-meta">
+                <span className="event-badge">교내 소식</span>
+                <span className="event-title">{activeEvent.title}</span>
+                <button
+                  type="button"
+                  className="infirmary-close"
+                  onClick={onDismissEvent}
+                  aria-label="이벤트 닫기"
+                  title="무시하고 닫기"
+                >
+                  <X size={12} />
+                </button>
+              </div>
+              <div className="event-speaker-sub">{activeEvent.speaker}</div>
+              <div className="infirmary-quote">
+                “{activeEvent.prompt.replaceAll('{name}', state.playerName || '견습생')}”
+              </div>
+            </div>
+          </div>
+          <div className="event-choices">
+            {activeEvent.choices.map((ch) => (
+              <button
+                key={ch.id}
+                type="button"
+                className="event-choice-btn"
+                onClick={() => onResolveEvent(ch.id)}
+              >
+                <span>{ch.label}</span>
+                <span className="event-choice-hint">{ch.hint}</span>
+              </button>
+            ))}
+          </div>
+        </div>
       )}
 
       {/* 클래식 텍스트 전투 로그 */}

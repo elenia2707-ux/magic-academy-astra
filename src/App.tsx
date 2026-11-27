@@ -10,6 +10,12 @@ import { HeroPortraitModal, OfflineModal, StoryModal, type StoryModalPayload } f
 import { SchoolTab } from './components/SchoolTab';
 import { generateAbyssNode } from './data/abyssEvents';
 import {
+  formatEventReward,
+  pickBlackComedyEvent,
+  resolveEventReward,
+  type AcademyEventDef,
+} from './data/blackComedyEvents';
+import {
   areAllDailyQuestsClaimed,
   countClaimableDailyQuests,
   DAILY_QUESTS,
@@ -88,6 +94,9 @@ const LANTERN_INTERVAL_MS = 20 * 60 * 1000;
 const BOSS_RETRY_KILLS = 5;
 /** P0-7: 자동 스토리(막 도입·중간) 사이 최소 숨 고르기 — 직전 스토리를 닫은 뒤 이만큼 전투를 보여준다 */
 const STORY_GAP_MS = 25_000;
+/** P1-4: 전투 중 블랙코미디 이벤트 발생 확률 & 최소 간격 */
+const ACADEMY_EVENT_CHANCE = 0.12;
+const ACADEMY_EVENT_COOLDOWN_MS = 75_000;
 
 export default function App() {
   const [state, setState] = useState<GameState>(() => {
@@ -101,6 +110,7 @@ export default function App() {
   const [rebirthPending, setRebirthPending] = useState(false);
   const [tab, setTab] = useState<TabId>('battle');
   const [toast, setToast] = useState<string | null>(null);
+  const [activeEvent, setActiveEvent] = useState<AcademyEventDef | null>(null);
 
   const stats = useMemo(() => computePlayerStats(state), [state]);
 
@@ -115,9 +125,13 @@ export default function App() {
   const nextCombatTimerRef = useRef<number | null>(null);
   const bossRetryRef = useRef(0);
   const [bossRetryIn, setBossRetryIn] = useState(0);
+  const activeEventRef = useRef<AcademyEventDef | null>(null);
+  const lastEventAtRef = useRef(0);
+  const lastEventIdRef = useRef<string | null>(null);
   stateRef.current = state;
   statsRef.current = stats;
   combatRef.current = combat;
+  activeEventRef.current = activeEvent;
 
   const clearPendingCombatTimer = useCallback(() => {
     if (nextCombatTimerRef.current !== null) {
@@ -566,6 +580,21 @@ export default function App() {
           setStoryModal({ kind: 'act', act: clearStoryAct, phase: 'clear' });
         } else if (promotedRankForModal !== null) {
           setStoryModal({ kind: 'rankExam', rank: promotedRankForModal, stage: 'clear' });
+        } else if (
+          // P1-4: 일반 사냥 승리 시 확률로 건조한 블랙코미디 교내 이벤트 발생 (비차단 양피지 카드)
+          curCombat.mode === 'stage' &&
+          curCombat.stageIndex < 4 &&
+          !activeEventRef.current &&
+          !storyModalRef.current &&
+          !offlineOpenRef.current &&
+          Date.now() - lastEventAtRef.current >= ACADEMY_EVENT_COOLDOWN_MS &&
+          Math.random() < ACADEMY_EVENT_CHANCE
+        ) {
+          const ev = pickBlackComedyEvent(lastEventIdRef.current);
+          lastEventAtRef.current = Date.now();
+          lastEventIdRef.current = ev.id;
+          activeEventRef.current = ev;
+          setActiveEvent(ev);
         }
 
         nextCombatTimerRef.current = window.setTimeout(() => {
@@ -818,6 +847,40 @@ export default function App() {
       };
     });
     showToast(`✦ 루시아의 개근 보너스 수령! ${formatRewardSummary(reward)}`);
+  };
+
+  // P1-4: 블랙코미디 교내 이벤트 선택지 처리 & 닫기
+  const handleResolveAcademyEvent = (choiceId: string) => {
+    const ev = activeEventRef.current;
+    if (!ev) return;
+    const choice = ev.choices.find((c) => c.id === choiceId);
+    if (!choice) return;
+    const reward = resolveEventReward(choice.rewardKind, state);
+    playSfx('heal', state.settings.sfxEnabled);
+    activeEventRef.current = null;
+    setActiveEvent(null);
+    setState((prev) => {
+      const r = resolveEventReward(choice.rewardKind, prev);
+      const lvRes = r.exp
+        ? applyExpAndLevelUp(prev.level, prev.exp, r.exp)
+        : { level: prev.level, exp: prev.exp };
+      return {
+        ...prev,
+        level: lvRes.level,
+        exp: lvRes.exp,
+        stones: prev.stones + (r.stones ?? 0),
+        arcaneDust: prev.arcaneDust + (r.arcaneDust ?? 0),
+        tomeShards: prev.tomeShards + (r.tomeShards ?? 0),
+        eggShards: prev.eggShards + (r.eggShards ?? 0),
+      };
+    });
+    showToast(`${choice.resultText} (${formatEventReward(reward)})`);
+  };
+
+  const handleDismissAcademyEvent = () => {
+    playSfx('click', state.settings.sfxEnabled);
+    activeEventRef.current = null;
+    setActiveEvent(null);
   };
 
   const handleEquipItem = (uid: string) => {
@@ -1278,6 +1341,9 @@ export default function App() {
                         : prev
                     )
                   }
+                  activeEvent={activeEvent}
+                  onResolveEvent={handleResolveAcademyEvent}
+                  onDismissEvent={handleDismissAcademyEvent}
                 />
               )}
 
