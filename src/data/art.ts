@@ -439,6 +439,8 @@ export function getNpcArt(id: ProfessorId): NpcArtMeta {
 export const ACT_BG_ART: Partial<Record<number, string>> = {
   1: './art/backgrounds/act_1.webp',
   2: './art/backgrounds/act_2.webp',
+  3: './art/backgrounds/act_3.webp',
+  4: './art/backgrounds/act_4.webp',
 };
 
 export function getActBgArt(act: number): string | undefined {
