@@ -3662,3 +3662,45 @@ select,
   flex-shrink: 0;
 }
 
+/* =====================================================================
+   🎨 P2-2 · 막별 전투 배경 (어두운 수채화 · 카드 뒤 은은한 아레나 백드롭)
+   ===================================================================== */
+.arena-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.arena-card > :not(.arena-bg-layer) {
+  position: relative;
+  z-index: 1;
+}
+
+.arena-bg-layer {
+  position: absolute;
+  inset: 0;
+  border-radius: calc(var(--r-frame) - 4px);
+  background-size: cover;
+  background-position: center 42%;
+  opacity: 0.6;
+  filter: saturate(0.92) contrast(1.06);
+  pointer-events: none;
+  z-index: 0;
+  transition: background-image 0.35s ease;
+}
+
+.arena-bg-layer::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 50% 42%, rgba(18, 10, 15, 0.08) 0%, rgba(16, 9, 14, 0.54) 88%),
+    linear-gradient(180deg, rgba(20, 11, 16, 0.58) 0%, rgba(18, 10, 15, 0.14) 26%, rgba(18, 10, 15, 0.24) 68%, rgba(15, 9, 13, 0.68) 100%);
+}
+
+.arena-card .arena-banner,
+.arena-card .rot-name,
+.arena-card .rot-cd {
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
+}
+
+

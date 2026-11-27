@@ -434,3 +434,13 @@ export function getMonsterArt(artKey: string): MonsterArtMeta | undefined {
 export function getNpcArt(id: ProfessorId): NpcArtMeta {
   return NPC_ART[id];
 }
+
+/** P2-2+: 막별 전투 아레나 배경 (어두운 수채화, 카드 뒤 은은하게 표시) */
+export const ACT_BG_ART: Partial<Record<number, string>> = {
+  1: './art/backgrounds/act_1.webp',
+  2: './art/backgrounds/act_2.webp',
+};
+
+export function getActBgArt(act: number): string | undefined {
+  return ACT_BG_ART[act];
+}

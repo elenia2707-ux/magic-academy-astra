@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { BookOpen, ChevronLeft, ChevronRight, FastForward, FlaskConical, Music, Skull, VolumeX, X } from 'lucide-react';
 import { ACTS } from '../data/acts';
-import { getMonsterArt } from '../data/art';
+import { getActBgArt, getMonsterArt } from '../data/art';
 import type { AcademyEventDef } from '../data/blackComedyEvents';
 import { FAMILIARS } from '../data/familiars';
 import { getActiveInfirmaryEffect } from '../data/infirmary';
@@ -87,6 +87,12 @@ export const BattleTab: React.FC<Props> = ({
 
   const actDef = ACTS[Math.max(0, Math.min(ACTS.length - 1, state.selectedAct - 1))];
   const isSpecialMode = combat.mode !== 'stage';
+  const actBgUrl =
+    combat.mode === 'stage'
+      ? getActBgArt(combat.act)
+      : combat.mode === 'rankBoss'
+        ? getActBgArt(2)
+        : undefined;
   const hpPct = Math.max(0, Math.min(100, (combat.playerHp / Math.max(1, combat.playerMaxHp)) * 100));
   const enemyHpPct = Math.max(0, Math.min(100, (combat.enemyHp / Math.max(1, combat.enemyMaxHp)) * 100));
   const activeInfirmary = getActiveInfirmaryEffect(state);
@@ -225,6 +231,13 @@ export const BattleTab: React.FC<Props> = ({
 
       {/* 고딕 수채화 카드 전투 무대 */}
       <div className="arena-card">
+        {actBgUrl && (
+          <div
+            className="arena-bg-layer"
+            aria-hidden="true"
+            style={{ backgroundImage: `url(${actBgUrl})` }}
+          />
+        )}
         <div className="arena-banner">
           <span>
             턴 {combat.turn} · {RANKS[state.rank].name} {SCHOOLS[state.school].shortName}
