@@ -23,12 +23,15 @@
 ## 1. 프로젝트 지도
 
 - **로컬 저장소**: `/home/antigravity/magic-academy-astra` (React 19 + TS + Vite + 순수 CSS + PWA)
-- **라이브**: https://elenia2707-ux.github.io/magic-academy-astra/ (아직 **v11**, gh-pages `480a665`)
-- **저장소**: https://github.com/elenia2707-ux/magic-academy-astra
-- **로컬 main 커밋 (push 안 함)**:
-  - P0-1 `d6dc7e1` → P0-7 `03165d3`
-  - P0-8 `ea7f2e6`
-  - P0-9-1 `00d0e9b` · P0-9-2 `a7ed82d` · P0-9-3 `7fc10e8` · P0-9-4 `9d58324` · P0-9-5 `665d0f1` · P0-9-6 `fa845ea`
+- **라이브**: https://elenia2707-ux.github.io/magic-academy-astra/ (**v12 배포 완료**, `sw.js` 캐시 `astra-academy-v12`)
+- **저장소**: https://github.com/elenia2707-ux/magic-academy-astra (`main` / `gh-pages` 모두 최신 푸시 완료)
+- **P0 완료 커밋 (`origin/main` 반영됨)**:
+  - P0-1 `d6dc7e1` → P0-7 `03165d3` (자동 보스 · 보스/몹 밸런스 · 시작 3스킬 · 장비 정리 · 재화/막 램프 · 스토리 템포)
+  - P0-8 `ea7f2e6` (UI 버그)
+  - P0-9-1 `00d0e9b` ~ P0-9-6 `fa845ea` (🎨 다크 아르피아 리디자인 6파츠)
+  - P0-10 `c24b57f` (몬스터/보스/시험 원화 35장 1024px WebP)
+  - P0-11 `7112dd7` (풀 회귀 E2E 통과)
+  - P0-12 (v12 최종 배포)
 - **주요 파일**:
   - `src/App.tsx`: 루프, 스토리 대기열, 헤더, 내비
   - `src/components/BattleTab.tsx`
@@ -44,6 +47,7 @@
   ```
 - **E2E 키트** (`scripts/e2e/`, Playwright python):
   - `save_lv13_thunder.json`: 테스트 세이브 (뇌전, Lv13, 1막 4구역)
+  - `regression_p0_11.py`: 새 캐릭 8종 → 1막 보스 → 2막 도입 → 1계급 시험 → 5탭 overflow → 10분 오프라인 정산 풀 회귀 E2E
   - `tab_sweep.py`: 학교/교장실/덱/마도구/사역마/심연 스샷
   - `modal_sweep.py`: 토스트/스토리/보스 대사/몬스터 모달 스샷
   - `new_char_story_tempo.py`: 새 캐릭 생성 → 스토리 간격 측정
@@ -51,9 +55,11 @@
 
 ### ⚠️ E2E 함정 모음
 - 브라우저는 한 번만 띄우고, 옵션은 `args=["--disable-dev-shm-usage"]`, `service_workers="block"`, `device_scale_factor=1~2`.
-- 세이브 주입은 `add_init_script` + sessionStorage `'seeded'` 가드. 가드가 없으면 새로고침할 때마다 다시 주입됨.
+- `page.goto(url, wait_until="domcontentloaded")` 사용 권장 (외부 구글 폰트 CDN 지연 방지).
+- 세이브 주입은 `add_init_script` + sessionStorage 가드. 가드가 없으면 새로고침할 때마다 다시 주입됨.
   - localStorage 키: `magic_academy_astra_save_v1`
   - 세이브 넣을 때 `lastSavedAt=now`로 설정 (안 하면 오프라인 보상 모달이 뜸)
+- `pagehide` 시 자동 저장되므로, 오프라인 보상 테스트는 기존 `page.close()` 후 새 페이지 `add_init_script`로 `lastSavedAt`를 과거로 되돌려야 덮어씌워지지 않음 (`page.reload()`는 장시간 세션 후 헤드리스 크로미움 크래시 주의).
 - 자동 저장은 8초마다. localStorage를 읽으려면 8.6초 이상 기다릴 것.
 - 셀렉터:
   - 토스트 `.toast-float`
@@ -76,9 +82,10 @@
 | P0-9-1 ~ 9-6 | 🎨 다크 아르피아 리디자인 (토큰 · 상태바 · 전투 · 내비 · 탭 · 모달) | ✅ |
 | **P0-10** | 고해상도 원화 (35장 1024px WebP, +3.5MB) | ✅ |
 | **P0-11** | 회귀 E2E (생성→1막 보스→2막 도입→1계급 시험→스윕→오프라인 모달, 에러 0) | ✅ |
-| **P0-12** | v12 배포 | ⬜ ← **여기부터** |
+| **P0-12** | v12 최종 배포 (`sw.js` v12 · `main` & `gh-pages` 푸시 · 라이브 200) | ✅ |
+| **P1-1** | 1~4막 페이싱 (EXP 곡선 / 계급 게이트 튜닝) | ⬜ ← **새 방 여기부터** |
 
-**P0 16/17 (94%) · v2 전체 ≈96% · 아트 66/66**
+**P0 17/17 (100% 완료!) · v2 전체 100% · 아트 66/66**
 
 ---
 
