@@ -1,4 +1,4 @@
-const CACHE_NAME = 'astra-academy-v8';
+const CACHE_NAME = 'astra-academy-v9';
 const ASSETS = [
   './',
   './index.html',
@@ -26,6 +26,11 @@ const ASSETS = [
   './art/bosses/boss_knight.webp',
   './art/bosses/boss_demon.webp',
   './art/bosses/demon_lord.webp',
+  './art/bosses/exam_1_kalion.webp',
+  './art/bosses/exam_2_malaki.webp',
+  './art/bosses/exam_3_isolde.webp',
+  './art/bosses/exam_4_vesper.webp',
+  './art/bosses/exam_5_astien.webp',
   './art/npcs/bernard.webp',
   './art/npcs/lucia.webp',
   './art/npcs/karen.webp',

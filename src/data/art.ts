@@ -268,6 +268,32 @@ export const MONSTER_ART: Record<string, MonsterArtMeta> = {
     position: '50% 38%',
     bgTint: '#19171e',
   },
+  // 6계급 승급 시험관 보스 5종
+  exam_1: {
+    url: './art/bosses/exam_1_kalion.webp',
+    position: '50% 28%',
+    bgTint: '#1c1b1f',
+  },
+  exam_2: {
+    url: './art/bosses/exam_2_malaki.webp',
+    position: '50% 24%',
+    bgTint: '#181722',
+  },
+  exam_3: {
+    url: './art/bosses/exam_3_isolde.webp',
+    position: '50% 24%',
+    bgTint: '#161d26',
+  },
+  exam_4: {
+    url: './art/bosses/exam_4_vesper.webp',
+    position: '50% 24%',
+    bgTint: '#1b161b',
+  },
+  exam_5: {
+    url: './art/bosses/exam_5_astien.webp',
+    position: '50% 24%',
+    bgTint: '#151925',
+  },
 };
 
 export interface NpcArtMeta {

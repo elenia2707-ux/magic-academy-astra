@@ -354,35 +354,63 @@ export const SchoolTab: React.FC<Props> = ({
 
             {renderProfessorBanner('bernard')}
 
-            {nextRank ? (
-              <div className="list-card highlight">
-                <div className="list-top">
-                  <span className="list-title" style={{ color: '#e3c481' }}>
-                    다음 계급: {nextRank.name} ({nextRank.english})
-                  </span>
-                  <span className="tag">스탯 ×{nextRank.statMult}</span>
+            {nextRank ? (() => {
+              const examBoss = RANK_EXAM_BOSSES[nextRank.rank];
+              return (
+                <div className="list-card highlight">
+                  <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 9 }}>
+                    {examBoss && (
+                      <button
+                        type="button"
+                        className="wc-boss-thumb"
+                        onClick={() =>
+                          setInspectBoss({
+                            monster: examBoss,
+                            actLabel: `${nextRank.name} 승급 시험관`,
+                          })
+                        }
+                        title={`${examBoss.name} 원화 크게 보기`}
+                        aria-label={`${examBoss.name} 원화 크게 보기`}
+                      >
+                        <MonsterPortrait
+                          artKey={examBoss.artKey}
+                          isBoss
+                          variant="thumb"
+                          alt={examBoss.name}
+                        />
+                      </button>
+                    )}
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div className="list-top" style={{ marginBottom: 3 }}>
+                        <span className="list-title" style={{ color: '#e3c481' }}>
+                          다음 계급: {nextRank.name} ({nextRank.english})
+                        </span>
+                        <span className="tag">스탯 ×{nextRank.statMult}</span>
+                      </div>
+                      <div className="list-desc" style={{ marginBottom: 4 }}>
+                        해금 혜택: <strong>{nextRank.unlockNote}</strong>
+                      </div>
+                      <div style={{ fontSize: 11, color: '#9a9386', lineHeight: 1.45 }}>
+                        요구: Lv.{nextRank.reqLevel} (현재 {state.level}) · 제{' '}
+                        {nextRank.reqClearedAct}막 클리어 (
+                        {state.clearedActs.includes(nextRank.reqClearedAct) ? '달성' : '미달성'})
+                        <br />
+                        시험관: <strong style={{ color: '#e07b7f' }}>{examBoss?.name}</strong>
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn btn-gold btn-block"
+                    disabled={!canTakeExam}
+                    onClick={onChallengeRankExam}
+                  >
+                    <Swords size={14} />
+                    {canTakeExam ? `${nextRank.name} 승급 시험 도전!` : '승급 조건 미충족'}
+                  </button>
                 </div>
-                <div className="list-desc">
-                  해금 혜택: <strong>{nextRank.unlockNote}</strong>
-                </div>
-                <div style={{ fontSize: 11.5, color: '#9a9386', marginBottom: 9 }}>
-                  요구 조건: 레벨 {nextRank.reqLevel} 이상 (현재 {state.level}) · 제{' '}
-                  {nextRank.reqClearedAct}막 클리어 (
-                  {state.clearedActs.includes(nextRank.reqClearedAct) ? '달성' : '미달성'})
-                  <br />
-                  시험관: {RANK_EXAM_BOSSES[nextRank.rank]?.name}
-                </div>
-                <button
-                  type="button"
-                  className="btn btn-gold btn-block"
-                  disabled={!canTakeExam}
-                  onClick={onChallengeRankExam}
-                >
-                  <Swords size={14} />
-                  {canTakeExam ? `${nextRank.name} 승급 시험 도전!` : '승급 조건 미충족'}
-                </button>
-              </div>
-            ) : (
+              );
+            })() : (
               <div className="list-card highlight">
                 <div style={{ color: '#e3c481', fontWeight: 700, marginBottom: 4 }}>
                   <Sparkles size={14} style={{ verticalAlign: -2, marginRight: 5 }} />
