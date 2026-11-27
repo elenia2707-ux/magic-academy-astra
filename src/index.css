@@ -1690,3 +1690,216 @@ textarea {
   font-weight: 800;
   color: #8ad0a2;
 }
+
+/* =====================================================================
+   🎨 P0-9-1 · DARK ARPIA THEME — tokens & frames
+   아르피아(2007)의 둥근 베벨 나무 창틀 · 양피지 · 황동 리벳 구조를
+   와인 마호가니 / 밤하늘 네이비 팔레트로 재해석 (어두운 톤 유지)
+   ===================================================================== */
+:root {
+  /* wood (wine mahogany) */
+  --wood-hi: #8a4049;
+  --wood: #5a242c;
+  --wood-lo: #36141a;
+  --wood-edge: #1a090c;
+  /* brass */
+  --brass: #b8925a;
+  --brass-light: #e2c48c;
+  --brass-dark: #6e532c;
+  /* parchment (aged, dusk-tinted) */
+  --parch: #d6c29c;
+  --parch-dark: #a88f68;
+  --parch-ink: #2e1f15;
+  --parch-ink-soft: #5a4632;
+  /* night navy backdrop */
+  --night: #111725;
+  --night-deep: #0a0e17;
+  --well: #1a1218; /* 창틀 안쪽 우물 */
+
+  --font-round: 'Jua', 'Noto Sans KR', sans-serif;
+  --r-frame: 16px;
+  --r-pill: 999px;
+
+  /* legacy token remap → 기존 컴포넌트도 자동으로 따라옴 */
+  --bg-void: var(--night-deep);
+  --bg-panel: var(--well);
+  --bg-panel-alt: #24171d;
+  --bg-elevated: #2e1d24;
+  --border-subtle: rgba(184, 146, 90, 0.28);
+  --border-gold: rgba(226, 196, 140, 0.5);
+}
+
+html,
+body,
+#root,
+.app-outer {
+  background-color: var(--night-deep);
+  background-image: radial-gradient(ellipse at 50% 0%, #1b2336 0%, var(--night-deep) 70%);
+}
+
+.phone-shell {
+  background:
+    radial-gradient(ellipse at 50% -10%, rgba(226, 196, 140, 0.07) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 120%, rgba(0, 0, 0, 0.6) 0%, transparent 60%),
+    linear-gradient(180deg, var(--night) 0%, var(--night-deep) 100%);
+}
+
+/* ---------- 나무 창틀 (둥근 베벨 + 황동 리벳 4개) ---------- */
+.panel,
+.arena-card,
+.modal-card,
+.wood-frame {
+  border: 4px solid transparent;
+  border-radius: var(--r-frame);
+  background:
+    radial-gradient(circle at 9px 9px, var(--brass-light) 0 1.4px, var(--brass) 1.5px 2.6px, var(--brass-dark) 2.7px 3.2px, transparent 3.4px) padding-box,
+    radial-gradient(circle at calc(100% - 9px) 9px, var(--brass-light) 0 1.4px, var(--brass) 1.5px 2.6px, var(--brass-dark) 2.7px 3.2px, transparent 3.4px) padding-box,
+    radial-gradient(circle at 9px calc(100% - 9px), var(--brass-light) 0 1.4px, var(--brass) 1.5px 2.6px, var(--brass-dark) 2.7px 3.2px, transparent 3.4px) padding-box,
+    radial-gradient(circle at calc(100% - 9px) calc(100% - 9px), var(--brass-light) 0 1.4px, var(--brass) 1.5px 2.6px, var(--brass-dark) 2.7px 3.2px, transparent 3.4px) padding-box,
+    radial-gradient(ellipse at 50% 0%, rgba(226, 196, 140, 0.06) 0%, transparent 60%) padding-box,
+    linear-gradient(180deg, #20151b 0%, var(--well) 100%) padding-box,
+    linear-gradient(180deg, var(--wood-hi) 0%, var(--wood) 35%, var(--wood-lo) 100%) border-box;
+  box-shadow:
+    0 0 0 1px var(--wood-edge),
+    0 3px 0 var(--wood-edge),
+    0 8px 18px rgba(0, 0, 0, 0.55),
+    inset 0 0 0 1px rgba(226, 196, 140, 0.22),
+    inset 0 1px 0 1px rgba(0, 0, 0, 0.5);
+}
+
+.arena-card {
+  padding: 14px 12px 12px;
+}
+
+.combatant-card.boss {
+  background: radial-gradient(circle at 50% 10%, rgba(168, 50, 54, 0.18) 0%, rgba(26, 18, 24, 0.85) 70%);
+}
+
+/* 패널 제목: 둥근 폰트 + 황동 */
+.panel-title,
+.modal-title {
+  font-family: var(--font-round);
+  font-weight: 400;
+  letter-spacing: 0.01em;
+  color: var(--brass-light);
+  text-shadow: 0 1px 0 var(--wood-edge), 0 2px 4px rgba(0, 0, 0, 0.6);
+}
+
+/* ---------- 버튼: 통통한 베벨 알약 ---------- */
+.btn {
+  font-family: var(--font-round);
+  font-weight: 400;
+  font-size: 13px;
+  letter-spacing: 0.01em;
+  border-radius: 12px;
+  border: 1px solid var(--wood-edge);
+  background: linear-gradient(180deg, #3a252c 0%, #24161b 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 236, 200, 0.14),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.35),
+    0 2px 0 var(--wood-edge);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6);
+}
+
+.btn:active:not(:disabled) {
+  transform: translateY(2px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 236, 200, 0.1),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.35),
+    0 0 0 var(--wood-edge);
+}
+
+.btn-gold {
+  background: linear-gradient(180deg, #d2ad6a 0%, #a07a3e 55%, #7a5a2a 100%);
+  border-color: #3f2c12;
+  color: #2a1a08;
+  text-shadow: 0 1px 0 rgba(255, 240, 210, 0.45);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 246, 220, 0.6),
+    inset 0 -2px 0 rgba(70, 45, 15, 0.45),
+    0 2px 0 #3f2c12;
+}
+
+.btn-crimson {
+  background: linear-gradient(180deg, #b0424a 0%, #7e2930 60%, #5c1c22 100%);
+  border-color: #2a0b0e;
+  color: #fff0ee;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 200, 200, 0.35),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.35),
+    0 2px 0 #2a0b0e;
+}
+
+.btn-ghost {
+  background: rgba(255, 236, 200, 0.03);
+  border-color: rgba(184, 146, 90, 0.3);
+  box-shadow: none;
+}
+
+.btn-sm {
+  border-radius: 10px;
+  font-size: 12px;
+}
+
+/* ---------- 서브탭: 나무 홈 + 양피지 선택 탭 ---------- */
+.subtabs {
+  background: linear-gradient(180deg, var(--wood-lo) 0%, #260e13 100%);
+  border: 1px solid var(--wood-edge);
+  border-radius: 14px;
+  padding: 4px;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.55), 0 1px 0 rgba(226, 196, 140, 0.12);
+}
+
+.subtab-btn {
+  font-family: var(--font-round);
+  font-weight: 400;
+  font-size: 13px;
+  border-radius: 10px;
+  color: #c9a9a0;
+}
+
+.subtab-btn.active {
+  background: linear-gradient(180deg, #e6d4ae 0%, var(--parch) 60%, var(--parch-dark) 100%);
+  color: var(--parch-ink);
+  box-shadow: inset 0 1px 0 rgba(255, 250, 235, 0.7), 0 1px 0 var(--wood-edge);
+}
+
+/* ---------- 재사용 파츠: 양피지 · 리본 이름표 (9-3 이후 사용) ---------- */
+.parchment {
+  background:
+    radial-gradient(ellipse at 20% 15%, rgba(255, 248, 228, 0.35) 0%, transparent 55%),
+    radial-gradient(ellipse at 85% 90%, rgba(110, 80, 45, 0.28) 0%, transparent 60%),
+    linear-gradient(180deg, #ddc9a3 0%, var(--parch) 50%, #c4ac84 100%);
+  color: var(--parch-ink);
+  border: 1px solid #6e532c;
+  border-radius: 8px;
+  box-shadow: inset 0 0 18px rgba(90, 60, 30, 0.35), 0 2px 0 rgba(0, 0, 0, 0.4);
+}
+
+.ribbon {
+  display: inline-block;
+  position: relative;
+  padding: 3px 16px 4px;
+  font-family: var(--font-round);
+  font-size: 13px;
+  color: var(--parch-ink);
+  background: linear-gradient(180deg, #e3cfa6 0%, var(--parch) 55%, var(--parch-dark) 100%);
+  border: 1px solid #5a4126;
+  border-radius: 4px;
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.45);
+}
+
+.ribbon::before,
+.ribbon::after {
+  content: '';
+  position: absolute;
+  top: 5px;
+  width: 10px;
+  height: 100%;
+  background: var(--parch-dark);
+  border: 1px solid #5a4126;
+  z-index: -1;
+}
+
+.ribbon::before { left: -7px; clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%, 45% 50%); }
+.ribbon::after { right: -7px; clip-path: polygon(0 0, 100% 0, 55% 50%, 100% 100%, 0 100%); }
