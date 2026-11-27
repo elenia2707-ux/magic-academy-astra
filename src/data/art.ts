@@ -65,7 +65,7 @@ export const HERO_ART: Record<`${SchoolId}_${Gender}`, HeroArtMeta> = {
   },
 };
 
-export const AWAKENED_HERO_ART: Partial<Record<`${SchoolId}_${Gender}`, HeroArtMeta>> = {
+export const AWAKENED_HERO_ART: Record<`${SchoolId}_${Gender}`, HeroArtMeta> = {
   flame_female: {
     url: './art/heroes/aw_flame_female.webp',
     cardPosition: '50% 18%',
@@ -95,6 +95,24 @@ export const AWAKENED_HERO_ART: Partial<Record<`${SchoolId}_${Gender}`, HeroArtM
     cardPosition: '50% 18%',
     avatarPosition: '50% 21%',
     bgTint: '#1f1619',
+  },
+  thunder_male: {
+    url: './art/heroes/aw_thunder_male.webp',
+    cardPosition: '50% 18%',
+    avatarPosition: '50% 20%',
+    bgTint: '#171c26',
+  },
+  frost_male: {
+    url: './art/heroes/aw_frost_male.webp',
+    cardPosition: '50% 18%',
+    avatarPosition: '50% 20%',
+    bgTint: '#161f29',
+  },
+  earth_male: {
+    url: './art/heroes/aw_earth_male.webp',
+    cardPosition: '50% 18%',
+    avatarPosition: '50% 22%',
+    bgTint: '#17211a',
   },
 };
 
