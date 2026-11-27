@@ -134,3 +134,59 @@ export function getItemPowerScore(item: EquipmentItem): number {
       m
   );
 }
+
+/**
+ * P0-5: 학파 기준 장비 평가 점수.
+ * 기본 전투력 점수 + 내 학파와 같은 속성 보너스 옵션이면 가산 (다른 속성 보너스는 0).
+ */
+export function getItemScoreFor(item: EquipmentItem, category?: MagicCategory): number {
+  let score = getItemPowerScore(item);
+  const eb = item.stats.elementBonus;
+  if (category && eb && eb.category === category) score += Math.round(eb.pct * 6);
+  return score;
+}
+
+export interface LoadoutPlan {
+  equipped: Record<EquipSlot, EquipmentItem | null>;
+  inventory: EquipmentItem[];
+  swaps: { slot: EquipSlot; from: EquipmentItem | null; to: EquipmentItem; gain: number }[];
+  totalGain: number;
+}
+
+/** P0-5: 보관함에서 부위별 최고 점수 장비를 골라 일괄 장착하는 계획을 만든다 (순수 함수). */
+export function planBestLoadout(
+  equipped: Record<EquipSlot, EquipmentItem | null>,
+  inventory: EquipmentItem[],
+  category?: MagicCategory
+): LoadoutPlan {
+  const nextEquipped = { ...equipped };
+  let nextInv = [...inventory];
+  const swaps: LoadoutPlan['swaps'] = [];
+  const slots: EquipSlot[] = ['staff', 'robe', 'grimoire', 'relic'];
+  for (const slot of slots) {
+    const cur = nextEquipped[slot];
+    const curScore = cur ? getItemScoreFor(cur, category) : -1;
+    let best: EquipmentItem | null = null;
+    let bestScore = curScore;
+    for (const it of nextInv) {
+      if (it.slot !== slot) continue;
+      const sc = getItemScoreFor(it, category);
+      if (sc > bestScore) {
+        best = it;
+        bestScore = sc;
+      }
+    }
+    if (!best) continue;
+    const chosen = best;
+    nextInv = nextInv.filter((i) => i.uid !== chosen.uid);
+    if (cur) nextInv.unshift(cur);
+    nextEquipped[slot] = chosen;
+    swaps.push({ slot, from: cur, to: chosen, gain: bestScore - Math.max(0, curScore) });
+  }
+  return {
+    equipped: nextEquipped,
+    inventory: nextInv,
+    swaps,
+    totalGain: swaps.reduce((a, s) => a + s.gain, 0),
+  };
+}

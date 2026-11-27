@@ -1,9 +1,11 @@
 /**
  * 진행 곡선 시뮬레이터 — 신규 캐릭터가 자동 전진으로 1막부터 진행할 때
- * 각 막 보스/승급 시험에 몇 분, 몇 레벨에 도달하는지 측정한다. (장비·스킬 강화 없음 = 보수적)
+ * 각 막 보스/승급 시험에 몇 분, 몇 레벨에 도달하는지 측정한다. (스킬 강화·장비 강화 없음 = 보수적)
+ * P0-5: 장비 드랍(일반몹 24%, 보스 100%) + 일반 자동분해 + 드랍마다 최적 일괄 장착. SIM_GEAR=0 이면 장비 없음
  * 실행: npm run sim:progress
  */
 import { ACTS } from '../src/data/acts';
+import { generateEquipment, planBestLoadout, RARITY_META, rollRarity } from '../src/data/equipment';
 import { RANKS } from '../src/data/schools';
 import { MOB_TUNING, createCombatRuntime, stepCombatTurn } from '../src/engine/combat';
 import { applyExpAndLevelUp, computePlayerStats, createNewGameState } from '../src/engine/stats';
@@ -12,6 +14,7 @@ import type { CombatMode, GameState, RankIndex, SchoolId } from '../src/types/ga
 const TURN_SEC = 0.78; // 기본 2배속
 const TRANSITION_SEC = 0.47;
 const MAX_SEC = 60 * 60 * 3;
+const GEAR = process.env.SIM_GEAR !== '0';
 const LAST_ACT = Number(process.env.SIM_ACTS ?? 4);
 if (process.env.SIM_MOB_ATK) MOB_TUNING.atkMult = Number(process.env.SIM_MOB_ATK);
 if (process.env.SIM_MOB_HP) MOB_TUNING.hpMult = Number(process.env.SIM_MOB_HP);
@@ -28,6 +31,15 @@ function fight(state: GameState, mode: CombatMode, act: number, stage: number) {
       return { win: out.result === 'victory', turns: c.turn, hpLost: 1 - c.playerHp / c.playerMaxHp, enemy: c.enemy };
   }
   return { win: false, turns: 120, hpLost: 0, enemy: c.enemy };
+}
+
+function dropAndEquip(s: GameState, act: number, boss: boolean): GameState {
+  const item = generateEquipment(act, undefined, boss ? rollRarity(act, 24) : undefined);
+  const f = s.settings.autoDismantleBelow;
+  if (f !== 'none' && RARITY_META[item.rarity].order < RARITY_META[f].order) return s;
+  const inv = [item, ...s.inventory].slice(0, 36);
+  const plan = planBestLoadout(s.equipped, inv, s.school);
+  return { ...s, equipped: plan.equipped, inventory: plan.inventory };
 }
 
 function runSchool(school: SchoolId) {
@@ -62,6 +74,7 @@ function runSchool(school: SchoolId) {
     if (r.win) {
       const lv = applyExpAndLevelUp(s.level, s.exp, r.enemy.expReward);
       s = { ...s, level: lv.level, exp: lv.exp };
+      if (GEAR && (st === 4 || Math.random() < 0.24)) s = dropAndEquip(s, farmAct, st === 4);
     }
     if (blocked) { retry--; continue; }
     // 일반몹 패배 시 한 단계 후퇴 (App 로직과 동일)

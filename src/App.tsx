@@ -12,6 +12,7 @@ import { generateAbyssNode } from './data/abyssEvents';
 import {
   generateEquipment,
   getEnhanceCost,
+  planBestLoadout,
   RARITY_META,
   rollRarity,
 } from './data/equipment';
@@ -687,6 +688,21 @@ export default function App() {
     });
   };
 
+  // P0-5: 최적 일괄 장착 — 부위별로 보관함 최고 점수 장비로 교체
+  const handleEquipBest = () => {
+    const plan = planBestLoadout(state.equipped, state.inventory, state.school);
+    if (plan.swaps.length === 0) {
+      showToast('이미 최적의 마도구를 장착하고 있습니다.');
+      return;
+    }
+    playSfx('heal', state.settings.sfxEnabled);
+    showToast(`✦ ${plan.swaps.length}개 부위 교체 — 전투력 +${plan.totalGain.toLocaleString()}`);
+    setState((prev) => {
+      const p = planBestLoadout(prev.equipped, prev.inventory, prev.school);
+      return { ...prev, equipped: p.equipped, inventory: p.inventory };
+    });
+  };
+
   const handleEnhanceEquipped = (slot: EquipSlot) => {
     const item = state.equipped[slot];
     if (!item || item.enhance >= 15) return;
@@ -1096,6 +1112,7 @@ export default function App() {
                     setState((prev) => ({ ...prev, deck }));
                   }}
                   onEquipItem={handleEquipItem}
+                  onEquipBest={handleEquipBest}
                   onEnhanceEquipped={handleEnhanceEquipped}
                   onReforgeEquipped={handleReforgeEquipped}
                   onDismantleItem={handleDismantleItem}

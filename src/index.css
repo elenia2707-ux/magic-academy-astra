@@ -1643,3 +1643,27 @@ textarea {
 @media (prefers-reduced-motion: reduce) {
   .boss-cta-pulse { animation: none; }
 }
+
+/* P0-5: 최적 일괄 장착 */
+.btn-equip-best {
+  width: 100%;
+  justify-content: center;
+  margin: 2px 0 10px;
+  padding: 9px 10px;
+  font-size: 12.5px;
+  font-weight: 700;
+  gap: 6px;
+}
+.btn-equip-best.has-upgrade {
+  animation: equipBestGlow 2.4s ease-in-out infinite;
+}
+@keyframes equipBestGlow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(227, 196, 129, 0); }
+  50% { box-shadow: 0 0 0 3px rgba(227, 196, 129, 0.22); }
+}
+.gear-upgrade-dot {
+  margin-left: 4px;
+  font-size: 10px;
+  font-weight: 800;
+  color: #8ad0a2;
+}

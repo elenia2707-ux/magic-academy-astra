@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { ArrowDown, ArrowUp, Hammer, Plus, ShoppingBag, Trash2, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, Hammer, Plus, ShoppingBag, Sparkles, Trash2, X } from 'lucide-react';
 import {
   getEnhanceCost,
   getEnhanceMultiplier,
-  getItemPowerScore,
+  getItemScoreFor,
+  planBestLoadout,
   RARITY_META,
   SLOT_LABELS,
 } from '../data/equipment';
@@ -17,6 +18,7 @@ interface Props {
   stats: ComputedStats;
   onUpdateDeck: (deck: string[]) => void;
   onEquipItem: (uid: string) => void;
+  onEquipBest: () => void;
   onEnhanceEquipped: (slot: EquipSlot) => void;
   onReforgeEquipped: (slot: EquipSlot) => void;
   onDismantleItem: (uid: string) => void;
@@ -32,6 +34,7 @@ export const DeckGearTab: React.FC<Props> = ({
   stats,
   onUpdateDeck,
   onEquipItem,
+  onEquipBest,
   onEnhanceEquipped,
   onReforgeEquipped,
   onDismantleItem,
@@ -83,6 +86,10 @@ export const DeckGearTab: React.FC<Props> = ({
     return parts.join(' · ');
   };
 
+  // P0-5: 최적 일괄 장착 미리보기 (교체 가능한 부위 수 / 전투력 상승량)
+  const bestPlan = planBestLoadout(state.equipped, state.inventory, state.school);
+  const upgradeCount = bestPlan.swaps.length;
+
   const gearBoxCost = Math.round(160 * Math.pow(1.55, state.selectedAct - 1));
 
   return (
@@ -101,6 +108,7 @@ export const DeckGearTab: React.FC<Props> = ({
           onClick={() => setSub('gear')}
         >
           마도구 ({state.inventory.length})
+          {upgradeCount > 0 && <span className="gear-upgrade-dot">▲{upgradeCount}</span>}
         </button>
         <button
           type="button"
@@ -239,6 +247,17 @@ export const DeckGearTab: React.FC<Props> = ({
               <h2 className="panel-title">장착 중인 마도구</h2>
               <span className="panel-sub">마력 가루: {state.arcaneDust.toLocaleString()}</span>
             </div>
+            <button
+              type="button"
+              className={`btn btn-equip-best ${upgradeCount > 0 ? 'btn-gold has-upgrade' : 'btn-ghost'}`}
+              disabled={upgradeCount === 0}
+              onClick={onEquipBest}
+            >
+              <Sparkles size={13} />
+              {upgradeCount > 0
+                ? `최적 일괄 장착 — ${upgradeCount}부위 · 전투력 +${bestPlan.totalGain.toLocaleString()}`
+                : '최적 장비 장착 중'}
+            </button>
             <div className="equip-grid">
               {SLOTS.map((slot) => {
                 const item = state.equipped[slot];
@@ -349,7 +368,7 @@ export const DeckGearTab: React.FC<Props> = ({
                 }}
               >
                 <option value="none">사용 안 함</option>
-                <option value="rare">일반 자동 분해</option>
+                <option value="rare">일반 자동 분해 (추천)</option>
                 <option value="epic">희귀 이하 자동 분해</option>
                 <option value="ancient">영웅 이하 자동 분해</option>
               </select>
@@ -363,7 +382,8 @@ export const DeckGearTab: React.FC<Props> = ({
               <div className="item-list">
                 {state.inventory.map((item) => {
                   const cur = state.equipped[item.slot];
-                  const diff = getItemPowerScore(item) - (cur ? getItemPowerScore(cur) : 0);
+                  const diff =
+                    getItemScoreFor(item, state.school) - (cur ? getItemScoreFor(cur, state.school) : 0);
                   return (
                     <div key={item.uid} className="list-card">
                       <div className="list-top">

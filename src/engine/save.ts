@@ -1,4 +1,4 @@
-import type { GameState } from '../types/game';
+import type { GameSettings, GameState } from '../types/game';
 import { createDefaultPrestige, createEmptyUncreatedState, ensureStarterKit, SAVE_VERSION } from './stats';
 
 const STORAGE_KEY = 'magic_academy_astra_save_v1';
@@ -31,6 +31,16 @@ export function clearGameStorage(): void {
   }
 }
 
+/** P0-5: 기존 세이브가 '사용 안 함'이면 1회에 한해 '일반 자동 분해'로 전환 (이후 사용자 선택은 존중) */
+function migrateGearSettings(settings: GameSettings, alreadyMigrated: boolean): GameSettings {
+  if (alreadyMigrated) return settings;
+  return {
+    ...settings,
+    autoDismantleBelow: settings.autoDismantleBelow === 'none' ? 'rare' : settings.autoDismantleBelow,
+    gearDefaultsV2: true,
+  };
+}
+
 function hydrateState(parsed: Partial<GameState>): GameState | null {
   if (!parsed || typeof parsed !== 'object' || !parsed.created) return null;
   const fallback = createEmptyUncreatedState();
@@ -51,10 +61,10 @@ function hydrateState(parsed: Partial<GameState>): GameState | null {
       ...fallback.abyss,
       ...(parsed.abyss ?? {}),
     },
-    settings: {
+    settings: migrateGearSettings({
       ...fallback.settings,
       ...(parsed.settings ?? {}),
-    },
+    }, parsed.settings?.gearDefaultsV2 === true),
   });
 }
 
