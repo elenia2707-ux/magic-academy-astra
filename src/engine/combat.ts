@@ -42,6 +42,38 @@ export function getMonsterForMode(
   return actDef.stages[Math.max(0, Math.min(actDef.stages.length - 1, stageIndex))];
 }
 
+/**
+ * P0-2 보스 위협감 튜닝 — 막 보스 · 승급 시험 보스.
+ * 값은 scripts/balance-sim.ts 시뮬(신규 캐릭·장비 없음, 300판) 기준으로 맞춤:
+ *  막 보스  Lv10 ≈10% · Lv13 ≈80% · Lv16 100%  (패배 → 5마리 재정비 → 자동 재도전)
+ *  승급 시험 Lv13 ≈40% · Lv16 ≈95%
+ */
+export const BOSS_TUNING = {
+  hpMult: 2.0,
+  atkMult: 1.5,
+  rankHpMult: 1.8,
+  rankAtkMult: 1.4,
+  /** 강공격 최저 피해 = 플레이어 최대 HP × [min, max] */
+  heavyPctAct: [0.35, 0.43] as readonly [number, number],
+  heavyPctRank: [0.42, 0.5] as readonly [number, number],
+};
+
+function isThreatBoss(enemy: MonsterDef, mode: CombatMode): boolean {
+  if (mode === 'rankBoss') return true;
+  return mode === 'stage' && Boolean(enemy.isBoss);
+}
+
+/** 원본 데이터는 그대로 두고 전투 런타임용 사본에만 배율 적용 */
+function applyBossTuning(enemy: MonsterDef, mode: CombatMode): MonsterDef {
+  if (!isThreatBoss(enemy, mode)) return enemy;
+  const isRank = mode === 'rankBoss';
+  return {
+    ...enemy,
+    hp: Math.round(enemy.hp * (isRank ? BOSS_TUNING.rankHpMult : BOSS_TUNING.hpMult)),
+    atk: Math.round(enemy.atk * (isRank ? BOSS_TUNING.rankAtkMult : BOSS_TUNING.atkMult)),
+  };
+}
+
 export function createCombatRuntime(
   state: GameState,
   stats: ComputedStats,
@@ -50,7 +82,7 @@ export function createCombatRuntime(
   stageIndex = state.selectedStage,
   towerFloor = state.towerFloor
 ): CombatRuntime {
-  const enemy = getMonsterForMode(state, mode, act, stageIndex, towerFloor);
+  const enemy = applyBossTuning(getMonsterForMode(state, mode, act, stageIndex, towerFloor), mode);
   const introMsg =
     mode === 'rankBoss'
       ? `승급 시험 개시! [${enemy.name}]이(가) 앞을 가로막습니다.`
@@ -176,7 +208,18 @@ export function stepCombatTurn(
   } else {
     const validDeck = state.deck.slice(0, stats.maxDeckSlots);
     let chosenSkillId: string | null = null;
-    for (const sid of validDeck) {
+    // P0-2: 강공격 예고 턴엔 덱에 있는 보호막 스킬을 우선 사용 (예고 → 대응 플레이)
+    if (prev.enemyTelegraph) {
+      for (const sid of validDeck) {
+        const def = SKILL_MAP[sid];
+        if (!def?.isShield || !state.skills[sid]?.unlocked) continue;
+        if ((cooldowns[sid] ?? 0) > 0 || playerMp < def.mpCost) continue;
+        chosenSkillId = sid;
+        newLogs.push(nextLog(turn, `강공격에 대비해 [${def.name}]을(를) 먼저 펼칩니다!`, 'status'));
+        break;
+      }
+    }
+    for (const sid of chosenSkillId ? [] : validDeck) {
       const def = SKILL_MAP[sid];
       const learned = state.skills[sid];
       if (!def || !learned?.unlocked) continue;
@@ -560,7 +603,13 @@ export function stepCombatTurn(
     const isHeavy = prev.enemyTelegraph && prev.enemy.heavyMult;
     const mult = isHeavy ? prev.enemy.heavyMult! : 1;
     const rawAtk = prev.enemy.atk * mult * (0.92 + Math.random() * 0.16);
-    const afterDef = Math.max(Math.round(rawAtk * 0.22), Math.round(rawAtk - stats.def * 0.55));
+    let afterDef = Math.max(Math.round(rawAtk * 0.22), Math.round(rawAtk - stats.def * 0.55));
+    // P0-2: 보스 강공격은 방어력과 무관하게 최대 HP의 일정 비율 이상을 깎는다 (보호막·빙결로 대응)
+    if (isHeavy && isThreatBoss(prev.enemy, prev.mode)) {
+      const [lo, hi] = prev.mode === 'rankBoss' ? BOSS_TUNING.heavyPctRank : BOSS_TUNING.heavyPctAct;
+      const floor = Math.round(prev.playerMaxHp * (lo + Math.random() * (hi - lo)));
+      afterDef = Math.max(afterDef, floor);
+    }
     let dmgToHp = afterDef;
 
     if (playerShield > 0) {
@@ -607,7 +656,9 @@ export function stepCombatTurn(
       newLogs.push(
         nextLog(
           turn,
-          `경고: ${prev.enemy.name}이(가) [${prev.enemy.heavyName}]을(를) 준비합니다!`,
+          isThreatBoss(prev.enemy, prev.mode)
+            ? `⚠ 경고: ${prev.enemy.name}이(가) [${prev.enemy.heavyName}]을(를) 준비합니다! 체력의 절반 가까이 날아갈 일격 — 보호막·빙결로 대비하세요!`
+            : `경고: ${prev.enemy.name}이(가) [${prev.enemy.heavyName}]을(를) 준비합니다!`,
           'status'
         )
       );

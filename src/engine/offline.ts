@@ -70,6 +70,8 @@ export function processOfflineProgress(
 
   const nextState: GameState = {
     ...state,
+    // 보스전 도중 종료했다면 복귀 시 안전 사냥터로 동기화 (보스 버튼 숨김 버그 방지)
+    selectedStage: farmIdx,
     level,
     exp,
     stones: state.stones + stonesGained,
