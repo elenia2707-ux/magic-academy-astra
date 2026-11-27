@@ -2559,3 +2559,155 @@ select,
   box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.55), 0 1px 0 rgba(226, 196, 140, 0.15);
   border-radius: 10px;
 }
+
+/* =====================================================================
+   🎨 P0-9-6 · ARPIA MODALS & DIALOGUE — 이름 탭 리본 대사창 · 모달 · 토스트
+   ===================================================================== */
+.modal-backdrop {
+  background:
+    radial-gradient(ellipse at 50% 45%, rgba(10, 14, 23, 0.55) 0%, rgba(4, 5, 9, 0.9) 75%);
+  backdrop-filter: blur(3px);
+}
+
+.modal-card {
+  padding: 18px 16px 16px;
+  box-shadow:
+    0 0 0 1px var(--wood-edge),
+    0 4px 0 var(--wood-edge),
+    0 24px 50px rgba(0, 0, 0, 0.8),
+    inset 0 0 0 1px rgba(226, 196, 140, 0.22),
+    inset 0 1px 0 1px rgba(0, 0, 0, 0.5);
+}
+
+.story-vn-modal .modal-title {
+  text-align: center;
+  font-size: 19px;
+  margin: 2px 0 6px;
+}
+.story-vn-modal > div:first-child {
+  text-align: center;
+  font-family: var(--font-round);
+  color: #a8907c !important;
+}
+
+/* 막 단계 탭 = 필터 알약 문법 */
+.story-phase-btn {
+  font-family: var(--font-round);
+  font-weight: 400;
+  font-size: 12px;
+  border-radius: var(--r-pill);
+  color: #c9a9a0;
+  background: linear-gradient(180deg, #2e1419 0%, #200d11 100%);
+  border: 1px solid var(--wood-edge);
+  box-shadow: inset 0 1px 0 rgba(255, 220, 200, 0.08), 0 1px 0 var(--wood-edge);
+}
+.story-phase-btn.active {
+  color: var(--parch-ink);
+  border-color: #4a3420;
+  background: linear-gradient(180deg, #e6d4ae 0%, var(--parch) 60%, var(--parch-dark) 100%);
+}
+
+/* 공용 대사 상자 → 양피지 */
+.dialogue-box {
+  position: relative;
+  border: 1px solid #4a3420;
+  border-left-width: 3px;
+  border-radius: 8px;
+  color: var(--parch-ink);
+  background:
+    radial-gradient(ellipse at 15% 10%, rgba(255, 248, 228, 0.32) 0%, transparent 50%),
+    radial-gradient(ellipse at 90% 100%, rgba(90, 60, 30, 0.28) 0%, transparent 55%),
+    linear-gradient(180deg, #dcc8a2 0%, var(--parch) 50%, #c3aa82 100%);
+  box-shadow: inset 0 0 16px rgba(80, 52, 24, 0.35), 0 2px 0 rgba(0, 0, 0, 0.45);
+}
+.dialogue-text { color: var(--parch-ink); font-size: 13px; line-height: 1.6; }
+
+/* VN 대사 줄: 이름 탭 리본이 상자 위로 걸침 */
+.dialogue-vn {
+  margin-top: 18px;
+  padding: 15px 11px 10px;
+  border-left-width: 1px;
+  gap: 11px;
+}
+.dialogue-speaker-row {
+  position: absolute;
+  top: -12px;
+  left: 74px;
+  right: 8px;
+  margin: 0;
+  gap: 5px;
+  flex-wrap: nowrap;
+}
+.dialogue-speaker {
+  margin: 0;
+  padding: 3px 11px 3px;
+  font-family: var(--font-round);
+  font-weight: 400;
+  font-size: 13px;
+  line-height: 1.1;
+  white-space: nowrap;
+  color: #fbf1dc;
+  background: linear-gradient(180deg, var(--wood-hi) 0%, var(--wood) 55%, var(--wood-lo) 100%);
+  border: 1px solid var(--wood-edge);
+  border-radius: 7px 7px 7px 2px;
+  box-shadow: inset 0 1px 0 rgba(255, 220, 200, 0.25), 0 2px 0 rgba(0, 0, 0, 0.45);
+  text-shadow: 0 1px 0 var(--wood-edge);
+}
+.dialogue-role {
+  font-size: 10px;
+  padding: 1px 7px;
+  border-radius: var(--r-pill);
+  color: #e9d6b8;
+  background: rgba(26, 12, 14, 0.85);
+  border: 1px solid rgba(184, 146, 90, 0.35);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dialogue-avatar {
+  width: 56px;
+  height: 56px;
+  margin-top: -2px;
+  border-radius: 50%;
+  border: 2px solid var(--wood-edge);
+  box-shadow: 0 0 0 2px var(--brass), 0 0 0 3px var(--wood-edge), 0 3px 6px rgba(0, 0, 0, 0.45);
+}
+
+/* 보스 대사: 진홍 탭 + 붉게 물든 양피지 */
+.dialogue-vn.boss-line {
+  border-color: #5e1a20;
+  background:
+    radial-gradient(ellipse at 50% 20%, rgba(150, 30, 38, 0.2) 0%, transparent 65%),
+    linear-gradient(180deg, #d4b994 0%, #c7ab84 50%, #a98b65 100%);
+  box-shadow: inset 0 0 18px rgba(110, 24, 30, 0.4), 0 2px 0 rgba(0, 0, 0, 0.45);
+}
+.dialogue-vn.boss-line .dialogue-speaker {
+  background: linear-gradient(180deg, #b84a52 0%, #8a2a32 60%, #64191f 100%);
+  border-color: #3a0c10;
+}
+.dialogue-avatar.boss { box-shadow: 0 0 0 2px #a8323a, 0 0 0 3px var(--wood-edge), 0 0 10px rgba(168, 50, 58, 0.5); }
+
+.dialogue-ng-tag { background: rgba(60, 30, 90, 0.85); color: #e6d4fa; }
+
+/* 토스트: 양피지 명패 */
+.toast-float {
+  font-family: var(--font-round);
+  font-weight: 400;
+  font-size: 13px;
+  color: var(--parch-ink);
+  padding: 7px 16px 6px;
+  border-radius: 10px;
+  border: 1px solid #4a3420;
+  background: linear-gradient(180deg, #e6d4ae 0%, var(--parch) 55%, var(--parch-dark) 100%);
+  box-shadow:
+    0 0 0 2px var(--brass),
+    0 0 0 3px var(--wood-edge),
+    0 4px 0 3px var(--wood-edge),
+    0 12px 24px rgba(0, 0, 0, 0.6);
+  animation: toastDrop 0.28s ease-out;
+}
+@keyframes toastDrop {
+  0% { opacity: 0; transform: translate(-50%, -8px) scale(0.96); }
+  100% { opacity: 1; transform: translate(-50%, 0) scale(1); }
+}
