@@ -18,7 +18,7 @@ export const SKILLS: SkillDef[] = [
     id: 'flame_2',
     name: '흑염구',
     category: 'flame',
-    requiredRank: 1,
+    requiredRank: 0, // P0-4: 시작 스킬로 지급
     mpCost: 22,
     cooldown: 2,
     trainCostSec: 45,
@@ -82,7 +82,7 @@ export const SKILLS: SkillDef[] = [
     id: 'frost_2',
     name: '빙결 창',
     category: 'frost',
-    requiredRank: 1,
+    requiredRank: 0, // P0-4: 시작 스킬로 지급
     mpCost: 22,
     cooldown: 2,
     trainCostSec: 45,
@@ -147,7 +147,7 @@ export const SKILLS: SkillDef[] = [
     id: 'thunder_2',
     name: '연쇄 낙뢰',
     category: 'thunder',
-    requiredRank: 1,
+    requiredRank: 0, // P0-4: 시작 스킬로 지급
     mpCost: 24,
     cooldown: 2,
     trainCostSec: 45,
@@ -207,15 +207,15 @@ export const SKILLS: SkillDef[] = [
     mpCost: 10,
     cooldown: 0,
     trainCostSec: 15,
-    description: '날카로운 암석을 날려 타격하고 45% 확률로 독을 스며들게 합니다.',
-    powerPct: 128,
-    applyStatus: { target: 'enemy', type: 'poison', turns: 3, value: 0.3, chance: 0.45 },
+    description: '날카로운 암석을 날려 타격하고 65% 확률로 독을 스며들게 합니다.',
+    powerPct: 140,
+    applyStatus: { target: 'enemy', type: 'poison', turns: 3, value: 0.3, chance: 0.65 },
   },
   {
     id: 'earth_2',
     name: '가시 방벽',
     category: 'earth',
-    requiredRank: 1,
+    requiredRank: 0, // P0-4: 시작 스킬로 지급
     mpCost: 22,
     cooldown: 3,
     trainCostSec: 45,
@@ -286,7 +286,7 @@ export const SKILLS: SkillDef[] = [
     id: 'ward_2',
     name: '마력 증폭',
     category: 'ward',
-    requiredRank: 1,
+    requiredRank: 0, // P0-4: 대지 학파 시작 스킬
     mpCost: 18,
     cooldown: 4,
     trainCostSec: 60,

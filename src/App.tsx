@@ -43,8 +43,11 @@ import {
   createEmptyUncreatedState,
   createNewGameState,
   expForNextLevel,
+  fillDeckWith,
+  getMaxDeckSlots,
   getRewardMultiplier,
   getSkillUpgradeCost,
+  rankDeckCandidates,
 } from './engine/stats';
 import type {
   AbyssChoice,
@@ -230,9 +233,19 @@ export default function App() {
               lastLanternTick: now,
             }
           : prev.abyss;
+        const newlyUnlocked = trained
+          ? Object.keys(trained.skills).filter(
+              (id) => trained.skills[id].unlocked && !prev.skills[id]?.unlocked
+            )
+          : [];
         return {
           ...prev,
           skills: trained ? trained.skills : prev.skills,
+          // P0-4: 새로 습득한 스킬은 덱 빈칸에 자동 장착
+          deck:
+            newlyUnlocked.length > 0
+              ? fillDeckWith(prev.deck, getMaxDeckSlots(prev), newlyUnlocked)
+              : prev.deck,
           trainingSlots: trained ? trained.trainingSlots : prev.trainingSlots,
           abyss: nextAbyss,
         };
@@ -377,6 +390,7 @@ export default function App() {
           let highestTowerFloor = prev.highestTowerFloor;
           const trainingSlots = [...prev.trainingSlots];
           let abyss = prev.abyss;
+          let deck = prev.deck;
 
           if (droppedItem) {
             const res = addDroppedItem(prev, droppedItem);
@@ -390,6 +404,8 @@ export default function App() {
             const newTrainMax =
               RANKS[promoted].trainSlots + (prev.prestige.upgrades.extraTrainSlot ?? 0);
             while (trainingSlots.length < newTrainMax) trainingSlots.push(null);
+            // P0-4: 승급으로 늘어난 덱 칸을 해금 스킬로 자동 채움
+            deck = fillDeckWith(prev.deck, getMaxDeckSlots({ ...prev, rank: promoted }), rankDeckCandidates(prev));
             tomeShards += 2;
           } else if (curCombat.mode === 'tower') {
             highestTowerFloor = Math.max(highestTowerFloor, curCombat.towerFloor);
@@ -452,6 +468,7 @@ export default function App() {
             highestTowerFloor,
             inventory,
             trainingSlots,
+            deck,
             abyss,
             totalKills: prev.totalKills + 1,
           };

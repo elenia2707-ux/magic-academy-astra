@@ -44,6 +44,70 @@ export function createDefaultPrestige(): PrestigeState {
   };
 }
 
+/**
+ * P0-4 시작 스킬 3종 — 덱 순서 = 로테이션 우선순위.
+ * [학파 2번 강공(쿨2)] → [실디의 방패(보호막이 없을 때만)] → [학파 1번 기본기(쿨0)]
+ * (대지: [가시 방벽] → [마력 증폭] → [암석 파편])
+ */
+export function getStarterKit(school: SchoolId): string[] {
+  // 대지 학파는 2번 스킬(가시 방벽)이 이미 보호막이라, 수호 슬롯을 마력 증폭으로 대체해 화력을 보완
+  if (school === 'earth') return ['earth_2', 'ward_2', 'earth_1'];
+  return [`${school}_2`, 'ward_1', SCHOOLS[school].starterSkillId];
+}
+
+export function getMaxDeckSlots(state: Pick<GameState, 'rank' | 'prestige'>): number {
+  return RANKS[state.rank].deckSlots + (state.prestige.upgrades.sixthDeckSlot ?? 0);
+}
+
+/** 덱 빈칸에만 후보 스킬을 순서대로 채운다 (플레이어가 짠 기존 덱 순서는 건드리지 않음) */
+export function fillDeckWith(deck: string[], maxSlots: number, candidates: string[]): string[] {
+  const next = deck.filter(Boolean).slice(0, maxSlots);
+  for (const id of candidates) {
+    if (next.length >= maxSlots) break;
+    if (!next.includes(id)) next.push(id);
+  }
+  return next;
+}
+
+/** 덱에 없는 해금 스킬을 우선순위(자기 학파 상위 → 결계 → 성광 → 그 외)로 정렬 */
+export function rankDeckCandidates(state: Pick<GameState, 'skills' | 'school'>): string[] {
+  const order = (cat: string) =>
+    cat === state.school ? 0 : cat === 'ward' ? 1 : cat === 'holy' ? 2 : 3;
+  return Object.values(state.skills)
+    .filter((s) => s.unlocked && SKILL_MAP[s.id])
+    .map((s) => SKILL_MAP[s.id])
+    .sort((a, b) => order(a.category) - order(b.category) || b.requiredRank - a.requiredRank)
+    .map((d) => d.id);
+}
+
+/** 기존 세이브 보정: 시작 스킬 3종 지급 + 덱 빈칸 자동 채움 */
+export function ensureStarterKit(state: GameState): GameState {
+  if (!state.created) return state;
+  const skills = { ...state.skills };
+  for (const id of getStarterKit(state.school)) {
+    const cur = skills[id];
+    if (!cur?.unlocked) skills[id] = { id, level: Math.max(1, cur?.level ?? 1), exp: 0, unlocked: true };
+  }
+  const withSkills = { ...state, skills };
+  // 덱이 기본기 1장뿐이던 세이브는 시작 덱 순서로 재구성 (쿨0 기본기가 1순위면 다른 스킬이 영영 안 나감)
+  const tinyDeck = (state.deck ?? []).filter(Boolean).length <= 1;
+  const deck = fillDeckWith(tinyDeck ? [] : state.deck ?? [], getMaxDeckSlots(state), [
+    ...getStarterKit(state.school),
+    ...(state.deck ?? []),
+    ...rankDeckCandidates(withSkills),
+  ]);
+  // 수련 중이던 시작 스킬은 방금 지급됐으니, 그 슬롯은 빛의 손길(미습득 시) 수련으로 돌린다
+  const kit = getStarterKit(state.school);
+  let holyQueued = state.trainingSlots.includes('holy_1') || Boolean(skills.holy_1?.unlocked);
+  const trainingSlots = state.trainingSlots.map((sid) => {
+    if (!sid || !kit.includes(sid) || state.skills[sid]?.unlocked) return sid;
+    if (holyQueued) return null;
+    holyQueued = true;
+    return 'holy_1';
+  });
+  return { ...withSkills, deck, trainingSlots };
+}
+
 export function createNewGameState(
   playerName: string,
   gender: Gender,
@@ -51,7 +115,6 @@ export function createNewGameState(
   existingPrestige?: PrestigeState
 ): GameState {
   const prestige = existingPrestige ?? createDefaultPrestige();
-  const starterSkill = SCHOOLS[school].starterSkillId;
   const startWealthLv = prestige.upgrades.startingWealth ?? 0;
   const maxTrain = 1 + (prestige.upgrades.extraTrainSlot ?? 0);
 
@@ -81,11 +144,11 @@ export function createNewGameState(
     selectedStage: 0,
     towerFloor: 1,
     highestTowerFloor: 0,
-    skills: {
-      [starterSkill]: { id: starterSkill, level: 1, exp: 0, unlocked: true },
-    },
-    deck: [starterSkill],
-    trainingSlots: Array.from({ length: maxTrain }, (_, idx) => (idx === 0 ? 'ward_1' : null)),
+    skills: Object.fromEntries(
+      getStarterKit(school).map((id) => [id, { id, level: 1, exp: 0, unlocked: true }])
+    ),
+    deck: getStarterKit(school),
+    trainingSlots: Array.from({ length: maxTrain }, (_, idx) => (idx === 0 ? 'holy_1' : null)),
     equipped: {
       staff: starterStaff,
       robe: starterRobe,

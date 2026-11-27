@@ -44,9 +44,9 @@ export function getMonsterForMode(
 
 /**
  * P0-2 보스 위협감 튜닝 — 막 보스 · 승급 시험 보스.
- * 값은 scripts/balance-sim.ts 시뮬(신규 캐릭·장비 없음, 300판) 기준으로 맞춤:
- *  막 보스  Lv10 ≈10% · Lv13 ≈80% · Lv16 100%  (패배 → 5마리 재정비 → 자동 재도전)
- *  승급 시험 Lv13 ≈40% · Lv16 ≈95%
+ * 값은 scripts/balance-sim.ts 시뮬(신규 캐릭·장비 없음, 300판) 기준으로 맞춤.
+ *  P0-4(시작 스킬 3종) 이후: 보호막으로 강공격을 받아내면 Lv8~10에서 돌파, 못 막으면 사망.
+ *  progress-sim 기준 4막 보스 도달 ≈ 25~35분(대지 ≈ 70분).
  */
 export const BOSS_TUNING = {
   hpMult: 2.0,
@@ -242,6 +242,8 @@ export function stepCombatTurn(
       if (!def || !learned?.unlocked) continue;
       if ((cooldowns[sid] ?? 0) > 0) continue;
       if (playerMp < def.mpCost) continue;
+      // P0-4: 순수 방어 스킬(보호막 버프)은 보호막이 이미 남아 있으면 아껴둔다 (강공격 예고 대비)
+      if (def.isShield && def.isBuff && playerShield > 0) continue;
       // 회복 스킬은 체력이 92% 이상이고 정화 필요 없으면 자연스럽게 스킵해 낭비 방지
       if (def.isHeal && !def.isBuff && playerHp >= stats.maxHp * 0.92) {
         const hasDebuff = playerStatuses.some(

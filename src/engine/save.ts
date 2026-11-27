@@ -1,5 +1,5 @@
 import type { GameState } from '../types/game';
-import { createDefaultPrestige, createEmptyUncreatedState, SAVE_VERSION } from './stats';
+import { createDefaultPrestige, createEmptyUncreatedState, ensureStarterKit, SAVE_VERSION } from './stats';
 
 const STORAGE_KEY = 'magic_academy_astra_save_v1';
 
@@ -34,7 +34,8 @@ export function clearGameStorage(): void {
 function hydrateState(parsed: Partial<GameState>): GameState | null {
   if (!parsed || typeof parsed !== 'object' || !parsed.created) return null;
   const fallback = createEmptyUncreatedState();
-  return {
+  // P0-4: 기존 세이브에도 시작 스킬 3종 지급 + 덱 빈칸 채움
+  return ensureStarterKit({
     ...fallback,
     ...parsed,
     version: SAVE_VERSION,
@@ -54,7 +55,7 @@ function hydrateState(parsed: Partial<GameState>): GameState | null {
       ...fallback.settings,
       ...(parsed.settings ?? {}),
     },
-  };
+  });
 }
 
 export function exportSaveCode(state: GameState): string {

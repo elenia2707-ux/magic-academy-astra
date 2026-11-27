@@ -86,7 +86,7 @@ export const SCHOOLS: Record<SchoolId, SchoolInfo> = {
     maleQuote: '결코 무너지지 않는 성벽이 되겠다. 마지막 별빛이 살아남을 때까지.',
     femaleQuote: '대지와 망자들의 속삭임이 내 편인 한, 쓰러지는 건 저들일 테니까.',
     flavor: '견고한 방벽과 피해 반사, 독·저주로 강적을 말려 죽이는 생존 특화 학파입니다.',
-    statWeights: { magicMult: 0.98, hpMult: 1.18, defMult: 1.2, critBonus: 0, mpRegenBonus: 1 },
+    statWeights: { magicMult: 1.1, hpMult: 1.18, defMult: 1.2, critBonus: 0, mpRegenBonus: 1 },
   },
 };
 
