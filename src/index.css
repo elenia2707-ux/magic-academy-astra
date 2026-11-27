@@ -1620,3 +1620,26 @@ textarea {
   background: rgba(200, 164, 93, 0.1);
   border: 1px dashed rgba(200, 164, 93, 0.36);
 }
+
+/* ===== P0-1: 막 보스 자동 도전 ===== */
+.boss-cta-pulse {
+  position: relative;
+  animation: bossCtaPulse 1.6s ease-in-out infinite;
+}
+@keyframes bossCtaPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(158, 34, 34, 0.55); }
+  50% { box-shadow: 0 0 0 5px rgba(158, 34, 34, 0); }
+}
+.auto-boss-hint {
+  margin-top: 7px;
+  font-size: 11px;
+  line-height: 1.45;
+  color: #b9a98a;
+  padding: 5px 8px;
+  border-left: 2px solid rgba(158, 34, 34, 0.7);
+  background: rgba(20, 14, 12, 0.45);
+  border-radius: 0 4px 4px 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .boss-cta-pulse { animation: none; }
+}

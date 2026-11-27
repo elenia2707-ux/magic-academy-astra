@@ -16,6 +16,8 @@ interface Props {
   combat: CombatRuntime;
   onChangeStage: (act: number, stageIndex: number) => void;
   onChallengeActBoss: () => void;
+  /** 보스 패배 후 자동 재도전까지 남은 처치 수 (0이면 즉시) */
+  bossRetryIn: number;
   onReturnNormalStage: () => void;
   onCycleSpeed: () => void;
   onToggleAutoAdvance: () => void;
@@ -51,6 +53,7 @@ export const BattleTab: React.FC<Props> = ({
   combat,
   onChangeStage,
   onChallengeActBoss,
+  bossRetryIn,
   onReturnNormalStage,
   onCycleSpeed,
   onToggleAutoAdvance,
@@ -409,17 +412,29 @@ export const BattleTab: React.FC<Props> = ({
             자동 전진: {state.settings.autoAdvance ? 'ON' : 'OFF'}
           </button>
 
-          {!isSpecialMode && state.selectedStage < 4 && state.highestStageInAct >= 3 && (
-            <button
-              type="button"
-              className="btn btn-sm btn-crimson"
-              onClick={onChallengeActBoss}
-            >
-              <Skull size={13} />
-              제 {state.selectedAct}막 보스 도전
-            </button>
-          )}
-
+          {!isSpecialMode &&
+            state.selectedStage < 4 &&
+            (state.selectedAct < state.highestAct || state.highestStageInAct >= 3) && (
+              <button
+                type="button"
+                className="btn btn-sm btn-crimson boss-cta-pulse"
+                onClick={onChallengeActBoss}
+              >
+                <Skull size={13} />
+                제 {state.selectedAct}막 보스 도전
+              </button>
+            )}
+        </div>
+        {!isSpecialMode && state.settings.autoAdvance && (
+          <div className="auto-boss-hint">
+            {combat.stageIndex === 4
+              ? '⚔ 막 보스전 진행 중 — 패배하면 4번째 사냥터에서 재정비합니다.'
+              : bossRetryIn > 0
+                ? `재정비 중… ${bossRetryIn}마리 더 처치하면 보스에 자동 재도전`
+                : '자동 전진 ON: 4번째 사냥터를 돌파하면 막 보스에 자동 도전합니다.'}
+          </div>
+        )}
+        <div className="list-actions" style={{ marginTop: 6 }}>
           <div style={{ fontSize: 11, color: '#9a9386', marginLeft: 'auto' }}>
             마력 {stats.magic.toLocaleString()} · 치명 {stats.critRate}%
           </div>

@@ -66,6 +66,8 @@ import type {
 type TabId = 'battle' | 'school' | 'deck' | 'familiar' | 'abyss';
 
 const LANTERN_INTERVAL_MS = 20 * 60 * 1000;
+/** 막 보스 패배 후 자동 재도전까지 필요한 4번째 사냥터 처치 수 */
+const BOSS_RETRY_KILLS = 5;
 
 export default function App() {
   const [state, setState] = useState<GameState>(() => {
@@ -91,6 +93,8 @@ export default function App() {
   const combatRef = useRef(combat);
   const combatTransitionRef = useRef(false);
   const nextCombatTimerRef = useRef<number | null>(null);
+  const bossRetryRef = useRef(0);
+  const [bossRetryIn, setBossRetryIn] = useState(0);
   stateRef.current = state;
   statsRef.current = stats;
   combatRef.current = combat;
@@ -293,6 +297,7 @@ export default function App() {
         let toastToShow: string | null = null;
         let clearStoryAct: number | null = null;
         let promotedRankForModal: number | null = null;
+        let autoBossNow = false;
 
         if (curCombat.mode === 'rankBoss') {
           const promoted = Math.min(5, curState.rank + 1) as RankIndex;
@@ -321,6 +326,16 @@ export default function App() {
             }
           } else if (curState.settings.autoAdvance && curCombat.stageIndex < 3) {
             nextStage = curCombat.stageIndex + 1;
+          } else if (curState.settings.autoAdvance && curCombat.stageIndex === 3) {
+            // P0-1: 4번째 사냥터 클리어 시 막 보스 자동 도전 (패배 후엔 쿨다운 소진 뒤 재도전)
+            if (bossRetryRef.current > 0) {
+              bossRetryRef.current -= 1;
+              setBossRetryIn(bossRetryRef.current);
+            } else {
+              autoBossNow = true;
+              nextStage = 4;
+              toastToShow = `⚔ 제 ${curCombat.act}막 보스에게 자동 도전합니다!`;
+            }
           }
         }
 
@@ -413,6 +428,8 @@ export default function App() {
               }
               if (prev.settings.autoAdvance && curCombat.stageIndex < 3) {
                 selectedStage = curCombat.stageIndex + 1;
+              } else if (autoBossNow) {
+                selectedStage = 4;
               }
             }
           }
@@ -472,7 +489,11 @@ export default function App() {
             ? 3
             : curState.selectedStage;
 
-        if (wasSpecial || curCombat.stageIndex === 4) {
+        if (curCombat.mode === 'stage' && curCombat.stageIndex === 4) {
+          bossRetryRef.current = BOSS_RETRY_KILLS;
+          setBossRetryIn(BOSS_RETRY_KILLS);
+          showToast(`보스에게 패배… ${BOSS_RETRY_KILLS}번 더 수련한 뒤 자동 재도전합니다.`);
+        } else if (wasSpecial) {
           showToast('강적에게 패배하여 안전한 사냥터로 귀환합니다.');
         }
 
@@ -533,6 +554,8 @@ export default function App() {
 
   const handleChallengeActBoss = () => {
     playSfx('click', state.settings.sfxEnabled);
+    bossRetryRef.current = 0;
+    setBossRetryIn(0);
     setState((prev) => ({ ...prev, selectedStage: 4 }));
     startCombatNow(state, stats, 'stage', state.selectedAct, 4);
     maybeTriggerStageStory(state.selectedAct, 4, state);
@@ -996,6 +1019,7 @@ export default function App() {
                   combat={combat}
                   onChangeStage={handleChangeStage}
                   onChallengeActBoss={handleChallengeActBoss}
+                  bossRetryIn={bossRetryIn}
                   onReturnNormalStage={handleReturnNormalStage}
                   onCycleSpeed={() => {
                     const nextSpeed =
