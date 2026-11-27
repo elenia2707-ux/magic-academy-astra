@@ -7,10 +7,11 @@ import { CATEGORY_META, SCHOOLS } from '../data/schools';
 export const PlayerPortrait: React.FC<{
   school: SchoolId;
   gender: Gender;
+  awakened?: boolean;
   variant?: 'avatar' | 'card' | 'preview' | 'full';
   alt?: string;
-}> = ({ school, gender, variant = 'card', alt }) => {
-  const art = getHeroArt(school, gender);
+}> = ({ school, gender, awakened = false, variant = 'card', alt }) => {
+  const art = getHeroArt(school, gender, awakened);
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {

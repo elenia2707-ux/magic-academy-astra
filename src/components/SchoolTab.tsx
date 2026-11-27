@@ -11,8 +11,9 @@ import { CATEGORY_META, RANK_EXAM_BOSSES, RANKS, SCHOOLS } from '../data/schools
 import { getSkillsForPlayer, SKILL_MAP } from '../data/skills';
 import { getSkillUpgradeCost } from '../engine/stats';
 import type { ComputedStats, GameState, MonsterDef, ProfessorId, SkillDef } from '../types/game';
-import { CategoryDot, MonsterPortrait, NpcPortrait } from './GothicArt';
+import { MonsterPortrait, NpcPortrait } from './GothicArt';
 import { MonsterShowcaseModal, ProfessorShowcaseModal } from './Modals';
+import { SkillIcon } from './SkillArt';
 
 interface Props {
   state: GameState;
@@ -125,24 +126,34 @@ export const SchoolTab: React.FC<Props> = ({
 
     return (
       <div key={skill.id} className={`list-card ${isTraining ? 'highlight' : ''}`}>
-        <div className="list-top">
-          <div className="list-title">
-            <CategoryDot category={skill.category} />
-            <span>{skill.name}</span>
-            {unlocked ? (
-              <span className="tag" style={{ color: '#e3c481' }}>
-                Lv.{learned.level}/{stats.maxSkillLevel}
+        <div className="skill-card-head">
+          <SkillIcon
+            skillId={skill.id}
+            category={skill.category}
+            size="md"
+            locked={rankLocked}
+          />
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div className="list-top" style={{ marginBottom: 3 }}>
+              <div className="list-title">
+                <span>{skill.name}</span>
+                {unlocked ? (
+                  <span className="tag" style={{ color: '#e3c481' }}>
+                    Lv.{learned.level}/{stats.maxSkillLevel}
+                  </span>
+                ) : (
+                  <span className="tag">미습득</span>
+                )}
+              </div>
+              <span style={{ fontSize: 11, color: '#8b8479', flexShrink: 0 }}>
+                MP {skill.mpCost} · 쿨 {skill.cooldown}턴
               </span>
-            ) : (
-              <span className="tag">미습득</span>
-            )}
+            </div>
+            <div className="list-desc" style={{ marginBottom: 0 }}>
+              {skill.description}
+            </div>
           </div>
-          <span style={{ fontSize: 11, color: '#8b8479' }}>
-            MP {skill.mpCost} · 쿨 {skill.cooldown}턴
-          </span>
         </div>
-
-        <div className="list-desc">{skill.description}</div>
 
         {!rankLocked && !needsTomeDecode && !isMax && (
           <div className="progress-bar">

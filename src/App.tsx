@@ -952,7 +952,12 @@ export default function App() {
                     title="캐릭터 원화 크게 보기"
                     aria-label="캐릭터 원화 크게 보기"
                   >
-                    <PlayerPortrait school={state.school} gender={state.gender} variant="avatar" />
+                    <PlayerPortrait
+                      school={state.school}
+                      gender={state.gender}
+                      awakened={state.rank >= 3}
+                      variant="avatar"
+                    />
                   </button>
                   <div className="player-meta">
                     <div className="player-name-line">

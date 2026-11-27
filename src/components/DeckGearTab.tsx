@@ -10,7 +10,7 @@ import {
 import { CATEGORY_META } from '../data/schools';
 import { SKILL_MAP } from '../data/skills';
 import type { ComputedStats, EquipmentItem, EquipSlot, GameState, Rarity } from '../types/game';
-import { CategoryDot } from './GothicArt';
+import { SkillIcon } from './SkillArt';
 
 interface Props {
   state: GameState;
@@ -133,17 +133,19 @@ export const DeckGearTab: React.FC<Props> = ({
                   <div key={idx} className={`list-card ${def ? 'highlight' : ''}`}>
                     {def && learned ? (
                       <div className="list-actions">
-                        <div style={{ minWidth: 0 }}>
-                          <div className="list-title">
-                            <span className="tag">{idx + 1}</span>
-                            <CategoryDot category={def.category} />
-                            <span>{def.name}</span>
-                            <span style={{ fontSize: 11, color: '#e3c481' }}>
-                              Lv.{learned.level}
-                            </span>
-                          </div>
-                          <div style={{ fontSize: 11, color: '#9a9386', marginTop: 2 }}>
-                            MP {def.mpCost} · 쿨 {def.cooldown}턴
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 9, minWidth: 0, flex: 1 }}>
+                          <SkillIcon skillId={def.id} category={def.category} size="md" />
+                          <div style={{ minWidth: 0 }}>
+                            <div className="list-title">
+                              <span className="tag">{idx + 1}</span>
+                              <span>{def.name}</span>
+                              <span style={{ fontSize: 11, color: '#e3c481' }}>
+                                Lv.{learned.level}
+                              </span>
+                            </div>
+                            <div style={{ fontSize: 11, color: '#9a9386', marginTop: 2 }}>
+                              MP {def.mpCost} · 쿨 {def.cooldown}턴
+                            </div>
                           </div>
                         </div>
                         <div style={{ display: 'flex', gap: 4 }}>
@@ -200,14 +202,16 @@ export const DeckGearTab: React.FC<Props> = ({
                 return (
                   <div key={sid} className="list-card">
                     <div className="list-actions">
-                      <div style={{ minWidth: 0, flex: 1 }}>
-                        <div className="list-title">
-                          <CategoryDot category={def.category} />
-                          <span>{def.name}</span>
-                          <span className="tag">Lv.{learned.level}</span>
-                        </div>
-                        <div style={{ fontSize: 11, color: '#9a9386', marginTop: 2 }}>
-                          {def.description}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 9, minWidth: 0, flex: 1 }}>
+                        <SkillIcon skillId={def.id} category={def.category} size="md" />
+                        <div style={{ minWidth: 0, flex: 1 }}>
+                          <div className="list-title">
+                            <span>{def.name}</span>
+                            <span className="tag">Lv.{learned.level}</span>
+                          </div>
+                          <div style={{ fontSize: 11, color: '#9a9386', marginTop: 2 }}>
+                            {def.description}
+                          </div>
                         </div>
                       </div>
                       <button

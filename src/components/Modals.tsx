@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { ACTS } from '../data/acts';
+import { hasAwakenedHeroArt } from '../data/art';
 import {
   DARK_MAGIC_UNLOCK_LINES,
   getProfessorGreeting,
@@ -125,7 +126,14 @@ const DialogueRow: React.FC<{ line: DialogueLine; state: GameState }> = ({ line,
     if (key.kind === 'boss') {
       return <MonsterPortrait artKey={key.artKey} isBoss variant="thumb" alt={resolvedSpeaker} />;
     }
-    return <PlayerPortrait school={state.school} gender={state.gender} variant="avatar" />;
+    return (
+      <PlayerPortrait
+        school={state.school}
+        gender={state.gender}
+        awakened={state.rank >= 3}
+        variant="avatar"
+      />
+    );
   };
 
   const isBossSpeaker = !isSchoolVariant && line.portrait?.kind === 'boss';
@@ -292,12 +300,47 @@ export const HeroPortraitModal: React.FC<{
   onClose: () => void;
 }> = ({ state, stats, onClose }) => {
   const school = SCHOOLS[state.school];
+  const hasAw = hasAwakenedHeroArt(state.school, state.gender);
+  const isAwakenedUnlocked = state.rank >= 3 && hasAw;
+  const [showAwakened, setShowAwakened] = useState(isAwakenedUnlocked);
+
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal-card hero-showcase-modal" onClick={(e) => e.stopPropagation()}>
         <div className="wc-full-frame">
-          <PlayerPortrait school={state.school} gender={state.gender} variant="full" />
+          <PlayerPortrait
+            school={state.school}
+            gender={state.gender}
+            variant="full"
+            awakened={isAwakenedUnlocked && showAwakened}
+          />
+          {isAwakenedUnlocked && showAwakened && (
+            <div className="awakened-badge">★ 4계급 비술사 각성</div>
+          )}
         </div>
+        {isAwakenedUnlocked && (
+          <div className="awakened-toggle-row">
+            <button
+              type="button"
+              className={`awakened-toggle-btn ${showAwakened ? 'active' : ''}`}
+              onClick={() => setShowAwakened(true)}
+            >
+              각성 외형
+            </button>
+            <button
+              type="button"
+              className={`awakened-toggle-btn ${!showAwakened ? 'active' : ''}`}
+              onClick={() => setShowAwakened(false)}
+            >
+              견습 시절
+            </button>
+          </div>
+        )}
+        {!isAwakenedUnlocked && hasAw && (
+          <div className="awakened-teaser">
+            ★ 4계급 [비술사] 승급 시 20대 성숙판 각성 외형이 자동 해금됩니다!
+          </div>
+        )}
         <div style={{ textAlign: 'center', marginTop: 10 }}>
           <div style={{ fontSize: 11, color: school.color, fontWeight: 700 }}>
             {school.name} · {RANKS[state.rank].name} ({RANKS[state.rank].english})

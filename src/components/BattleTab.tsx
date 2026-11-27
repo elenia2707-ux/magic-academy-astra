@@ -8,6 +8,7 @@ import { SKILL_MAP } from '../data/skills';
 import type { CombatRuntime, ComputedStats, GameState, StatusEffect, StatusType } from '../types/game';
 import { FamiliarPortrait, MonsterPortrait, PlayerPortrait } from './GothicArt';
 import { MonsterShowcaseModal } from './Modals';
+import { SkillIcon, SpellImpactVfx } from './SkillArt';
 
 interface Props {
   state: GameState;
@@ -210,7 +211,13 @@ export const BattleTab: React.FC<Props> = ({
               title="탭하여 캐릭터 원화 크게 보기"
               aria-label="캐릭터 원화 크게 보기"
             >
-              <PlayerPortrait school={state.school} gender={state.gender} variant="card" />
+              <PlayerPortrait
+                school={state.school}
+                gender={state.gender}
+                variant="card"
+                awakened={state.rank >= 3}
+              />
+              {combat.lastVfx?.target === 'player' && <SpellImpactVfx vfx={combat.lastVfx} />}
               {state.activeFamiliar && activeFam && (
                 <div className="familiar-mini-badge" title={FAMILIARS[state.activeFamiliar].name}>
                   <FamiliarPortrait id={state.activeFamiliar} variant="badge" />
@@ -306,6 +313,7 @@ export const BattleTab: React.FC<Props> = ({
                 variant="card"
                 alt={combat.enemy.name}
               />
+              {combat.lastVfx?.target === 'enemy' && <SpellImpactVfx vfx={combat.lastVfx} />}
             </button>
             <div className="combatant-name">{combat.enemy.name}</div>
             <div className="combatant-role">{combat.enemy.title}</div>
@@ -358,6 +366,11 @@ export const BattleTab: React.FC<Props> = ({
             return (
               <div key={idx} className={`rot-chip ${cd > 0 ? 'on-cd' : ''}`}>
                 <div className="rot-idx">{idx + 1}순위</div>
+                {def && (
+                  <div className="rot-icon-wrap">
+                    <SkillIcon skillId={def.id} category={def.category} size="sm" />
+                  </div>
+                )}
                 <div
                   className="rot-name"
                   style={{

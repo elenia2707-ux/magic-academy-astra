@@ -65,6 +65,39 @@ export const HERO_ART: Record<`${SchoolId}_${Gender}`, HeroArtMeta> = {
   },
 };
 
+export const AWAKENED_HERO_ART: Partial<Record<`${SchoolId}_${Gender}`, HeroArtMeta>> = {
+  flame_female: {
+    url: './art/heroes/aw_flame_female.webp',
+    cardPosition: '50% 18%',
+    avatarPosition: '50% 20%',
+    bgTint: '#1f161a',
+  },
+  thunder_female: {
+    url: './art/heroes/aw_thunder_female.webp',
+    cardPosition: '50% 18%',
+    avatarPosition: '50% 20%',
+    bgTint: '#171b24',
+  },
+  frost_female: {
+    url: './art/heroes/aw_frost_female.webp',
+    cardPosition: '50% 18%',
+    avatarPosition: '50% 20%',
+    bgTint: '#161e27',
+  },
+  earth_female: {
+    url: './art/heroes/aw_earth_female.webp',
+    cardPosition: '50% 18%',
+    avatarPosition: '50% 20%',
+    bgTint: '#17201a',
+  },
+  flame_male: {
+    url: './art/heroes/aw_flame_male.webp',
+    cardPosition: '50% 18%',
+    avatarPosition: '50% 21%',
+    bgTint: '#1f1619',
+  },
+};
+
 export const FAMILIAR_ART: Record<FamiliarId, FamiliarArtMeta> = {
   raven: {
     url: './art/familiars/raven.webp',
@@ -360,8 +393,16 @@ export const NPC_ART: Record<ProfessorId, NpcArtMeta> = {
   },
 };
 
-export function getHeroArt(school: SchoolId, gender: Gender): HeroArtMeta {
-  return HERO_ART[`${school}_${gender}`];
+export function hasAwakenedHeroArt(school: SchoolId, gender: Gender): boolean {
+  return Boolean(AWAKENED_HERO_ART[`${school}_${gender}`]);
+}
+
+export function getHeroArt(school: SchoolId, gender: Gender, awakened = false): HeroArtMeta {
+  const key = `${school}_${gender}` as const;
+  if (awakened && AWAKENED_HERO_ART[key]) {
+    return AWAKENED_HERO_ART[key]!;
+  }
+  return HERO_ART[key];
 }
 
 export function getFamiliarArt(id: FamiliarId): FamiliarArtMeta {
