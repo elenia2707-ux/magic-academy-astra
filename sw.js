@@ -1,4 +1,4 @@
-const CACHE_NAME = 'astra-academy-v12';
+const CACHE_NAME = 'astra-academy-v13';
 const ASSETS = [
   './',
   './index.html',
@@ -72,6 +72,9 @@ const ASSETS = [
   './art/monsters/m6_2_wyrm.webp',
   './art/monsters/m6_3_priest.webp',
   './art/monsters/m6_4_orthrus.webp',
+  './audio/bgm_academy.mp3',
+  './audio/bgm_battle.mp3',
+  './audio/bgm_boss.mp3',
 ];
 
 self.addEventListener('install', (event) => {
