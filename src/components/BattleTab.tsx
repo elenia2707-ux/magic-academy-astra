@@ -23,6 +23,7 @@ interface Props {
   onReturnNormalStage: () => void;
   onCycleSpeed: () => void;
   onToggleAutoAdvance: () => void;
+  pendingStoryCount: number;
   onOpenStory: (act: number) => void;
   onOpenHeroModal: () => void;
   onToggleInfirmaryDismiss: () => void;
@@ -64,6 +65,7 @@ export const BattleTab: React.FC<Props> = ({
   onReturnNormalStage,
   onCycleSpeed,
   onToggleAutoAdvance,
+  pendingStoryCount,
   onOpenStory,
   onOpenHeroModal,
   onToggleInfirmaryDismiss,
@@ -182,11 +184,15 @@ export const BattleTab: React.FC<Props> = ({
           {!isSpecialMode ? (
             <button
               type="button"
-              className="btn btn-sm btn-ghost"
+              className={`btn btn-sm btn-ghost story-btn ${pendingStoryCount > 0 ? 'has-pending' : ''}`}
               onClick={() => onOpenStory(state.selectedAct)}
               title="막 스토리"
+              aria-label={pendingStoryCount > 0 ? '스토리 대기 중 · 눌러서 바로 읽기' : '막 스토리'}
             >
               <BookOpen size={12} />
+              {pendingStoryCount > 0 && (
+                <span className="story-ruby-dot" aria-hidden="true" />
+              )}
             </button>
           ) : (
             <button
@@ -199,6 +205,23 @@ export const BattleTab: React.FC<Props> = ({
           )}
         </div>
       </div>
+
+      {/* P1-8: 스토리 대기열 힌트 바 (누르면 25초 숨 고르기 없이 바로 읽기) */}
+      {!isSpecialMode && pendingStoryCount > 0 && (
+        <button
+          type="button"
+          className="story-pending-hint"
+          onClick={() => onOpenStory(state.selectedAct)}
+        >
+          <span className="story-pending-hint-left">
+            <span className="story-pending-gem" aria-hidden="true" />
+            <span>
+              📜 스토리 대기 중{pendingStoryCount > 1 ? ` (${pendingStoryCount})` : ''}
+            </span>
+          </span>
+          <span className="story-pending-cta">바로 읽기 ›</span>
+        </button>
+      )}
 
       {/* 고딕 수채화 카드 전투 무대 */}
       <div className="arena-card">

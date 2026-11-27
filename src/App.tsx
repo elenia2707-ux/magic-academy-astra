@@ -155,10 +155,15 @@ export default function App() {
     combatTransitionRef.current = false;
   }, []);
 
-  // P0-7: 스토리 템포 — 자동 스토리(막 도입·중간)는 직전 스토리를 닫은 뒤 최소 STORY_GAP_MS 동안
-  // 전투를 보여준 다음에 띄운다. 보스 조우·막 클리어·승급은 맥락상 즉시(immediate) 표시.
+  // P0-7 & P1-8: 스토리 템포 — 자동 스토리(막 도입·중간)는 직전 스토리를 닫은 뒤 최소 STORY_GAP_MS 동안
+  // 전투를 보여준 다음에 띄운다. 대기 중엔 스토리 버튼에 루비 점 힌트를 표시하고, 탭 시 바로 열 수 있다.
   const storyQueueRef = useRef<{ payload: StoryModalPayload; key?: string; immediate: boolean }[]>([]);
+  const [pendingStoryCount, setPendingStoryCount] = useState(0);
   const lastStoryClosedRef = useRef(0);
+
+  const syncStoryQueueCount = useCallback(() => {
+    setPendingStoryCount(storyQueueRef.current.length);
+  }, []);
 
   const storyModalRef = useRef<StoryModalPayload | null>(null);
   storyModalRef.current = storyModal;
@@ -171,8 +176,12 @@ export default function App() {
     const q = storyQueueRef.current;
     while (q.length > 0) {
       const hasImmediate = q.some((x) => x.immediate);
-      if (!hasImmediate && Date.now() - lastStoryClosedRef.current < STORY_GAP_MS) return;
+      if (!hasImmediate && Date.now() - lastStoryClosedRef.current < STORY_GAP_MS) {
+        syncStoryQueueCount();
+        return;
+      }
       const next = q.shift()!;
+      syncStoryQueueCount();
       if (next.key) {
         const recordedKey = next.key;
         if ((stateRef.current.viewedStoryKeys ?? []).includes(recordedKey)) continue;
@@ -186,15 +195,40 @@ export default function App() {
       setStoryModal(next.payload);
       return;
     }
-  }, []);
+    syncStoryQueueCount();
+  }, [syncStoryQueueCount]);
+
+  /** P1-8: 대기열에 있는 스토리를 숨 고르기 간격 없이 즉시 열어준다 */
+  const openQueuedStoryNow = useCallback((): boolean => {
+    const q = storyQueueRef.current;
+    while (q.length > 0) {
+      const next = q.shift()!;
+      syncStoryQueueCount();
+      if (next.key) {
+        const recordedKey = next.key;
+        if ((stateRef.current.viewedStoryKeys ?? []).includes(recordedKey)) continue;
+        setState((prev) => {
+          const prevKeys = prev.viewedStoryKeys ?? [];
+          if (prevKeys.includes(recordedKey)) return prev;
+          return { ...prev, viewedStoryKeys: [...prevKeys, recordedKey] };
+        });
+      }
+      storyModalRef.current = next.payload;
+      setStoryModal(next.payload);
+      return true;
+    }
+    syncStoryQueueCount();
+    return false;
+  }, [syncStoryQueueCount]);
 
   const queueStory = useCallback(
     (payload: StoryModalPayload, immediate: boolean, key?: string) => {
       if (key && storyQueueRef.current.some((q) => q.key === key)) return;
       storyQueueRef.current.push({ payload, key, immediate });
+      syncStoryQueueCount();
       pumpStory();
     },
-    [pumpStory]
+    [pumpStory, syncStoryQueueCount]
   );
 
   const maybeTriggerStageStory = useCallback(
@@ -771,6 +805,8 @@ export default function App() {
       nextPrestige,
       rebirthPending ? state.dailyQuests : undefined
     );
+    storyQueueRef.current = [];
+    syncStoryQueueCount();
     setState(fresh);
     setRebirthPending(false);
     const freshStats = computePlayerStats(fresh);
@@ -1520,9 +1556,12 @@ export default function App() {
                       settings: { ...prev.settings, autoAdvance: !prev.settings.autoAdvance },
                     }))
                   }
-                  onOpenStory={(act) =>
-                    setStoryModal({ kind: 'act', act, phase: 'intro', archiveMode: true })
-                  }
+                  pendingStoryCount={pendingStoryCount}
+                  onOpenStory={(act) => {
+                    if (!openQueuedStoryNow()) {
+                      setStoryModal({ kind: 'act', act, phase: 'intro', archiveMode: true });
+                    }
+                  }}
                   onOpenHeroModal={() => setHeroModalOpen(true)}
                   onToggleInfirmaryDismiss={() =>
                     setState((prev) =>
@@ -1635,6 +1674,8 @@ export default function App() {
                   }}
                   onHardReset={() => {
                     clearPendingCombatTimer();
+                    storyQueueRef.current = [];
+                    syncStoryQueueCount();
                     clearGameStorage();
                     setState(createEmptyUncreatedState());
                     setTab('battle');
