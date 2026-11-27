@@ -1,12 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { BookOpen, ChevronLeft, ChevronRight, FastForward, Skull } from 'lucide-react';
+import { BookOpen, ChevronLeft, ChevronRight, FastForward, FlaskConical, Skull, X } from 'lucide-react';
 import { ACTS } from '../data/acts';
 import { getMonsterArt } from '../data/art';
 import { FAMILIARS } from '../data/familiars';
+import { getActiveInfirmaryEffect } from '../data/infirmary';
 import { CATEGORY_META, getCharacterTitle, RANKS, SCHOOLS } from '../data/schools';
 import { SKILL_MAP } from '../data/skills';
 import type { CombatRuntime, ComputedStats, GameState, StatusEffect, StatusType } from '../types/game';
-import { FamiliarPortrait, MonsterPortrait, PlayerPortrait } from './GothicArt';
+import { FamiliarPortrait, MonsterPortrait, NpcPortrait, PlayerPortrait } from './GothicArt';
 import { MonsterShowcaseModal } from './Modals';
 import { SkillIcon, SpellImpactVfx } from './SkillArt';
 
@@ -23,6 +24,7 @@ interface Props {
   onToggleAutoAdvance: () => void;
   onOpenStory: (act: number) => void;
   onOpenHeroModal: () => void;
+  onToggleInfirmaryDismiss: () => void;
 }
 
 const STATUS_LABEL: Record<StatusType, string> = {
@@ -59,6 +61,7 @@ export const BattleTab: React.FC<Props> = ({
   onToggleAutoAdvance,
   onOpenStory,
   onOpenHeroModal,
+  onToggleInfirmaryDismiss,
 }) => {
   const logRef = useRef<HTMLDivElement | null>(null);
   const [enemyModalOpen, setEnemyModalOpen] = useState(false);
@@ -75,6 +78,8 @@ export const BattleTab: React.FC<Props> = ({
   const isSpecialMode = combat.mode !== 'stage';
   const hpPct = Math.max(0, Math.min(100, (combat.playerHp / Math.max(1, combat.playerMaxHp)) * 100));
   const enemyHpPct = Math.max(0, Math.min(100, (combat.enemyHp / Math.max(1, combat.enemyMaxHp)) * 100));
+  const activeInfirmary = getActiveInfirmaryEffect(state);
+  const infirmary = state.infirmary;
 
   const canGoPrev = state.selectedAct > 1 || state.selectedStage > 0;
   const maxStageForAct =
@@ -379,6 +384,55 @@ export const BattleTab: React.FC<Props> = ({
           })}
         </div>
       </div>
+
+      {/* P1-3: 양호실 야간 당직 마르타 짧은 대사 & 처방 버프/디버프 */}
+      {activeInfirmary && infirmary && (
+        infirmary.dismissed ? (
+          <button
+            type="button"
+            className="infirmary-mini-bar parchment"
+            onClick={onToggleInfirmaryDismiss}
+            title="탭하여 마르타의 양호실 메모 다시 보기"
+          >
+            <span className="infirmary-effect-name">
+              <FlaskConical size={13} />
+              {activeInfirmary.name} · {activeInfirmary.badgeText}
+            </span>
+            <span className="infirmary-effect-left">남은 {infirmary.battlesLeft}전투</span>
+          </button>
+        ) : (
+          <div className="infirmary-card parchment">
+            <div className="infirmary-head">
+              <div className="infirmary-avatar">
+                <NpcPortrait id="martha" variant="avatar" alt="사서장 마르타" />
+              </div>
+              <div className="infirmary-body">
+                <div className="infirmary-meta">
+                  <span className="infirmary-speaker">사서장 마르타</span>
+                  <span className="infirmary-chart">양호실 차트 #{infirmary.visits}</span>
+                  <button
+                    type="button"
+                    className="infirmary-close"
+                    onClick={onToggleInfirmaryDismiss}
+                    aria-label="양호실 대사 접기"
+                    title="대사 접기 (효과는 유지)"
+                  >
+                    <X size={12} />
+                  </button>
+                </div>
+                <div className="infirmary-quote">“{infirmary.quote}”</div>
+              </div>
+            </div>
+            <div className={`infirmary-effect-row ${activeInfirmary.tone}`}>
+              <span className="infirmary-effect-name">
+                <FlaskConical size={13} />
+                {activeInfirmary.name} ({activeInfirmary.badgeText})
+              </span>
+              <span className="infirmary-effect-left">남은 {infirmary.battlesLeft}전투</span>
+            </div>
+          </div>
+        )
+      )}
 
       {/* 클래식 텍스트 전투 로그 */}
       <div className="combat-log-box" ref={logRef}>

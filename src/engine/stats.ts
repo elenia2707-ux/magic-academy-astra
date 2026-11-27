@@ -1,6 +1,7 @@
 import { createFreshDailyQuests, ensureDailyQuestsCurrent } from '../data/dailyQuests';
 import { getEnhanceMultiplier, generateEquipment } from '../data/equipment';
 import { FAMILIARS } from '../data/familiars';
+import { getActiveInfirmaryEffect } from '../data/infirmary';
 import { RANKS, SCHOOLS } from '../data/schools';
 import { SKILL_MAP } from '../data/skills';
 import type {
@@ -274,23 +275,26 @@ export function computePlayerStats(state: GameState): ComputedStats {
     }
   }
 
-  // 학파 + 계급 + 별의 성좌(환생) 영구 배율
+  // 학파 + 계급 + 별의 성좌(환생) + P1-3 양호실 처방 배율
   const starPowerMult = 1 + (up.starPower ?? 0) * 0.18;
   const starVitMult = 1 + (up.starVitality ?? 0) * 0.18;
+  const infEffect = getActiveInfirmaryEffect(state);
 
   const magic = Math.round(
     (baseMagic + eqMagic) *
       schoolInfo.statWeights.magicMult *
       rankInfo.statMult *
       (1 + famMagicPct / 100) *
-      starPowerMult
+      starPowerMult *
+      (infEffect?.magicMult ?? 1)
   );
   const maxHp = Math.round(
     (baseHp + eqHp) *
       schoolInfo.statWeights.hpMult *
       rankInfo.statMult *
       (1 + famHpPct / 100) *
-      starVitMult
+      starVitMult *
+      (infEffect?.hpMult ?? 1)
   );
   const maxMp = Math.round((baseMp + eqMp) * (state.school === 'frost' ? 1.18 : 1));
   const def = Math.round(
@@ -298,7 +302,8 @@ export function computePlayerStats(state: GameState): ComputedStats {
       schoolInfo.statWeights.defMult *
       rankInfo.statMult *
       (1 + famDefPct / 100) *
-      starVitMult
+      starVitMult *
+      (infEffect?.defMult ?? 1)
   );
 
   const maxDeckSlots = rankInfo.deckSlots + (up.sixthDeckSlot ?? 0);

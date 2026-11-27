@@ -1,6 +1,7 @@
 import { effectiveStoneReward } from '../data/economy';
 import { ACTS, createAbyssEliteMonster, createTowerMonster } from '../data/acts';
 import { FAMILIARS } from '../data/familiars';
+import { getActiveInfirmaryEffect } from '../data/infirmary';
 import { RANK_EXAM_BOSSES } from '../data/schools';
 import { SKILL_MAP } from '../data/skills';
 import type {
@@ -133,6 +134,16 @@ export function createCombatRuntime(
           : `[${enemy.name}]이(가) 검은 안개 속에서 나타났습니다.`;
 
   const initialLogs: CombatLogEntry[] = [nextLog(0, introMsg, 'system')];
+  const infEffect = getActiveInfirmaryEffect(state);
+  if (infEffect && state.infirmary) {
+    initialLogs.push(
+      nextLog(
+        0,
+        `양호실 처방 [${infEffect.name}] 적용 중 (${infEffect.badgeText}, 남은 ${state.infirmary.battlesLeft}전투)`,
+        infEffect.tone === 'buff' ? 'heal' : 'status'
+      )
+    );
+  }
   const bossQuote =
     state.prestige.rebirthCount >= 1 && enemy.ngPlusQuote
       ? enemy.ngPlusQuote

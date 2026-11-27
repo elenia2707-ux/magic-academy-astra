@@ -2925,3 +2925,151 @@ select,
   box-shadow: inset 0 1px 0 rgba(255, 210, 200, 0.35), 0 1px 3px rgba(0, 0, 0, 0.45);
 }
 
+/* =====================================================================
+   🩹 P1-3 · 양호실 (마르타 야간 당직 처방 양피지 카드 & 미니 바)
+   ===================================================================== */
+.infirmary-card {
+  margin: 0 0 8px;
+  padding: 9px 10px;
+  border-radius: 10px;
+  border: 1px solid #4a3420;
+  border-left: 3px solid #8a2c38;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  animation: infirmaryIn 0.24s ease-out;
+}
+
+@keyframes infirmaryIn {
+  0% { opacity: 0; transform: translateY(-4px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+.infirmary-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+}
+
+.infirmary-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+  border: 2px solid #4a3420;
+  box-shadow: 0 0 0 1px rgba(255, 245, 220, 0.35), 0 2px 4px rgba(40, 24, 10, 0.45);
+}
+
+.infirmary-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 18%;
+}
+
+.infirmary-body {
+  min-width: 0;
+  flex: 1;
+}
+
+.infirmary-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 3px;
+}
+
+.infirmary-speaker {
+  font-family: var(--font-round);
+  font-size: 13px;
+  color: var(--parch-ink);
+  white-space: nowrap;
+}
+
+.infirmary-chart {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 99px;
+  color: #fce9df;
+  background: linear-gradient(180deg, #983640 0%, #6b1d26 100%);
+  border: 1px solid #3c0c10;
+  white-space: nowrap;
+}
+
+.infirmary-close {
+  margin-left: auto;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1px solid rgba(74, 52, 32, 0.45);
+  background: rgba(255, 248, 228, 0.32);
+  color: var(--parch-ink);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.infirmary-quote {
+  font-size: 11.5px;
+  line-height: 1.48;
+  color: var(--parch-ink);
+}
+
+.infirmary-effect-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 5px 8px;
+  border-radius: 7px;
+  border: 1px solid rgba(74, 52, 32, 0.45);
+  background: rgba(46, 31, 21, 0.12);
+}
+
+.infirmary-effect-row.buff {
+  border-color: rgba(48, 102, 68, 0.55);
+  background: rgba(42, 92, 60, 0.14);
+}
+
+.infirmary-effect-row.tradeoff {
+  border-color: rgba(132, 42, 56, 0.55);
+  background: rgba(126, 36, 50, 0.14);
+}
+
+.infirmary-effect-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--parch-ink);
+  min-width: 0;
+}
+
+.infirmary-effect-left {
+  font-family: var(--font-round);
+  font-size: 11px;
+  color: #5c3a1e;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.infirmary-mini-bar {
+  width: 100%;
+  margin: 0 0 8px;
+  padding: 6px 10px;
+  border-radius: 9px;
+  border: 1px solid #5a4126;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  cursor: pointer;
+  text-align: left;
+}
+
+

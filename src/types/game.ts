@@ -296,6 +296,16 @@ export interface DailyQuestState {
   bonusClaimed: boolean;
 }
 
+export type InfirmaryEffectId = 'tonic' | 'suture';
+
+export interface InfirmaryState {
+  activeEffect: InfirmaryEffectId | null;
+  battlesLeft: number;
+  quote: string;
+  dismissed: boolean;
+  visits: number;
+}
+
 export interface GameState {
   version: number;
   created: boolean;
@@ -329,6 +339,7 @@ export interface GameState {
   prestige: PrestigeState;
   settings: GameSettings;
   dailyQuests: DailyQuestState;
+  infirmary?: InfirmaryState | null;
   lastSavedAt: number;
   totalKills: number;
 }

@@ -33,6 +33,7 @@ import {
   getFamiliarEvoCost,
   getFamiliarUpgradeCost,
 } from './data/familiars';
+import { consumeInfirmaryBattle, triggerInfirmaryVisit } from './data/infirmary';
 import {
   calculateRebirthReward,
   getPrestigeUpgradeCost,
@@ -555,6 +556,7 @@ export default function App() {
               kills: 1,
               ...(isBossVictory ? { boss: 1 } : {}),
             }),
+            infirmary: consumeInfirmaryBattle(prev.infirmary),
             totalKills: prev.totalKills + 1,
           };
         });
@@ -608,9 +610,13 @@ export default function App() {
           showToast('쓰러졌습니다… 한 구역 물러나 재정비합니다.');
         }
 
-        if (isActBossLoss || isMobStepBack) {
-          setState((prev) => ({ ...prev, selectedStage: fallbackStage }));
-        }
+        const defeatCtx = isActBossLoss ? 'boss' : wasSpecial ? 'special' : 'mob';
+        // P1-3: 패배 시 양호실 당직 마르타 짧은 대사 + 처방 버프/디버프 부여
+        setState((prev) => ({
+          ...prev,
+          ...(isActBossLoss || isMobStepBack ? { selectedStage: fallbackStage } : {}),
+          infirmary: triggerInfirmaryVisit(prev.infirmary, prev.playerName, defeatCtx),
+        }));
 
         nextCombatTimerRef.current = window.setTimeout(() => {
           nextCombatTimerRef.current = null;
@@ -1259,6 +1265,19 @@ export default function App() {
                     setStoryModal({ kind: 'act', act, phase: 'intro', archiveMode: true })
                   }
                   onOpenHeroModal={() => setHeroModalOpen(true)}
+                  onToggleInfirmaryDismiss={() =>
+                    setState((prev) =>
+                      prev.infirmary
+                        ? {
+                            ...prev,
+                            infirmary: {
+                              ...prev.infirmary,
+                              dismissed: !prev.infirmary.dismissed,
+                            },
+                          }
+                        : prev
+                    )
+                  }
                 />
               )}
 
