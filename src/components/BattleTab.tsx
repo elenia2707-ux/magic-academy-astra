@@ -66,13 +66,14 @@ export const BattleTab: React.FC<Props> = ({
   useEffect(() => {
     if (logRef.current) {
       logRef.current.scrollTop = logRef.current.scrollHeight;
+      // 넘칠 때만 상단 페이드 베일을 켬 (짧은 로그 첫 줄이 흐려지지 않게)
+      logRef.current.classList.toggle('is-scrolled', logRef.current.scrollTop > 0);
     }
   }, [combat.logs]);
 
   const actDef = ACTS[Math.max(0, Math.min(ACTS.length - 1, state.selectedAct - 1))];
   const isSpecialMode = combat.mode !== 'stage';
   const hpPct = Math.max(0, Math.min(100, (combat.playerHp / Math.max(1, combat.playerMaxHp)) * 100));
-  const mpPct = Math.max(0, Math.min(100, (combat.playerMp / Math.max(1, combat.playerMaxMp)) * 100));
   const enemyHpPct = Math.max(0, Math.min(100, (combat.enemyHp / Math.max(1, combat.enemyMaxHp)) * 100));
 
   const canGoPrev = state.selectedAct > 1 || state.selectedStage > 0;
@@ -207,6 +208,7 @@ export const BattleTab: React.FC<Props> = ({
                 </div>
               </div>
             )}
+            <div className="combatant-name ribbon">{state.playerName}</div>
             <button
               type="button"
               className="portrait-frame portrait-frame-art"
@@ -227,7 +229,6 @@ export const BattleTab: React.FC<Props> = ({
                 </div>
               )}
             </button>
-            <div className="combatant-name">{state.playerName}</div>
             <div className="combatant-role">
               Lv.{state.level} {getCharacterTitle(state.school, state.gender)}
             </div>
@@ -241,18 +242,6 @@ export const BattleTab: React.FC<Props> = ({
               </div>
               <div className="meter-track">
                 <div className="meter-fill hp" style={{ width: `${hpPct}%` }} />
-              </div>
-            </div>
-
-            <div className="meter-wrap">
-              <div className="meter-top">
-                <span>MP</span>
-                <span>
-                  {combat.playerMp} / {combat.playerMaxMp}
-                </span>
-              </div>
-              <div className="meter-track">
-                <div className="meter-fill mp" style={{ width: `${mpPct}%` }} />
               </div>
             </div>
 
@@ -277,7 +266,7 @@ export const BattleTab: React.FC<Props> = ({
 
           {/* 몬스터 카드 */}
           <div
-            className={`combatant-card ${combat.enemy.isBoss ? 'boss' : ''} ${
+            className={`combatant-card enemy-card ${combat.enemy.isBoss ? 'boss' : ''} ${
               combat.lastVfx?.target === 'enemy' ? 'shake' : ''
             }`}
           >
@@ -297,6 +286,7 @@ export const BattleTab: React.FC<Props> = ({
                 </div>
               </div>
             )}
+            <div className="combatant-name ribbon">{combat.enemy.name}</div>
             <button
               type="button"
               className={`portrait-frame ${
@@ -318,7 +308,6 @@ export const BattleTab: React.FC<Props> = ({
               />
               {combat.lastVfx?.target === 'enemy' && <SpellImpactVfx vfx={combat.lastVfx} />}
             </button>
-            <div className="combatant-name">{combat.enemy.name}</div>
             <div className="combatant-role">{combat.enemy.title}</div>
 
             <div className="meter-wrap">
