@@ -1268,16 +1268,20 @@ export default function App() {
                 className={`nav-btn ${tab === 'battle' ? 'active' : ''}`}
                 onClick={() => setTab('battle')}
               >
-                <Swords size={18} />
-                <span>전투</span>
+                <i className="nav-gem gem-crimson">
+                  <Swords size={20} strokeWidth={2.2} />
+                </i>
+                <span className="nav-label">전투</span>
               </button>
               <button
                 type="button"
                 className={`nav-btn ${tab === 'school' ? 'active' : ''}`}
                 onClick={() => setTab('school')}
               >
-                <BookOpen size={18} />
-                <span>학교</span>
+                <i className="nav-gem gem-violet">
+                  <BookOpen size={20} strokeWidth={2.2} />
+                </i>
+                <span className="nav-label">학교</span>
                 {examReady && <span className="nav-dot" />}
               </button>
               <button
@@ -1285,24 +1289,30 @@ export default function App() {
                 className={`nav-btn ${tab === 'deck' ? 'active' : ''}`}
                 onClick={() => setTab('deck')}
               >
-                <Shield size={18} />
-                <span>덱·장비</span>
+                <i className="nav-gem gem-sapphire">
+                  <Shield size={20} strokeWidth={2.2} />
+                </i>
+                <span className="nav-label">덱·장비</span>
               </button>
               <button
                 type="button"
                 className={`nav-btn ${tab === 'familiar' ? 'active' : ''}`}
                 onClick={() => setTab('familiar')}
               >
-                <PawPrint size={18} />
-                <span>사역마</span>
+                <i className="nav-gem gem-emerald">
+                  <PawPrint size={20} strokeWidth={2.2} />
+                </i>
+                <span className="nav-label">사역마</span>
               </button>
               <button
                 type="button"
                 className={`nav-btn ${tab === 'abyss' ? 'active' : ''}`}
                 onClick={() => setTab('abyss')}
               >
-                <Compass size={18} />
-                <span>심연</span>
+                <i className="nav-gem gem-amber">
+                  <Compass size={20} strokeWidth={2.2} />
+                </i>
+                <span className="nav-label">심연</span>
                 {abyssReady && <span className="nav-dot" />}
               </button>
             </nav>

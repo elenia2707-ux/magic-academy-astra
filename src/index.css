@@ -2311,3 +2311,110 @@ body,
 .log-line.system { color: #5e3205; }
 .combatant-card .combatant-name.ribbon { font-size: 12px; padding: 3px 9px 4px; }
 .combat-log-box:not(.is-scrolled)::before { visibility: hidden; }
+
+/* =====================================================================
+   🎨 P0-9-4 · ARPIA BOTTOM NAV — 나무 판자 + 원형 보석 버튼 + 리본 라벨
+   ===================================================================== */
+.bottom-nav {
+  position: relative;
+  z-index: 5;
+  gap: 2px;
+  padding: 7px 6px calc(6px + var(--safe-bottom));
+  border-top: 2px solid var(--wood-edge);
+  background:
+    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0) 0 61px, rgba(0, 0, 0, 0.16) 61px 62px),
+    linear-gradient(180deg, var(--wood-hi) 0%, var(--wood) 18%, var(--wood-lo) 75%, #240c11 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 220, 200, 0.18),
+    inset 0 2px 0 rgba(226, 196, 140, 0.18),
+    0 -4px 12px rgba(0, 0, 0, 0.55);
+}
+
+.nav-btn,
+.nav-btn.active {
+  background: none;
+  padding: 0 0 1px;
+  gap: 0;
+  border-radius: 0;
+}
+
+.nav-gem {
+  --g-hi: #e88c8f;
+  --g-mid: #9e2f36;
+  --g-lo: #4a1015;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  color: rgba(255, 246, 228, 0.92);
+  background:
+    radial-gradient(circle at 34% 28%, rgba(255, 255, 255, 0.42) 0 9%, transparent 26%),
+    radial-gradient(circle at 50% 60%, var(--g-mid) 0%, var(--g-lo) 100%);
+  box-shadow:
+    0 0 0 2px var(--brass),
+    0 0 0 3px var(--wood-edge),
+    0 3px 0 3px var(--wood-edge),
+    inset 0 -4px 6px rgba(0, 0, 0, 0.45),
+    inset 0 2px 2px rgba(255, 255, 255, 0.18);
+  filter: saturate(0.45) brightness(0.72);
+  transition: transform 0.15s ease, filter 0.15s ease;
+}
+
+.nav-gem svg { filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.7)); }
+
+.gem-crimson { --g-mid: #a8323a; --g-lo: #4a1015; }
+.gem-violet { --g-mid: #6a3f94; --g-lo: #2a1640; }
+.gem-sapphire { --g-mid: #2f6286; --g-lo: #10263a; }
+.gem-emerald { --g-mid: #2f7a55; --g-lo: #0f3322; }
+.gem-amber { --g-mid: #a57a2c; --g-lo: #4a320c; }
+
+.nav-label {
+  position: relative;
+  margin-top: -6px;
+  z-index: 1;
+  padding: 2px 8px 2px;
+  font-family: var(--font-round);
+  font-weight: 400;
+  font-size: 11px !important;
+  line-height: 1.15;
+  white-space: nowrap;
+  color: #d9c3ae;
+  background: linear-gradient(180deg, #3a1a20 0%, #26100f 100%);
+  border: 1px solid var(--wood-edge);
+  border-radius: 5px;
+  box-shadow: 0 1px 0 rgba(226, 196, 140, 0.15);
+}
+
+.nav-btn:active .nav-gem { transform: translateY(2px); }
+
+.nav-btn.active .nav-gem {
+  filter: none;
+  transform: translateY(-3px);
+  box-shadow:
+    0 0 0 2px var(--brass-light),
+    0 0 0 3px var(--wood-edge),
+    0 3px 0 3px var(--wood-edge),
+    0 0 14px 3px rgba(226, 196, 140, 0.28),
+    inset 0 -4px 6px rgba(0, 0, 0, 0.4),
+    inset 0 2px 2px rgba(255, 255, 255, 0.25);
+}
+
+.nav-btn.active .nav-label {
+  color: var(--parch-ink);
+  background: linear-gradient(180deg, #e6d4ae 0%, var(--parch) 60%, var(--parch-dark) 100%);
+  border-color: #4a3420;
+}
+
+.nav-dot {
+  top: -1px;
+  right: calc(50% - 26px);
+  width: 11px;
+  height: 11px;
+  z-index: 2;
+  background: radial-gradient(circle at 35% 30%, #ffb3b5 0 15%, #d9363e 45%, #7a1016 100%);
+  border: 1.5px solid var(--wood-edge);
+  box-shadow: 0 0 6px rgba(217, 54, 62, 0.7);
+}
