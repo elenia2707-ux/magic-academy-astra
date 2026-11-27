@@ -4,6 +4,7 @@ import {
   Copy,
   Dices,
   Lock,
+  Music,
   RotateCcw,
   Save,
   Settings,
@@ -18,6 +19,7 @@ import {
   PRESTIGE_UPGRADES,
 } from '../data/prestige';
 import { SCHOOLS } from '../data/schools';
+import { BGM_TRACKS, type BgmTrackId } from '../engine/bgm';
 import { exportSaveCode } from '../engine/save';
 import type { AbyssChoice, ComputedStats, GameState, PrestigeUpgradeId } from '../types/game';
 
@@ -34,12 +36,15 @@ const DIE_PIPS: Record<number, number[]> = {
 interface Props {
   state: GameState;
   stats: ComputedStats;
+  currentBgmTrack: BgmTrackId;
   onExploreAbyssStep: (rolledFace?: number) => void;
   onResolveAbyssChoice: (choice: AbyssChoice) => void;
   onChallengeTower: () => void;
   onBuyPrestigeUpgrade: (id: PrestigeUpgradeId) => void;
   onStartRebirthFlow: () => void;
   onToggleSfx: () => void;
+  onToggleBgm: () => void;
+  onChangeBgmVolume: (volume: number) => void;
   onImportSaveCode: (code: string) => boolean;
   onHardReset: () => void;
 }
@@ -47,12 +52,15 @@ interface Props {
 export const AbyssTab: React.FC<Props> = ({
   state,
   stats,
+  currentBgmTrack,
   onExploreAbyssStep,
   onResolveAbyssChoice,
   onChallengeTower,
   onBuyPrestigeUpgrade,
   onStartRebirthFlow,
   onToggleSfx,
+  onToggleBgm,
+  onChangeBgmVolume,
   onImportSaveCode,
   onHardReset,
 }) => {
@@ -389,13 +397,52 @@ export const AbyssTab: React.FC<Props> = ({
             <div className="panel-title-row">
               <h2 className="panel-title">
                 <Settings size={14} style={{ verticalAlign: -2, marginRight: 5 }} />
-                마법사 상세 능력치
+                음향 &amp; 마법사 능력치
               </h2>
-              <button type="button" className="btn btn-sm" onClick={onToggleSfx}>
-                {state.settings.sfxEnabled ? <Volume2 size={13} /> : <VolumeX size={13} />}
-                효과음 {state.settings.sfxEnabled ? 'ON' : 'OFF'}
-              </button>
+              <div className="bgm-btn-group">
+                <button
+                  type="button"
+                  className={`btn btn-sm ${(state.settings.bgmEnabled ?? true) ? 'btn-gold' : ''}`}
+                  onClick={onToggleBgm}
+                >
+                  {(state.settings.bgmEnabled ?? true) ? <Music size={12} /> : <VolumeX size={12} />}
+                  BGM {(state.settings.bgmEnabled ?? true) ? 'ON' : 'OFF'}
+                </button>
+                <button type="button" className="btn btn-sm" onClick={onToggleSfx}>
+                  {state.settings.sfxEnabled ? <Volume2 size={12} /> : <VolumeX size={12} />}
+                  효과음 {state.settings.sfxEnabled ? 'ON' : 'OFF'}
+                </button>
+              </div>
             </div>
+
+            <div className="bgm-control-card parchment">
+              <div className="bgm-now-row">
+                <div className="bgm-track-meta">
+                  <div className="bgm-track-title">
+                    <Music size={13} />
+                    <span>{BGM_TRACKS[currentBgmTrack].title}</span>
+                  </div>
+                  <div className="bgm-track-sub">
+                    {BGM_TRACKS[currentBgmTrack].subtitle} · 상황별 자동 전환
+                  </div>
+                </div>
+              </div>
+              <label className="bgm-vol-row">
+                <span>음량</span>
+                <input
+                  type="range"
+                  className="bgm-vol-slider"
+                  min={0}
+                  max={100}
+                  step={5}
+                  value={Math.round((state.settings.bgmVolume ?? 0.55) * 100)}
+                  disabled={!(state.settings.bgmEnabled ?? true)}
+                  onChange={(e) => onChangeBgmVolume(Number(e.target.value) / 100)}
+                />
+                <span>{Math.round((state.settings.bgmVolume ?? 0.55) * 100)}%</span>
+              </label>
+            </div>
+
             <div className="stat-grid">
               <div className="stat-box">
                 <span>마력</span>

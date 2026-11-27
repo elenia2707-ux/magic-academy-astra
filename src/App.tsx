@@ -51,6 +51,7 @@ import {
 } from './data/prestige';
 import { RANKS, SCHOOLS } from './data/schools';
 import { SKILL_MAP } from './data/skills';
+import { bgmEngine, type BgmTrackId } from './engine/bgm';
 import { createCombatRuntime, stepCombatTurn } from './engine/combat';
 import { processOfflineProgress } from './engine/offline';
 import {
@@ -255,6 +256,76 @@ export default function App() {
       setCombat(createCombatRuntime(nextState, nextStats, 'stage'));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // P1-6: 상황별 BGM 자동 선택 (마을/학교 · 모험/사냥터 · 보스/시험)
+  const currentBgmTrack: BgmTrackId = useMemo(() => {
+    if (!state.created || rebirthPending) return 'academy';
+    const isBossStory =
+      (storyModal?.kind === 'act' && storyModal.phase === 'boss') ||
+      storyModal?.kind === 'rankExam';
+    const isBossCombat =
+      combat.mode === 'rankBoss' ||
+      combat.mode === 'tower' ||
+      combat.mode === 'abyssElite' ||
+      combat.stageIndex === 4;
+    if (isBossStory || isBossCombat) return 'boss';
+    if (tab === 'battle' || tab === 'abyss') return 'battle';
+    return 'academy';
+  }, [state.created, rebirthPending, storyModal, combat.mode, combat.stageIndex, tab]);
+
+  const bgmEnabled = state.settings.bgmEnabled ?? true;
+  const bgmVolume = state.settings.bgmVolume ?? 0.55;
+
+  // iOS Safari 자동재생 정책 대응: 첫 사용자 제스처에서 오디오 컨텍스트 잠금 해제 + 백그라운드 정지
+  useEffect(() => {
+    const unlock = () => {
+      bgmEngine.unlockFromGesture();
+      window.removeEventListener('pointerdown', unlock, true);
+      window.removeEventListener('touchstart', unlock, true);
+      window.removeEventListener('keydown', unlock, true);
+    };
+    const onVis = () => {
+      bgmEngine.setDocumentHidden(document.hidden);
+    };
+    window.addEventListener('pointerdown', unlock, true);
+    window.addEventListener('touchstart', unlock, true);
+    window.addEventListener('keydown', unlock, true);
+    document.addEventListener('visibilitychange', onVis);
+    return () => {
+      window.removeEventListener('pointerdown', unlock, true);
+      window.removeEventListener('touchstart', unlock, true);
+      window.removeEventListener('keydown', unlock, true);
+      document.removeEventListener('visibilitychange', onVis);
+    };
+  }, []);
+
+  useEffect(() => {
+    bgmEngine.setVolume(bgmVolume);
+  }, [bgmVolume]);
+
+  useEffect(() => {
+    bgmEngine.setEnabled(bgmEnabled);
+  }, [bgmEnabled]);
+
+  useEffect(() => {
+    bgmEngine.setTrack(currentBgmTrack);
+  }, [currentBgmTrack]);
+
+  const handleToggleBgm = useCallback(() => {
+    bgmEngine.unlockFromGesture();
+    setState((prev) => ({
+      ...prev,
+      settings: { ...prev.settings, bgmEnabled: !(prev.settings.bgmEnabled ?? true) },
+    }));
+  }, []);
+
+  const handleChangeBgmVolume = useCallback((vol: number) => {
+    bgmEngine.unlockFromGesture();
+    setState((prev) => ({
+      ...prev,
+      settings: { ...prev.settings, bgmVolume: Math.max(0, Math.min(1, vol)) },
+    }));
   }, []);
 
   // 자동 저장 및 iOS 앱 백그라운드 전환 대비
@@ -1402,6 +1473,7 @@ export default function App() {
                   activeEvent={activeEvent}
                   onResolveEvent={handleResolveAcademyEvent}
                   onDismissEvent={handleDismissAcademyEvent}
+                  onToggleBgm={handleToggleBgm}
                 />
               )}
 
@@ -1467,6 +1539,7 @@ export default function App() {
                 <AbyssTab
                   state={state}
                   stats={stats}
+                  currentBgmTrack={currentBgmTrack}
                   onExploreAbyssStep={handleExploreAbyssStep}
                   onResolveAbyssChoice={handleResolveAbyssChoice}
                   onChallengeTower={handleChallengeTower}
@@ -1481,6 +1554,8 @@ export default function App() {
                       settings: { ...prev.settings, sfxEnabled: !prev.settings.sfxEnabled },
                     }))
                   }
+                  onToggleBgm={handleToggleBgm}
+                  onChangeBgmVolume={handleChangeBgmVolume}
                   onImportSaveCode={(code) => {
                     const loaded = importSaveCode(code);
                     if (!loaded) return false;

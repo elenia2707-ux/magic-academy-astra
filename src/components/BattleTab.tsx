@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { BookOpen, ChevronLeft, ChevronRight, FastForward, FlaskConical, Skull, X } from 'lucide-react';
+import { BookOpen, ChevronLeft, ChevronRight, FastForward, FlaskConical, Music, Skull, VolumeX, X } from 'lucide-react';
 import { ACTS } from '../data/acts';
 import { getMonsterArt } from '../data/art';
 import type { AcademyEventDef } from '../data/blackComedyEvents';
@@ -29,6 +29,7 @@ interface Props {
   activeEvent: AcademyEventDef | null;
   onResolveEvent: (choiceId: string) => void;
   onDismissEvent: () => void;
+  onToggleBgm: () => void;
 }
 
 const STATUS_LABEL: Record<StatusType, string> = {
@@ -69,6 +70,7 @@ export const BattleTab: React.FC<Props> = ({
   activeEvent,
   onResolveEvent,
   onDismissEvent,
+  onToggleBgm,
 }) => {
   const logRef = useRef<HTMLDivElement | null>(null);
   const [enemyModalOpen, setEnemyModalOpen] = useState(false);
@@ -165,6 +167,17 @@ export const BattleTab: React.FC<Props> = ({
           >
             <FastForward size={12} />
             {state.settings.speed}x
+          </button>
+          <button
+            type="button"
+            className={`btn btn-sm btn-ghost bgm-quick-btn ${
+              (state.settings.bgmEnabled ?? true) ? 'is-on' : 'is-off'
+            }`}
+            onClick={onToggleBgm}
+            title={(state.settings.bgmEnabled ?? true) ? '배경음 끄기' : '배경음 켜기'}
+            aria-label="배경음 토글"
+          >
+            {(state.settings.bgmEnabled ?? true) ? <Music size={12} /> : <VolumeX size={12} />}
           </button>
           {!isSpecialMode ? (
             <button

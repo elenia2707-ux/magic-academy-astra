@@ -292,6 +292,8 @@ export interface OfflineSummary {
 export interface GameSettings {
   speed: 1 | 2 | 3;
   sfxEnabled: boolean;
+  bgmEnabled?: boolean;
+  bgmVolume?: number; // 0..1 (기본 0.55)
   autoAdvance: boolean;
   autoDismantleBelow: Rarity | 'none';
   /** P0-5: 자동분해 기본값(일반 이하) 마이그레이션 1회 적용 여부 */

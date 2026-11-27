@@ -75,6 +75,11 @@ function hydrateState(parsed: Partial<GameState>): GameState | null {
     settings: migrateGearSettings({
       ...fallback.settings,
       ...(parsed.settings ?? {}),
+      bgmEnabled: parsed.settings?.bgmEnabled ?? true,
+      bgmVolume:
+        typeof parsed.settings?.bgmVolume === 'number'
+          ? Math.max(0, Math.min(1, parsed.settings.bgmVolume))
+          : 0.55,
     }, parsed.settings?.gearDefaultsV2 === true),
     dailyQuests: ensureDailyQuestsCurrent(parsed.dailyQuests),
   });

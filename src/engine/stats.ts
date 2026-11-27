@@ -195,6 +195,8 @@ export function createNewGameState(
     settings: {
       speed: 2,
       sfxEnabled: true,
+      bgmEnabled: true,
+      bgmVolume: 0.55,
       autoAdvance: true,
       // P0-5: 일반 등급은 기본으로 자동 분해 (보관함 36칸이 일반템으로 막히는 문제)
       autoDismantleBelow: 'rare',

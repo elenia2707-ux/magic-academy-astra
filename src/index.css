@@ -3401,6 +3401,77 @@ select,
   color: var(--parch-ink-soft);
 }
 
+/* =====================================================================
+   🎵 P1-6 · BGM 컨트롤 (음향 설정 카드 · 음량 슬라이더 · 전투 퀵 토글)
+   ===================================================================== */
+.bgm-quick-btn.is-on {
+  color: #f3d796;
+  border-color: rgba(226, 196, 140, 0.45);
+}
+
+.bgm-quick-btn.is-off {
+  color: #8c7b72;
+}
+
+.bgm-control-card {
+  margin-bottom: 10px;
+  padding: 10px 11px;
+  border-radius: 10px;
+  border: 1px solid #5a4126;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.bgm-now-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.bgm-track-meta {
+  min-width: 0;
+  flex: 1;
+}
+
+.bgm-track-title {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-round);
+  font-size: 13.5px;
+  color: var(--parch-ink);
+}
+
+.bgm-track-sub {
+  font-size: 10.5px;
+  color: var(--parch-ink-soft);
+}
+
+.bgm-btn-group {
+  display: flex;
+  gap: 5px;
+  flex-shrink: 0;
+}
+
+.bgm-vol-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--parch-ink);
+}
+
+.bgm-vol-slider {
+  flex: 1;
+  height: 6px;
+  accent-color: #8a2c38;
+  cursor: pointer;
+}
+
+
 
 
 
