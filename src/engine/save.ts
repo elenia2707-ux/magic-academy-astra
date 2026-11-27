@@ -1,4 +1,5 @@
 import { ensureDailyQuestsCurrent } from '../data/dailyQuests';
+import { ensureSanctum } from '../data/sanctum';
 import type { GameSettings, GameState } from '../types/game';
 import { createDefaultPrestige, createEmptyUncreatedState, ensureStarterKit, SAVE_VERSION } from './stats';
 
@@ -82,6 +83,7 @@ function hydrateState(parsed: Partial<GameState>): GameState | null {
           : 0.55,
     }, parsed.settings?.gearDefaultsV2 === true),
     dailyQuests: ensureDailyQuestsCurrent(parsed.dailyQuests),
+    sanctum: ensureSanctum(parsed.sanctum),
   });
 }
 

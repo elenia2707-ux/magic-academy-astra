@@ -9,6 +9,7 @@
 import { ACTS } from '../src/data/acts';
 import { ECON, EXP_CURVE } from '../src/data/economy';
 import { generateEquipment, getEnhanceCost, planBestLoadout, RARITY_META, rollRarity } from '../src/data/equipment';
+import { ARCANE_IMPRINTS, ensureSanctum, getImprintCost, isSanctumUnlocked } from '../src/data/sanctum';
 import { RANKS } from '../src/data/schools';
 import { ACT_RAMP, BOSS_TUNING, MOB_TUNING, createCombatRuntime, stepCombatTurn } from '../src/engine/combat';
 import { applyExpAndLevelUp, computePlayerStats, createNewGameState, getSkillUpgradeCost } from '../src/engine/stats';
@@ -16,9 +17,11 @@ import type { CombatMode, GameState, RankIndex, SchoolId } from '../src/types/ga
 
 const TURN_SEC = 0.78; // 기본 2배속
 const TRANSITION_SEC = 0.47;
-const MAX_SEC = 60 * 60 * 3;
+const MAX_SEC = 60 * 60 * 5;
 const GEAR = process.env.SIM_GEAR !== '0';
 const SPEND = process.env.SIM_ECON !== '0';
+const USE_SANCTUM = process.env.SIM_SANCTUM !== '0';
+const POST_MIN = Number(process.env.SIM_POST_MIN ?? 0);
 const envNum = (k: string) => (process.env[k] ? Number(process.env[k]) : undefined);
 ECON.skillBase = envNum('SIM_SKILL_BASE') ?? ECON.skillBase;
 ECON.skillGrowth = envNum('SIM_SKILL_GROWTH') ?? ECON.skillGrowth;
@@ -41,7 +44,17 @@ if (process.env.SIM_RAMP_ATK) ACT_RAMP.atkShare = Number(process.env.SIM_RAMP_AT
 if (process.env.SIM_BOSS_HP) BOSS_TUNING.hpMult = Number(process.env.SIM_BOSS_HP);
 if (process.env.SIM_BOSS_ATK) BOSS_TUNING.atkMult = Number(process.env.SIM_BOSS_ATK);
 
-type Row = { what: string; min: number; lv: number; tries: number; stones: number; skillLv: number; enh: number; spentPct: number };
+type Row = {
+  what: string;
+  min: number;
+  lv: number;
+  tries: number;
+  stones: number;
+  skillLv: number;
+  enh: number;
+  spentPct: number;
+  imprintSum: number;
+};
 
 function fight(state: GameState, mode: CombatMode, act: number, stage: number) {
   const stats = computePlayerStats(state);
@@ -84,6 +97,28 @@ function spendGreedy(s: GameState): { s: GameState; spent: number } {
       if (!best || cost < best.cost)
         best = { cost, apply: (x) => ({ ...x, equipped: { ...x.equipped, [slot]: { ...it, enhance: it.enhance + 1 } } }) };
     }
+    if (USE_SANCTUM && isSanctumUnlocked(s)) {
+      const sanctum = ensureSanctum(s.sanctum);
+      for (const imp of ARCANE_IMPRINTS) {
+        const lv = sanctum.imprints[imp.id] ?? 0;
+        const cost = getImprintCost(imp.id, lv);
+        if (!best || cost < best.cost) {
+          best = {
+            cost,
+            apply: (x) => {
+              const prev = ensureSanctum(x.sanctum);
+              return {
+                ...x,
+                sanctum: {
+                  imprints: { ...prev.imprints, [imp.id]: (prev.imprints[imp.id] ?? 0) + 1 },
+                  totalStonesSpent: prev.totalStonesSpent + cost,
+                },
+              };
+            },
+          };
+        }
+      }
+    }
     if (!best || s.stones < best.cost) break;
     s = { ...best.apply(s), stones: s.stones - best.cost };
     spent += best.cost;
@@ -95,7 +130,9 @@ function snapshot(s: GameState, earned: number, spent: number) {
   const lv = s.deck.map((d) => s.skills[d]?.level ?? 0);
   const eq = Object.values(s.equipped).filter(Boolean).map((e) => e!.enhance);
   const avg = (a: number[]) => a.reduce((x, y) => x + y, 0) / Math.max(1, a.length);
-  return { stones: s.stones, skillLv: avg(lv), enh: avg(eq), spentPct: earned > 0 ? spent / earned : 0 };
+  const sc = ensureSanctum(s.sanctum);
+  const imprintSum = sc.imprints.overdrive + sc.imprints.aegis + sc.imprints.insight;
+  return { stones: s.stones, skillLv: avg(lv), enh: avg(eq), spentPct: earned > 0 ? spent / earned : 0, imprintSum };
 }
 
 function runSchool(school: SchoolId) {
@@ -149,11 +186,54 @@ function runSchool(school: SchoolId) {
     // boss
     tries++;
     if (r.win) {
-      rows.push({ what: `${act}막 보스`, min: t / 60, lv: s.level, tries, ...snapshot(s, earned, spent) });
       s = { ...s, clearedActs: [...s.clearedActs, act] };
+      if (SPEND && act === 6) { const sp = spendGreedy(s); s = sp.s; spent += sp.spent; }
+      rows.push({ what: `${act}막 보스`, min: t / 60, lv: s.level, tries, ...snapshot(s, earned, spent) });
       tries = 0; act++; stage = 0;
     } else { stage = 3; retry = 5; }
   }
+
+  // P1-7: 6막 클리어 이후 추가 엔드게임 파밍 시뮬 (SIM_POST_MIN > 0)
+  if (POST_MIN > 0 && s.clearedActs.includes(6)) {
+    const startPostT = t;
+    const endPostT = t + POST_MIN * 60;
+    let postEarned = 0;
+    let postSpent = 0;
+    const checkpoints = [30, 60, 120].filter((m) => m <= POST_MIN);
+    if (!checkpoints.includes(POST_MIN)) checkpoints.push(POST_MIN);
+    let cpIdx = 0;
+    while (t < endPostT) {
+      const r = fight(s, 'stage', 6, 3);
+      t += r.turns * TURN_SEC + TRANSITION_SEC;
+      if (r.win) {
+        const lv = applyExpAndLevelUp(s.level, s.exp, r.enemy.expReward);
+        const gain = Math.round(r.enemy.stoneReward);
+        earned += gain;
+        postEarned += gain;
+        s = { ...s, level: lv.level, exp: lv.exp, stones: s.stones + gain };
+        if (SPEND) {
+          const sp = spendGreedy(s);
+          s = sp.s;
+          spent += sp.spent;
+          postSpent += sp.spent;
+        }
+        if (GEAR && Math.random() < 0.24) s = dropAndEquip(s, 6, false);
+      }
+      const elapsedPostMin = (t - startPostT) / 60;
+      if (cpIdx < checkpoints.length && elapsedPostMin >= checkpoints[cpIdx]) {
+        const snap = snapshot(s, postEarned, postSpent);
+        rows.push({
+          what: `후반+${checkpoints[cpIdx]}분`,
+          min: t / 60,
+          lv: s.level,
+          tries: 0,
+          ...snap,
+        });
+        cpIdx++;
+      }
+    }
+  }
+
   const avg = (a: number[]) => a.reduce((x, y) => x + y, 0) / Math.max(1, a.length);
   const actLine = Object.entries(perAct)
     .map(([a, v]) => `${a}막 ${avg(v.turns).toFixed(1)}턴/${Math.round(avg(v.hp) * 100)}%${v.deaths ? `/✝${v.deaths}` : ''}`)
@@ -166,6 +246,10 @@ for (const sc of schools) {
   const r = runSchool(sc);
   console.log(`\n[${sc}] 일반몹 평균 ${r.mobTurns.toFixed(1)}턴 · 전투당 HP손실 ${Math.round(r.mobHp * 100)}% · 일반몹 패배 ${r.mobDeaths}회`);
   console.log(`  [진행 중 일반몹] ${r.actLine}`);
-  for (const row of r.rows)
-    console.log(`  ${row.what.padEnd(10)} ${row.min.toFixed(1).padStart(6)}분  Lv${row.lv}  (${row.tries}회차)  보유◆${row.stones.toLocaleString()}  스킬Lv${row.skillLv.toFixed(1)}  강화+${row.enh.toFixed(1)}  소비율${Math.round(row.spentPct * 100)}%`);
+  for (const row of r.rows) {
+    const impTag = row.imprintSum > 0 ? `  각인Σ${row.imprintSum}` : '';
+    console.log(
+      `  ${row.what.padEnd(10)} ${row.min.toFixed(1).padStart(6)}분  Lv${row.lv}  (${row.tries}회차)  보유◆${row.stones.toLocaleString()}  스킬Lv${row.skillLv.toFixed(1)}  강화+${row.enh.toFixed(1)}  소비율${Math.round(row.spentPct * 100)}%${impTag}`
+    );
+  }
 }

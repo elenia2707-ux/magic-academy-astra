@@ -49,6 +49,13 @@ import {
   getPrestigeUpgradeCost,
   PRESTIGE_UPGRADES,
 } from './data/prestige';
+import {
+  ARCANE_TRANSMUTES,
+  ensureSanctum,
+  getImprintCost,
+  getImprintDef,
+  isSanctumUnlocked,
+} from './data/sanctum';
 import { RANKS, SCHOOLS } from './data/schools';
 import { SKILL_MAP } from './data/skills';
 import { bgmEngine, type BgmTrackId } from './engine/bgm';
@@ -76,6 +83,8 @@ import {
 } from './engine/stats';
 import type {
   AbyssChoice,
+  ArcaneImprintId,
+  ArcaneTransmuteId,
   CombatMode,
   CombatRuntime,
   DailyQuestId,
@@ -1323,6 +1332,64 @@ export default function App() {
     showToast(`성좌 각인 완료: ${def.name} Lv.${curLv + 1}`);
   };
 
+  // P1-7: 후반 마석 소모처 — 심연 비전 각인 (무한 성장) & 비전 마석 연성
+  const handleUpgradeImprint = (id: ArcaneImprintId) => {
+    if (!isSanctumUnlocked(state)) return;
+    const sanctum = ensureSanctum(state.sanctum);
+    const curLv = sanctum.imprints[id] ?? 0;
+    const cost = getImprintCost(id, curLv);
+    if (state.stones < cost) return;
+    const def = getImprintDef(id);
+    playSfx('heal', state.settings.sfxEnabled);
+    setState((prev) => {
+      if (!isSanctumUnlocked(prev)) return prev;
+      const prevSanctum = ensureSanctum(prev.sanctum);
+      const lv = prevSanctum.imprints[id] ?? 0;
+      const c = getImprintCost(id, lv);
+      if (prev.stones < c) return prev;
+      return {
+        ...prev,
+        stones: prev.stones - c,
+        sanctum: {
+          imprints: { ...prevSanctum.imprints, [id]: lv + 1 },
+          totalStonesSpent: prevSanctum.totalStonesSpent + c,
+        },
+      };
+    });
+    showToast(`🔮 ${def.name} Lv.${curLv + 1} 각인 완료! (${def.formatCurrentBonus(curLv + 1)})`);
+  };
+
+  const handleTransmuteStones = (id: ArcaneTransmuteId) => {
+    if (!isSanctumUnlocked(state)) return;
+    const def = ARCANE_TRANSMUTES.find((t) => t.id === id);
+    if (!def || state.stones < def.cost) return;
+    if (id === 'lantern' && state.abyss.lanterns >= state.abyss.maxLanterns) {
+      showToast('심연 등불이 이미 가득 차 있습니다.');
+      return;
+    }
+    playSfx('victory', state.settings.sfxEnabled);
+    setState((prev) => {
+      if (!isSanctumUnlocked(prev) || prev.stones < def.cost) return prev;
+      if (id === 'lantern' && prev.abyss.lanterns >= prev.abyss.maxLanterns) return prev;
+      const prevSanctum = ensureSanctum(prev.sanctum);
+      return {
+        ...prev,
+        stones: prev.stones - def.cost,
+        tomeShards: prev.tomeShards + (id === 'tome' ? 2 : 0),
+        eggShards: prev.eggShards + (id === 'egg' ? 2 : 0),
+        abyss:
+          id === 'lantern'
+            ? { ...prev.abyss, lanterns: Math.min(prev.abyss.maxLanterns, prev.abyss.lanterns + 1) }
+            : prev.abyss,
+        sanctum: {
+          ...prevSanctum,
+          totalStonesSpent: prevSanctum.totalStonesSpent + def.cost,
+        },
+      };
+    });
+    showToast(`✨ 비전 연성 완료: ${def.name} (${def.rewardLabel})`);
+  };
+
   // 알림 점
   const nextRank = state.rank < 5 ? RANKS[state.rank + 1] : null;
   const examReady =
@@ -1543,6 +1610,8 @@ export default function App() {
                   onExploreAbyssStep={handleExploreAbyssStep}
                   onResolveAbyssChoice={handleResolveAbyssChoice}
                   onChallengeTower={handleChallengeTower}
+                  onUpgradeImprint={handleUpgradeImprint}
+                  onTransmuteStones={handleTransmuteStones}
                   onBuyPrestigeUpgrade={handleBuyPrestigeUpgrade}
                   onStartRebirthFlow={() => {
                     clearPendingCombatTimer();

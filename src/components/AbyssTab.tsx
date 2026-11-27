@@ -3,11 +3,13 @@ import {
   Compass,
   Copy,
   Dices,
+  Flame,
   Lock,
   Music,
   RotateCcw,
   Save,
   Settings,
+  Sparkles,
   Swords,
   Volume2,
   VolumeX,
@@ -18,10 +20,23 @@ import {
   getPrestigeUpgradeCost,
   PRESTIGE_UPGRADES,
 } from '../data/prestige';
+import {
+  ARCANE_IMPRINTS,
+  ARCANE_TRANSMUTES,
+  ensureSanctum,
+  getImprintCost,
+} from '../data/sanctum';
 import { SCHOOLS } from '../data/schools';
 import { BGM_TRACKS, type BgmTrackId } from '../engine/bgm';
 import { exportSaveCode } from '../engine/save';
-import type { AbyssChoice, ComputedStats, GameState, PrestigeUpgradeId } from '../types/game';
+import type {
+  AbyssChoice,
+  ArcaneImprintId,
+  ArcaneTransmuteId,
+  ComputedStats,
+  GameState,
+  PrestigeUpgradeId,
+} from '../types/game';
 
 /** 3x3 주사위 눈 도트 위치 (0..8) */
 const DIE_PIPS: Record<number, number[]> = {
@@ -40,6 +55,8 @@ interface Props {
   onExploreAbyssStep: (rolledFace?: number) => void;
   onResolveAbyssChoice: (choice: AbyssChoice) => void;
   onChallengeTower: () => void;
+  onUpgradeImprint: (id: ArcaneImprintId) => void;
+  onTransmuteStones: (id: ArcaneTransmuteId) => void;
   onBuyPrestigeUpgrade: (id: PrestigeUpgradeId) => void;
   onStartRebirthFlow: () => void;
   onToggleSfx: () => void;
@@ -56,6 +73,8 @@ export const AbyssTab: React.FC<Props> = ({
   onExploreAbyssStep,
   onResolveAbyssChoice,
   onChallengeTower,
+  onUpgradeImprint,
+  onTransmuteStones,
   onBuyPrestigeUpgrade,
   onStartRebirthFlow,
   onToggleSfx,
@@ -263,47 +282,154 @@ export const AbyssTab: React.FC<Props> = ({
         </div>
       )}
 
-      {/* 2. 무한 심연 탑 */}
-      {sub === 'tower' && (
-        <div className="panel">
-          <div className="panel-title-row">
-            <h2 className="panel-title">무한 심연 탑</h2>
-            <span className="panel-sub">최고 기록: {state.highestTowerFloor}층</span>
-          </div>
-          {!towerUnlocked ? (
-            <div className="list-card">
-              <div style={{ fontSize: 12.5, color: '#c5bdb0', lineHeight: 1.6 }}>
-                <Lock size={14} style={{ verticalAlign: -2, marginRight: 5 }} />
-                <strong>제 6막 [부활한 마왕 발바르]</strong> 토벌 후 개방되는 엔드 콘텐츠입니다.
-                <br />
-                5층마다 심연 군주가 등장하며, 올라간 층수만큼 시간 회귀 보상(별의 잔재)이 크게
-                증가합니다.
+      {/* 2. 무한 심연 탑 & P1-7 심연 비전 제련소 */}
+      {sub === 'tower' && (() => {
+        const sanctum = ensureSanctum(state.sanctum);
+        return (
+          <>
+            <div className="panel">
+              <div className="panel-title-row">
+                <h2 className="panel-title">무한 심연 탑</h2>
+                <span className="panel-sub">최고 기록: {state.highestTowerFloor}층</span>
               </div>
+              {!towerUnlocked ? (
+                <div className="list-card">
+                  <div style={{ fontSize: 12.5, color: '#c5bdb0', lineHeight: 1.6 }}>
+                    <Lock size={14} style={{ verticalAlign: -2, marginRight: 5 }} />
+                    <strong>제 6막 [부활한 마왕 발바르]</strong> 토벌 후 개방되는 엔드 콘텐츠입니다.
+                    <br />
+                    5층마다 심연 군주가 등장하며, 올라간 층수만큼 시간 회귀 보상(별의 잔재)이 크게
+                    증가합니다.
+                  </div>
+                </div>
+              ) : (
+                <div className="list-card highlight">
+                  <div className="list-top">
+                    <span className="list-title" style={{ color: '#e3c481' }}>
+                      도전 가능: 제 {state.towerFloor}층
+                    </span>
+                    <span className="tag">보상: 금서·마석·회귀 점수</span>
+                  </div>
+                  <div className="list-desc">
+                    층수가 오를수록 적이 기하급수적으로 강해집니다. 덱 순서와 흑마법·사역마를
+                    극한까지 조합해 보세요.
+                  </div>
+                  <button
+                    type="button"
+                    className="btn btn-crimson btn-block"
+                    onClick={onChallengeTower}
+                  >
+                    <Swords size={14} />
+                    무한 심연 탑 {state.towerFloor}층 도전
+                  </button>
+                </div>
+              )}
             </div>
-          ) : (
-            <div className="list-card highlight">
-              <div className="list-top">
-                <span className="list-title" style={{ color: '#e3c481' }}>
-                  도전 가능: 제 {state.towerFloor}층
+
+            {/* P1-7: 후반 마석 소모처 — 심연 비전 제련소 */}
+            <div className="panel">
+              <div className="panel-title-row">
+                <h2 className="panel-title">
+                  <Flame size={14} style={{ verticalAlign: -2, marginRight: 5 }} />
+                  심연 비전 제련소
+                </h2>
+                <span className="panel-sub" style={{ color: '#e3c481' }}>
+                  보유 ◆{state.stones.toLocaleString()}
                 </span>
-                <span className="tag">보상: 금서·마석·회귀 점수</span>
               </div>
-              <div className="list-desc">
-                층수가 오를수록 적이 기하급수적으로 강해집니다. 덱 순서와 흑마법·사역마를
-                극한까지 조합해 보세요.
-              </div>
-              <button
-                type="button"
-                className="btn btn-crimson btn-block"
-                onClick={onChallengeTower}
-              >
-                <Swords size={14} />
-                무한 심연 탑 {state.towerFloor}층 도전
-              </button>
+
+              {!towerUnlocked ? (
+                <div className="list-card">
+                  <div style={{ fontSize: 12.5, color: '#c5bdb0', lineHeight: 1.6 }}>
+                    <Lock size={14} style={{ verticalAlign: -2, marginRight: 5 }} />
+                    <strong>제 6막 클리어</strong> 또는 <strong>시간 회귀 1회</strong> 이후 개방됩니다.
+                    <br />
+                    남는 마석을 상한 없는 영구 전투 각인과 금서·등불·알 조각 연성에 소모할 수
+                    있습니다.
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="sanctum-intro">
+                    장비와 스킬이 한계에 닿은 대마도사를 위한 심연 화로입니다. 마석을 태워
+                    무한히 각인하거나 희귀 재료로 연성하세요.
+                    {sanctum.totalStonesSpent > 0 && (
+                      <> (누적 소모 ◆{sanctum.totalStonesSpent.toLocaleString()})</>
+                    )}
+                  </div>
+
+                  <div className="sanctum-imprint-list">
+                    {ARCANE_IMPRINTS.map((def) => {
+                      const lv = sanctum.imprints[def.id] ?? 0;
+                      const cost = getImprintCost(def.id, lv);
+                      const canAfford = state.stones >= cost;
+                      return (
+                        <div key={def.id} className="list-card">
+                          <div className="sanctum-imprint-row">
+                            <div className="sanctum-imprint-meta">
+                              <div className="list-title" style={{ color: def.accent }}>
+                                {def.name}{' '}
+                                <span className="tag">Lv.{lv}</span>
+                              </div>
+                              <div className="sanctum-imprint-sub">
+                                {def.subtitle} · Lv당 {def.effectPerLevelLabel}
+                              </div>
+                              <div className="sanctum-imprint-bonus">
+                                현재 효과: <strong>{def.formatCurrentBonus(lv)}</strong>
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              className={`btn btn-sm ${canAfford ? 'btn-gold' : ''}`}
+                              disabled={!canAfford}
+                              onClick={() => onUpgradeImprint(def.id)}
+                            >
+                              각인 ◆{cost.toLocaleString()}
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div className="sanctum-transmute-head">
+                    <span>
+                      <Sparkles size={13} style={{ verticalAlign: -2, marginRight: 4 }} />
+                      비전 마석 연성
+                    </span>
+                    <span style={{ fontSize: 11, color: '#a99888' }}>
+                      등불 {state.abyss.lanterns}/{state.abyss.maxLanterns} · 금서 {state.tomeShards} · 알 {state.eggShards}
+                    </span>
+                  </div>
+                  <div className="sanctum-transmute-grid">
+                    {ARCANE_TRANSMUTES.map((tr) => {
+                      const lanternFull =
+                        tr.id === 'lantern' && state.abyss.lanterns >= state.abyss.maxLanterns;
+                      const disabled = state.stones < tr.cost || lanternFull;
+                      return (
+                        <button
+                          key={tr.id}
+                          type="button"
+                          className="sanctum-transmute-btn"
+                          disabled={disabled}
+                          onClick={() => onTransmuteStones(tr.id)}
+                          title={tr.hint}
+                        >
+                          <span className="sanctum-t-name">{tr.name}</span>
+                          <span className="sanctum-t-reward">
+                            {lanternFull ? '가득 참' : tr.rewardLabel}
+                          </span>
+                          <span className="sanctum-t-cost">◆{tr.cost.toLocaleString()}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
             </div>
-          )}
-        </div>
-      )}
+          </>
+        );
+      })()}
 
       {/* 3. 선택형 환생: 시간 회귀 & 별의 성좌 */}
       {sub === 'rebirth' && (

@@ -2,6 +2,7 @@ import { createFreshDailyQuests, ensureDailyQuestsCurrent } from '../data/dailyQ
 import { getEnhanceMultiplier, generateEquipment } from '../data/equipment';
 import { FAMILIARS } from '../data/familiars';
 import { getActiveInfirmaryEffect } from '../data/infirmary';
+import { createDefaultSanctum, getSanctumBonuses } from '../data/sanctum';
 import { RANKS, SCHOOLS } from '../data/schools';
 import { SKILL_MAP } from '../data/skills';
 import type {
@@ -205,6 +206,7 @@ export function createNewGameState(
     dailyQuests: existingDailyQuests
       ? ensureDailyQuestsCurrent(existingDailyQuests)
       : createFreshDailyQuests(),
+    sanctum: createDefaultSanctum(),
     lastSavedAt: Date.now(),
     totalKills: 0,
   };
@@ -280,10 +282,13 @@ export function computePlayerStats(state: GameState): ComputedStats {
     }
   }
 
-  // 학파 + 계급 + 별의 성좌(환생) + P1-3 양호실 처방 배율
+  // 학파 + 계급 + 별의 성좌(환생) + P1-3 양호실 처방 + P1-7 심연 비전 각인 배율
   const starPowerMult = 1 + (up.starPower ?? 0) * 0.18;
   const starVitMult = 1 + (up.starVitality ?? 0) * 0.18;
   const infEffect = getActiveInfirmaryEffect(state);
+  const sanctumBonus = getSanctumBonuses(state);
+  critRate += sanctumBonus.critRateBonus;
+  critDmg += sanctumBonus.critDmgBonus;
 
   const magic = Math.round(
     (baseMagic + eqMagic) *
@@ -291,6 +296,7 @@ export function computePlayerStats(state: GameState): ComputedStats {
       rankInfo.statMult *
       (1 + famMagicPct / 100) *
       starPowerMult *
+      sanctumBonus.magicMult *
       (infEffect?.magicMult ?? 1)
   );
   const maxHp = Math.round(
@@ -299,6 +305,7 @@ export function computePlayerStats(state: GameState): ComputedStats {
       rankInfo.statMult *
       (1 + famHpPct / 100) *
       starVitMult *
+      sanctumBonus.hpMult *
       (infEffect?.hpMult ?? 1)
   );
   const maxMp = Math.round((baseMp + eqMp) * (state.school === 'frost' ? 1.18 : 1));
@@ -308,6 +315,7 @@ export function computePlayerStats(state: GameState): ComputedStats {
       rankInfo.statMult *
       (1 + famDefPct / 100) *
       starVitMult *
+      sanctumBonus.defMult *
       (infEffect?.defMult ?? 1)
   );
 

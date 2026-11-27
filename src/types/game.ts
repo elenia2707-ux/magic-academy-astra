@@ -321,6 +321,14 @@ export interface InfirmaryState {
   visits: number;
 }
 
+export type ArcaneImprintId = 'overdrive' | 'aegis' | 'insight';
+export type ArcaneTransmuteId = 'lantern' | 'tome' | 'egg';
+
+export interface ArcaneSanctumState {
+  imprints: Record<ArcaneImprintId, number>;
+  totalStonesSpent: number;
+}
+
 export interface GameState {
   version: number;
   created: boolean;
@@ -355,6 +363,7 @@ export interface GameState {
   settings: GameSettings;
   dailyQuests: DailyQuestState;
   infirmary?: InfirmaryState | null;
+  sanctum?: ArcaneSanctumState;
   lastSavedAt: number;
   totalKills: number;
 }
