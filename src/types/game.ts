@@ -285,6 +285,17 @@ export interface GameSettings {
   gearDefaultsV2?: boolean;
 }
 
+export type DailyQuestId = 'kills' | 'skillUpgrade' | 'boss';
+
+export interface DailyQuestState {
+  /** 로컬 자정(00:00) 기준 YYYY-MM-DD */
+  dateKey: string;
+  progress: Record<DailyQuestId, number>;
+  claimed: Record<DailyQuestId, boolean>;
+  /** 3개 과제 모두 수령 후 루시아 개근 도장 보너스 수령 여부 */
+  bonusClaimed: boolean;
+}
+
 export interface GameState {
   version: number;
   created: boolean;
@@ -317,6 +328,7 @@ export interface GameState {
   abyss: AbyssState;
   prestige: PrestigeState;
   settings: GameSettings;
+  dailyQuests: DailyQuestState;
   lastSavedAt: number;
   totalKills: number;
 }

@@ -1,6 +1,17 @@
 import React, { useState } from 'react';
-import { BookMarked, Flame, GraduationCap, Lock, Sparkles, Swords, Users } from 'lucide-react';
+import { BookMarked, Check, Flame, GraduationCap, Lock, ScrollText, Sparkles, Swords, Users } from 'lucide-react';
 import { ACTS } from '../data/acts';
+import {
+  areAllDailyQuestsClaimed,
+  DAILY_QUESTS,
+  ensureDailyQuestsCurrent,
+  formatMidnightCountdown,
+  formatRewardSummary,
+  getDailyBonusReward,
+  getDailyQuestReward,
+  getLuciaDailyLine,
+  isDailyQuestClaimable,
+} from '../data/dailyQuests';
 import {
   getProfessorGreeting,
   getSchoolProfessorId,
@@ -10,7 +21,14 @@ import {
 import { CATEGORY_META, RANK_EXAM_BOSSES, RANKS, SCHOOLS } from '../data/schools';
 import { getSkillsForPlayer, SKILL_MAP } from '../data/skills';
 import { getSkillUpgradeCost } from '../engine/stats';
-import type { ComputedStats, GameState, MonsterDef, ProfessorId, SkillDef } from '../types/game';
+import type {
+  ComputedStats,
+  DailyQuestId,
+  GameState,
+  MonsterDef,
+  ProfessorId,
+  SkillDef,
+} from '../types/game';
 import { MonsterPortrait, NpcPortrait } from './GothicArt';
 import { MonsterShowcaseModal, ProfessorShowcaseModal } from './Modals';
 import { SkillIcon } from './SkillArt';
@@ -18,12 +36,15 @@ import { SkillIcon } from './SkillArt';
 interface Props {
   state: GameState;
   stats: ComputedStats;
+  dailyClaimable: number;
   onAssignTraining: (slotIdx: number, skillId: string | null) => void;
   onUnlockDarkSkill: (skillId: string) => void;
   onUpgradeSkillWithStones: (skillId: string) => void;
   onChallengeRankExam: () => void;
   onOpenStory: (act: number, archiveMode?: boolean) => void;
   onSelectAct: (act: number) => void;
+  onClaimDailyQuest: (id: DailyQuestId) => void;
+  onClaimDailyBonus: () => void;
 }
 
 type ClassroomFilter = 'all' | 'school' | 'ward' | 'holy';
@@ -31,19 +52,27 @@ type ClassroomFilter = 'all' | 'school' | 'ward' | 'holy';
 export const SchoolTab: React.FC<Props> = ({
   state,
   stats,
+  dailyClaimable,
   onAssignTraining,
   onUnlockDarkSkill,
   onUpgradeSkillWithStones,
   onChallengeRankExam,
   onOpenStory,
   onSelectAct,
+  onClaimDailyQuest,
+  onClaimDailyBonus,
 }) => {
-  const [sub, setSub] = useState<'class' | 'forbidden' | 'headmaster'>('class');
+  const [sub, setSub] = useState<'class' | 'forbidden' | 'headmaster' | 'daily'>('class');
   const [classFilter, setClassFilter] = useState<ClassroomFilter>('all');
   const [inspectBoss, setInspectBoss] = useState<{ monster: MonsterDef; actLabel: string } | null>(
     null
   );
   const [inspectProfessor, setInspectProfessor] = useState<ProfessorId | null>(null);
+
+  const dailyState = ensureDailyQuestsCurrent(state.dailyQuests);
+  const allDailyClaimed = areAllDailyQuestsClaimed(dailyState);
+  const allDailyDone = allDailyClaimed && dailyState.bonusClaimed;
+  const dailyBonusReward = getDailyBonusReward(state);
 
   const allSkills = getSkillsForPlayer(state.school);
   const normalSkills = allSkills.filter((s) => s.category !== 'dark');
@@ -64,9 +93,13 @@ export const SchoolTab: React.FC<Props> = ({
     state.level >= nextRank.reqLevel &&
     (nextRank.reqClearedAct === 0 || state.clearedActs.includes(nextRank.reqClearedAct));
 
-  const renderProfessorBanner = (profId: ProfessorId, badgeText?: string) => {
+  const renderProfessorBanner = (
+    profId: ProfessorId,
+    badgeText?: string,
+    customQuote?: string
+  ) => {
     const prof = PROFESSORS[profId];
-    const line = getProfessorGreeting(profId, state);
+    const line = customQuote ?? getProfessorGreeting(profId, state);
     return (
       <div className="professor-banner">
         <button
@@ -210,7 +243,7 @@ export const SchoolTab: React.FC<Props> = ({
 
   return (
     <div>
-      <div className="subtabs">
+      <div className="subtabs school-subtabs">
         <button
           type="button"
           className={`subtab-btn ${sub === 'class' ? 'active' : ''}`}
@@ -223,19 +256,27 @@ export const SchoolTab: React.FC<Props> = ({
           className={`subtab-btn ${sub === 'forbidden' ? 'active' : ''}`}
           onClick={() => setSub('forbidden')}
         >
-          금서 도서관
+          금서고
         </button>
         <button
           type="button"
           className={`subtab-btn ${sub === 'headmaster' ? 'active' : ''}`}
           onClick={() => setSub('headmaster')}
         >
-          교장실·승급
+          교장실
+        </button>
+        <button
+          type="button"
+          className={`subtab-btn ${sub === 'daily' ? 'active' : ''}`}
+          onClick={() => setSub('daily')}
+        >
+          과제
+          {dailyClaimable > 0 && <span className="subtab-badge">{dailyClaimable}</span>}
         </button>
       </div>
 
       {/* 자동 수련 슬롯 요약 (교실/도서관 공통) */}
-      {sub !== 'headmaster' && (
+      {(sub === 'class' || sub === 'forbidden') && (
         <div className="panel">
           <div className="panel-title-row">
             <h2 className="panel-title">자동 수련 슬롯</h2>
@@ -278,6 +319,122 @@ export const SchoolTab: React.FC<Props> = ({
                 </div>
               );
             })}
+          </div>
+        </div>
+      )}
+
+      {sub === 'daily' && (
+        <div className="panel">
+          <div className="panel-title-row">
+            <h2 className="panel-title">
+              <ScrollText size={14} style={{ verticalAlign: -2, marginRight: 5 }} />
+              루시아의 오늘의 과제
+            </h2>
+            <span className="panel-sub">{formatMidnightCountdown()}</span>
+          </div>
+
+          {renderProfessorBanner(
+            'lucia',
+            `신입생 담임 · ${dailyState.dateKey}`,
+            getLuciaDailyLine(state, dailyClaimable, allDailyDone)
+          )}
+
+          <div className="daily-quest-list">
+            {DAILY_QUESTS.map((def) => {
+              const cur = Math.min(def.target, dailyState.progress[def.id]);
+              const pct = Math.min(100, Math.round((cur / def.target) * 100));
+              const claimed = dailyState.claimed[def.id];
+              const claimable = isDailyQuestClaimable(dailyState, def);
+              const reward = getDailyQuestReward(def.id, state);
+
+              return (
+                <div
+                  key={def.id}
+                  className={`daily-quest-card parchment ${claimable ? 'claimable' : ''} ${
+                    claimed ? 'claimed' : ''
+                  }`}
+                >
+                  <div className="dq-top">
+                    <div className="dq-title-wrap">
+                      <span className="dq-title">{def.title}</span>
+                      <span className="dq-count">
+                        {cur} / {def.target}
+                      </span>
+                    </div>
+                    {claimed && (
+                      <span className="wax-seal" aria-label="완료 도장">
+                        <Check size={11} strokeWidth={3} />
+                        {def.stampLabel}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="dq-desc">{def.description}</div>
+
+                  <div className="dq-progress-track">
+                    <div className="dq-progress-fill" style={{ width: `${pct}%` }} />
+                  </div>
+
+                  <div className="dq-foot">
+                    <span className="dq-reward">{formatRewardSummary(reward)}</span>
+                    {claimed ? (
+                      <span className="dq-done-label">수령 완료</span>
+                    ) : (
+                      <button
+                        type="button"
+                        className={`btn btn-sm ${claimable ? 'btn-gold' : ''}`}
+                        disabled={!claimable}
+                        onClick={() => onClaimDailyQuest(def.id)}
+                      >
+                        {claimable ? '보상 받기' : '진행 중'}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* 3개 과제 개근 봉인 도장 보너스 */}
+          <div
+            className={`daily-bonus-card parchment ${
+              allDailyClaimed && !dailyState.bonusClaimed ? 'claimable' : ''
+            } ${dailyState.bonusClaimed ? 'claimed' : ''}`}
+          >
+            <div className="dq-bonus-head">
+              <div>
+                <div className="dq-title">담임 루시아의 개근 봉인 도장</div>
+                <div className="dq-desc" style={{ marginBottom: 0 }}>
+                  오늘의 과제 3종을 모두 마치고 추가 보상을 받으세요.
+                </div>
+              </div>
+              <div className="wax-stamp-row" aria-label="개근 도장 현황">
+                {DAILY_QUESTS.map((def) => (
+                  <span
+                    key={def.id}
+                    className={`wax-stamp-slot ${dailyState.claimed[def.id] ? 'stamped' : ''}`}
+                    title={def.title}
+                  >
+                    {dailyState.claimed[def.id] ? '✦' : '·'}
+                  </span>
+                ))}
+              </div>
+            </div>
+            <div className="dq-foot" style={{ marginTop: 8 }}>
+              <span className="dq-reward">{formatRewardSummary(dailyBonusReward)}</span>
+              {dailyState.bonusClaimed ? (
+                <span className="dq-done-label">개근 완료</span>
+              ) : (
+                <button
+                  type="button"
+                  className={`btn btn-sm ${allDailyClaimed ? 'btn-gold' : ''}`}
+                  disabled={!allDailyClaimed}
+                  onClick={onClaimDailyBonus}
+                >
+                  {allDailyClaimed ? '개근 보상 받기' : `${DAILY_QUESTS.filter((q) => dailyState.claimed[q.id]).length} / 3`}
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}

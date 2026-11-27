@@ -1,3 +1,4 @@
+import { ensureDailyQuestsCurrent, incrementDailyQuest } from '../data/dailyQuests';
 import { effectiveStoneReward } from '../data/economy';
 import { ACTS } from '../data/acts';
 import { generateEquipment, RARITY_META } from '../data/equipment';
@@ -18,7 +19,14 @@ export function processOfflineProgress(
 ): { nextState: GameState; summary: OfflineSummary | null } {
   const rawElapsedSec = Math.floor((nowMs - state.lastSavedAt) / 1000);
   if (rawElapsedSec < 30) {
-    return { nextState: { ...state, lastSavedAt: nowMs }, summary: null };
+    return {
+      nextState: {
+        ...state,
+        dailyQuests: ensureDailyQuestsCurrent(state.dailyQuests, nowMs),
+        lastSavedAt: nowMs,
+      },
+      summary: null,
+    };
   }
 
   const elapsedSec = Math.min(MAX_OFFLINE_SEC, rawElapsedSec);
@@ -81,6 +89,11 @@ export function processOfflineProgress(
     trainingSlots: trained.trainingSlots,
     inventory,
     totalKills: state.totalKills + kills,
+    dailyQuests: incrementDailyQuest(
+      state.dailyQuests,
+      { kills, skillUpgrade: trained.completedNames.length },
+      nowMs
+    ),
     abyss: {
       ...state.abyss,
       lanterns: Math.min(state.abyss.maxLanterns, state.abyss.lanterns + lanternsRecovered),

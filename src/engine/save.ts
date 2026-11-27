@@ -1,3 +1,4 @@
+import { ensureDailyQuestsCurrent } from '../data/dailyQuests';
 import type { GameSettings, GameState } from '../types/game';
 import { createDefaultPrestige, createEmptyUncreatedState, ensureStarterKit, SAVE_VERSION } from './stats';
 
@@ -45,6 +46,7 @@ function hydrateState(parsed: Partial<GameState>): GameState | null {
   if (!parsed || typeof parsed !== 'object' || !parsed.created) return null;
   const fallback = createEmptyUncreatedState();
   // P0-4: 기존 세이브에도 시작 스킬 3종 지급 + 덱 빈칸 채움
+  // P1-2: 기존 세이브에 dailyQuests 자동 생성 및 자정 경과 시 초기화
   return ensureStarterKit({
     ...fallback,
     ...parsed,
@@ -65,6 +67,7 @@ function hydrateState(parsed: Partial<GameState>): GameState | null {
       ...fallback.settings,
       ...(parsed.settings ?? {}),
     }, parsed.settings?.gearDefaultsV2 === true),
+    dailyQuests: ensureDailyQuestsCurrent(parsed.dailyQuests),
   });
 }
 

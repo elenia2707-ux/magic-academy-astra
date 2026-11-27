@@ -1,9 +1,11 @@
+import { createFreshDailyQuests, ensureDailyQuestsCurrent } from '../data/dailyQuests';
 import { getEnhanceMultiplier, generateEquipment } from '../data/equipment';
 import { FAMILIARS } from '../data/familiars';
 import { RANKS, SCHOOLS } from '../data/schools';
 import { SKILL_MAP } from '../data/skills';
 import type {
   ComputedStats,
+  DailyQuestState,
   GameState,
   Gender,
   MagicCategory,
@@ -123,7 +125,8 @@ export function createNewGameState(
   playerName: string,
   gender: Gender,
   school: SchoolId,
-  existingPrestige?: PrestigeState
+  existingPrestige?: PrestigeState,
+  existingDailyQuests?: DailyQuestState
 ): GameState {
   const prestige = existingPrestige ?? createDefaultPrestige();
   const startWealthLv = prestige.upgrades.startingWealth ?? 0;
@@ -193,6 +196,9 @@ export function createNewGameState(
       autoDismantleBelow: 'rare',
       gearDefaultsV2: true,
     },
+    dailyQuests: existingDailyQuests
+      ? ensureDailyQuestsCurrent(existingDailyQuests)
+      : createFreshDailyQuests(),
     lastSavedAt: Date.now(),
     totalKills: 0,
   };

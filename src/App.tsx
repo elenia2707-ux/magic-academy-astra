@@ -10,6 +10,18 @@ import { HeroPortraitModal, OfflineModal, StoryModal, type StoryModalPayload } f
 import { SchoolTab } from './components/SchoolTab';
 import { generateAbyssNode } from './data/abyssEvents';
 import {
+  areAllDailyQuestsClaimed,
+  countClaimableDailyQuests,
+  DAILY_QUESTS,
+  ensureDailyQuestsCurrent,
+  formatRewardSummary,
+  getDailyBonusReward,
+  getDailyQuestReward,
+  getLocalDateKey,
+  incrementDailyQuest,
+  isDailyQuestClaimable,
+} from './data/dailyQuests';
+import {
   generateEquipment,
   getEnhanceCost,
   planBestLoadout,
@@ -54,6 +66,7 @@ import type {
   AbyssChoice,
   CombatMode,
   CombatRuntime,
+  DailyQuestId,
   EquipmentItem,
   EquipSlot,
   FamiliarId,
@@ -250,7 +263,7 @@ export default function App() {
     };
   }, [state.created]);
 
-  // 1초 단위 교실 수련 + 등불 회복 틱
+  // 1초 단위 교실 수련 + 등불 회복 + 일일 과제 자정 리셋 체크 틱
   useEffect(() => {
     if (!state.created || rebirthPending) return;
     const id = setInterval(() => {
@@ -261,8 +274,9 @@ export default function App() {
       const lanternDue =
         cur.abyss.lanterns < cur.abyss.maxLanterns &&
         now - cur.abyss.lastLanternTick >= LANTERN_INTERVAL_MS;
+      const midnightRollover = cur.dailyQuests?.dateKey !== getLocalDateKey(now);
 
-      if (!hasTraining && !lanternDue) return;
+      if (!hasTraining && !lanternDue && !midnightRollover) return;
 
       const trainedPreview = hasTraining ? advanceTraining(cur, 1, curStats) : null;
       if (trainedPreview && trainedPreview.completedNames.length > 0) {
@@ -284,6 +298,13 @@ export default function App() {
               (id) => trained.skills[id].unlocked && !prev.skills[id]?.unlocked
             )
           : [];
+        const completedCount = trained ? trained.completedNames.length : 0;
+        const nextDailyQuests =
+          completedCount > 0
+            ? incrementDailyQuest(prev.dailyQuests, { skillUpgrade: completedCount }, now)
+            : midnightRollover
+              ? ensureDailyQuestsCurrent(prev.dailyQuests, now)
+              : prev.dailyQuests;
         return {
           ...prev,
           skills: trained ? trained.skills : prev.skills,
@@ -294,6 +315,7 @@ export default function App() {
               : prev.deck,
           trainingSlots: trained ? trained.trainingSlots : prev.trainingSlots,
           abyss: nextAbyss,
+          dailyQuests: nextDailyQuests,
         };
       });
     }, 1000);
@@ -503,6 +525,12 @@ export default function App() {
             }
           }
 
+          const isBossVictory =
+            curCombat.mode === 'rankBoss' ||
+            curCombat.mode === 'tower' ||
+            curCombat.mode === 'abyssElite' ||
+            curCombat.stageIndex === 4;
+
           return {
             ...prev,
             level: lvRes.level,
@@ -523,6 +551,10 @@ export default function App() {
             trainingSlots,
             deck,
             abyss,
+            dailyQuests: incrementDailyQuest(prev.dailyQuests, {
+              kills: 1,
+              ...(isBossVictory ? { boss: 1 } : {}),
+            }),
             totalKills: prev.totalKills + 1,
           };
         });
@@ -613,7 +645,13 @@ export default function App() {
         }
       : undefined;
 
-    const fresh = createNewGameState(name, gender, school, nextPrestige);
+    const fresh = createNewGameState(
+      name,
+      gender,
+      school,
+      nextPrestige,
+      rebirthPending ? state.dailyQuests : undefined
+    );
     setState(fresh);
     setRebirthPending(false);
     const freshStats = computePlayerStats(fresh);
@@ -720,7 +758,60 @@ export default function App() {
         ...prev.skills,
         [skillId]: { ...learned, level: learned.level + 1, exp: 0 },
       },
+      dailyQuests: incrementDailyQuest(prev.dailyQuests, { skillUpgrade: 1 }),
     }));
+  };
+
+  // P1-2: 루시아 "오늘의 과제" 개별 보상 & 개근 도장 보너스 수령
+  const handleClaimDailyQuest = (id: DailyQuestId) => {
+    const def = DAILY_QUESTS.find((q) => q.id === id);
+    if (!def) return;
+    const curDq = ensureDailyQuestsCurrent(state.dailyQuests);
+    if (!isDailyQuestClaimable(curDq, def)) return;
+    const reward = getDailyQuestReward(id, state);
+    playSfx('victory', state.settings.sfxEnabled);
+    setState((prev) => {
+      const dq = ensureDailyQuestsCurrent(prev.dailyQuests);
+      if (!isDailyQuestClaimable(dq, def)) return prev;
+      const r = getDailyQuestReward(id, prev);
+      const lvRes = r.exp
+        ? applyExpAndLevelUp(prev.level, prev.exp, r.exp)
+        : { level: prev.level, exp: prev.exp };
+      return {
+        ...prev,
+        level: lvRes.level,
+        exp: lvRes.exp,
+        stones: prev.stones + (r.stones ?? 0),
+        arcaneDust: prev.arcaneDust + (r.arcaneDust ?? 0),
+        tomeShards: prev.tomeShards + (r.tomeShards ?? 0),
+        eggShards: prev.eggShards + (r.eggShards ?? 0),
+        dailyQuests: {
+          ...dq,
+          claimed: { ...dq.claimed, [id]: true },
+        },
+      };
+    });
+    showToast(`📜 [${def.title}] 완료! ${formatRewardSummary(reward)}`);
+  };
+
+  const handleClaimDailyBonus = () => {
+    const curDq = ensureDailyQuestsCurrent(state.dailyQuests);
+    if (!areAllDailyQuestsClaimed(curDq) || curDq.bonusClaimed) return;
+    const reward = getDailyBonusReward(state);
+    playSfx('victory', state.settings.sfxEnabled);
+    setState((prev) => {
+      const dq = ensureDailyQuestsCurrent(prev.dailyQuests);
+      if (!areAllDailyQuestsClaimed(dq) || dq.bonusClaimed) return prev;
+      const r = getDailyBonusReward(prev);
+      return {
+        ...prev,
+        stones: prev.stones + (r.stones ?? 0),
+        tomeShards: prev.tomeShards + (r.tomeShards ?? 0),
+        eggShards: prev.eggShards + (r.eggShards ?? 0),
+        dailyQuests: { ...dq, bonusClaimed: true },
+      };
+    });
+    showToast(`✦ 루시아의 개근 보너스 수령! ${formatRewardSummary(reward)}`);
   };
 
   const handleEquipItem = (uid: string) => {
@@ -1040,6 +1131,7 @@ export default function App() {
     nextRank !== null &&
     state.level >= nextRank.reqLevel &&
     (nextRank.reqClearedAct === 0 || state.clearedActs.includes(nextRank.reqClearedAct));
+  const dailyClaimable = countClaimableDailyQuests(state);
   const abyssReady = state.abyss.lanterns >= state.abyss.maxLanterns;
 
   const expReq = expForNextLevel(state.level);
@@ -1174,6 +1266,7 @@ export default function App() {
                 <SchoolTab
                   state={state}
                   stats={stats}
+                  dailyClaimable={dailyClaimable}
                   onAssignTraining={handleAssignTraining}
                   onUnlockDarkSkill={handleUnlockDarkSkill}
                   onUpgradeSkillWithStones={handleUpgradeSkillWithStones}
@@ -1185,6 +1278,8 @@ export default function App() {
                     handleChangeStage(act, 0);
                     setTab('battle');
                   }}
+                  onClaimDailyQuest={handleClaimDailyQuest}
+                  onClaimDailyBonus={handleClaimDailyBonus}
                 />
               )}
 
@@ -1283,6 +1378,9 @@ export default function App() {
                 </i>
                 <span className="nav-label">학교</span>
                 {examReady && <span className="nav-dot" />}
+                {dailyClaimable > 0 && (
+                  <span className="nav-quest-dot" title="완료된 오늘의 과제" />
+                )}
               </button>
               <button
                 type="button"

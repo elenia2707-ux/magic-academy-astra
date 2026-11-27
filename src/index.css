@@ -2711,3 +2711,217 @@ select,
   0% { opacity: 0; transform: translate(-50%, -8px) scale(0.96); }
   100% { opacity: 1; transform: translate(-50%, 0) scale(1); }
 }
+
+/* =====================================================================
+   📜 P1-2 · 루시아 "오늘의 과제" — 양피지 과제 카드 · 밀랍 봉인 도장
+   ===================================================================== */
+.school-subtabs .subtab-btn {
+  position: relative;
+  font-size: 12px;
+  padding: 7px 4px;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.subtab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 99px;
+  font-family: var(--font-round);
+  font-size: 10px;
+  line-height: 1;
+  color: #2b1808;
+  background: linear-gradient(180deg, #f3d796 0%, #c99a49 100%);
+  border: 1px solid #4a3112;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+}
+
+/* 하단 학교 버튼: 완료 과제 알림(황금 핀, 기존 승급 시험 .nav-dot과 분리) */
+.nav-quest-dot {
+  position: absolute;
+  top: 4px;
+  left: 10px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #fff3c4 0%, #e0b354 60%, #8f6420 100%);
+  border: 1px solid #2b1808;
+  box-shadow: 0 0 6px rgba(226, 196, 140, 0.75);
+}
+
+.daily-quest-list {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  margin-top: 10px;
+}
+
+.daily-quest-card,
+.daily-bonus-card {
+  position: relative;
+  padding: 11px 12px 10px;
+  border-radius: 10px;
+  border: 1px solid #5a4126;
+  transition: box-shadow 0.16s ease, opacity 0.16s ease;
+}
+
+.daily-quest-card.claimable,
+.daily-bonus-card.claimable {
+  border-color: #8c6326;
+  box-shadow:
+    inset 0 0 18px rgba(130, 86, 30, 0.32),
+    0 0 0 1px rgba(242, 212, 145, 0.55),
+    0 3px 10px rgba(0, 0, 0, 0.45);
+}
+
+.daily-quest-card.claimed,
+.daily-bonus-card.claimed {
+  opacity: 0.82;
+}
+
+.dq-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 3px;
+}
+
+.dq-title-wrap {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  min-width: 0;
+}
+
+.dq-title {
+  font-family: var(--font-round);
+  font-size: 14.5px;
+  color: var(--parch-ink);
+  line-height: 1.25;
+}
+
+.dq-count {
+  font-family: var(--font-round);
+  font-size: 12px;
+  color: #6b4322;
+  background: rgba(90, 58, 28, 0.14);
+  border: 1px solid rgba(90, 58, 28, 0.28);
+  border-radius: 99px;
+  padding: 1px 7px;
+  white-space: nowrap;
+}
+
+.dq-desc {
+  font-size: 11.5px;
+  color: var(--parch-ink-soft);
+  line-height: 1.45;
+  margin-bottom: 7px;
+}
+
+.dq-progress-track {
+  height: 9px;
+  border-radius: 99px;
+  overflow: hidden;
+  background: rgba(46, 31, 21, 0.24);
+  border: 1px solid rgba(74, 52, 32, 0.55);
+  box-shadow: inset 0 1px 3px rgba(30, 18, 10, 0.45);
+  margin-bottom: 8px;
+}
+
+.dq-progress-fill {
+  height: 100%;
+  border-radius: 99px;
+  background: linear-gradient(180deg, #b84a42 0%, #86262a 60%, #5e181c 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 220, 200, 0.35);
+  transition: width 0.25s ease;
+}
+
+.daily-quest-card.claimable .dq-progress-fill,
+.daily-quest-card.claimed .dq-progress-fill {
+  background: linear-gradient(180deg, #e6c47e 0%, #b4843a 60%, #7d5721 100%);
+}
+
+.dq-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.dq-reward {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #4d2f18;
+  line-height: 1.35;
+}
+
+.dq-done-label {
+  font-family: var(--font-round);
+  font-size: 12px;
+  color: #6b4c2d;
+  white-space: nowrap;
+}
+
+.wax-seal {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 8px;
+  border-radius: 99px;
+  font-family: var(--font-round);
+  font-size: 10.5px;
+  color: #fce9df;
+  background: radial-gradient(circle at 35% 30%, #c04a4f 0%, #872329 65%, #5a1318 100%);
+  border: 1px solid #3c0c10;
+  box-shadow: inset 0 1px 0 rgba(255, 210, 200, 0.3), 0 1px 3px rgba(0, 0, 0, 0.45);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.daily-bonus-card {
+  margin-top: 10px;
+  border-style: double;
+  border-width: 3px;
+}
+
+.dq-bonus-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.wax-stamp-row {
+  display: flex;
+  gap: 5px;
+  flex-shrink: 0;
+}
+
+.wax-stamp-slot {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: #7d6245;
+  background: rgba(60, 40, 22, 0.14);
+  border: 1px dashed rgba(74, 52, 32, 0.55);
+}
+
+.wax-stamp-slot.stamped {
+  color: #fce9df;
+  border: 1px solid #3c0c10;
+  background: radial-gradient(circle at 35% 30%, #c44c52 0%, #872329 65%, #5a1318 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 210, 200, 0.35), 0 1px 3px rgba(0, 0, 0, 0.45);
+}
+
