@@ -35,6 +35,22 @@ import {
   PROFESSORS,
 } from '../data/professors';
 import { getRuneAwakenCost, getSkillRunes, RUNE_UNLOCK_LEVEL } from '../data/runes';
+import {
+  ALL_SCHOOL_QUESTS,
+  CAMPUS_NOTICES,
+  ensureSchoolJournal,
+  formatSchoolQuestReward,
+  getClaimableNoticeCount,
+  getClaimableSchoolQuestCount,
+  getQuestsForSchool,
+  getSchoolQuestBonuses,
+  isCampusNoticeClaimable,
+  isCampusNoticeRead,
+  isCampusNoticeUnlocked,
+  isSchoolQuestClaimable,
+  isSchoolQuestClaimed,
+} from '../data/schoolQuests';
+import type { CampusNoticeDef } from '../data/schoolQuests';
 import { CATEGORY_META, RANK_EXAM_BOSSES, RANKS, SCHOOLS } from '../data/schools';
 import { getSkillsForPlayer, SKILL_MAP } from '../data/skills';
 import { getActChoiceProgress } from '../data/storyBranches';
@@ -43,6 +59,7 @@ import type {
   ComputedStats,
   DailyQuestId,
   GameState,
+  MagicCategory,
   MonsterDef,
   ProfessorId,
   SkillDef,
@@ -58,6 +75,7 @@ interface Props {
   stats: ComputedStats;
   dailyClaimable: number;
   archiveClaimable: number;
+  journalClaimable?: number;
   onAssignTraining: (slotIdx: number, skillId: string | null) => void;
   onUnlockDarkSkill: (skillId: string) => void;
   onUpgradeSkillWithStones: (skillId: string) => void;
@@ -75,6 +93,8 @@ interface Props {
   onClaimAchievement: (id: string) => void;
   onEquipTitle: (id: string | null) => void;
   onClaimCodex?: (codexId: string) => void;
+  onClaimSchoolQuest?: (questId: string) => void;
+  onClaimCampusNotice?: (noticeId: string) => void;
 }
 
 type ClassroomFilter = 'all' | 'school' | 'ward' | 'holy';
@@ -84,6 +104,7 @@ export const SchoolTab: React.FC<Props> = ({
   stats,
   dailyClaimable,
   archiveClaimable,
+  journalClaimable,
   onAssignTraining,
   onUnlockDarkSkill,
   onUpgradeSkillWithStones,
@@ -101,8 +122,12 @@ export const SchoolTab: React.FC<Props> = ({
   onClaimAchievement,
   onEquipTitle,
   onClaimCodex,
+  onClaimSchoolQuest,
+  onClaimCampusNotice,
 }) => {
   const [sub, setSub] = useState<'class' | 'forbidden' | 'headmaster' | 'daily' | 'archive'>('class');
+  const [dailyView, setDailyView] = useState<'daily' | 'heritage' | 'notices'>('daily');
+  const [readingNotice, setReadingNotice] = useState<CampusNoticeDef | null>(null);
   const [classFilter, setClassFilter] = useState<ClassroomFilter>('all');
   const [inspectBoss, setInspectBoss] = useState<{
     monster: MonsterDef;
@@ -117,6 +142,32 @@ export const SchoolTab: React.FC<Props> = ({
   const allDailyClaimed = areAllDailyQuestsClaimed(dailyState);
   const allDailyDone = allDailyClaimed && dailyState.bonusClaimed;
   const dailyBonusReward = getDailyBonusReward(state);
+
+  const playerName = state.playerName || '견습생';
+  const schoolJournal = ensureSchoolJournal(state.schoolJournal);
+  const curSchoolQuests = getQuestsForSchool(state.school);
+  const claimedCurSchool = curSchoolQuests.filter((q) => isSchoolQuestClaimed(state, q.id)).length;
+  const totalClaimedAllSchools = schoolJournal.claimedQuests.length;
+  const claimableSchoolQuests = getClaimableSchoolQuestCount(state);
+  const claimableNotices = getClaimableNoticeCount(state);
+  const readNoticeCount = schoolJournal.readNotices.length;
+  const schoolQuestBonuses = getSchoolQuestBonuses(state);
+  const totalTaskBadge = dailyClaimable + (journalClaimable ?? 0);
+
+  const schoolQuestBonusChips: string[] = [];
+  if (schoolQuestBonuses.magicPct > 0) schoolQuestBonusChips.push(`마력 +${schoolQuestBonuses.magicPct}%`);
+  if (schoolQuestBonuses.hpPct > 0) schoolQuestBonusChips.push(`체력 +${schoolQuestBonuses.hpPct}%`);
+  if (schoolQuestBonuses.defPct > 0) schoolQuestBonusChips.push(`방어 +${schoolQuestBonuses.defPct}%`);
+  if (schoolQuestBonuses.critRate > 0) schoolQuestBonusChips.push(`치명 +${schoolQuestBonuses.critRate}%`);
+  if (schoolQuestBonuses.critDmg > 0) schoolQuestBonusChips.push(`치피 +${schoolQuestBonuses.critDmg}%`);
+  for (const [cat, pct] of Object.entries(schoolQuestBonuses.categoryBonuses) as [
+    MagicCategory,
+    number | undefined,
+  ][]) {
+    if (pct && pct > 0) {
+      schoolQuestBonusChips.push(`${CATEGORY_META[cat].short} 위력 +${pct}%`);
+    }
+  }
 
   const allSkills = getSkillsForPlayer(state.school);
   const normalSkills = allSkills.filter((s) => s.category !== 'dark');
@@ -360,7 +411,7 @@ export const SchoolTab: React.FC<Props> = ({
           onClick={() => setSub('daily')}
         >
           과제
-          {dailyClaimable > 0 && <span className="subtab-badge">{dailyClaimable}</span>}
+          {totalTaskBadge > 0 && <span className="subtab-badge">{totalTaskBadge}</span>}
         </button>
         <button
           type="button"
@@ -421,119 +472,429 @@ export const SchoolTab: React.FC<Props> = ({
       )}
 
       {sub === 'daily' && (
-        <div className="panel">
-          <div className="panel-title-row">
-            <h2 className="panel-title">
-              <ScrollText size={14} style={{ verticalAlign: -2, marginRight: 5 }} />
-              루시아의 오늘의 과제
-            </h2>
-            <span className="panel-sub">{formatMidnightCountdown()}</span>
+        <>
+          <div className="daily-inner-tabs" role="tablist" aria-label="과제 및 교내 일지">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={dailyView === 'daily'}
+              className={`daily-inner-btn ${dailyView === 'daily' ? 'active' : ''}`}
+              onClick={() => setDailyView('daily')}
+            >
+              <span>오늘의 과제</span>
+              {dailyClaimable > 0 && <span className="subtab-badge">{dailyClaimable}</span>}
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={dailyView === 'heritage'}
+              className={`daily-inner-btn ${dailyView === 'heritage' ? 'active' : ''}`}
+              onClick={() => setDailyView('heritage')}
+            >
+              <span>학파 전승</span>
+              {claimableSchoolQuests > 0 && (
+                <span className="subtab-badge">{claimableSchoolQuests}</span>
+              )}
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={dailyView === 'notices'}
+              className={`daily-inner-btn ${dailyView === 'notices' ? 'active' : ''}`}
+              onClick={() => setDailyView('notices')}
+            >
+              <span>교내 게시판</span>
+              {claimableNotices > 0 && <span className="subtab-badge">{claimableNotices}</span>}
+            </button>
           </div>
 
-          {renderProfessorBanner(
-            'lucia',
-            `신입생 담임 · ${dailyState.dateKey}`,
-            getLuciaDailyLine(state, dailyClaimable, allDailyDone)
+          {dailyView === 'daily' && (
+            <div className="panel">
+              <div className="panel-title-row">
+                <h2 className="panel-title">
+                  <ScrollText size={14} style={{ verticalAlign: -2, marginRight: 5 }} />
+                  루시아의 오늘의 과제
+                </h2>
+                <span className="panel-sub">{formatMidnightCountdown()}</span>
+              </div>
+
+              {renderProfessorBanner(
+                'lucia',
+                `신입생 담임 · ${dailyState.dateKey}`,
+                getLuciaDailyLine(state, dailyClaimable, allDailyDone)
+              )}
+
+              <div className="daily-quest-list">
+                {DAILY_QUESTS.map((def) => {
+                  const cur = Math.min(def.target, dailyState.progress[def.id]);
+                  const pct = Math.min(100, Math.round((cur / def.target) * 100));
+                  const claimed = dailyState.claimed[def.id];
+                  const claimable = isDailyQuestClaimable(dailyState, def);
+                  const reward = getDailyQuestReward(def.id, state);
+
+                  return (
+                    <div
+                      key={def.id}
+                      className={`daily-quest-card parchment ${claimable ? 'claimable' : ''} ${
+                        claimed ? 'claimed' : ''
+                      }`}
+                    >
+                      <div className="dq-top">
+                        <div className="dq-title-wrap">
+                          <span className="dq-title">{def.title}</span>
+                          <span className="dq-count">
+                            {cur} / {def.target}
+                          </span>
+                        </div>
+                        {claimed && (
+                          <span className="wax-seal" aria-label="완료 도장">
+                            <Check size={11} strokeWidth={3} />
+                            {def.stampLabel}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="dq-desc">{def.description}</div>
+
+                      <div className="dq-progress-track">
+                        <div className="dq-progress-fill" style={{ width: `${pct}%` }} />
+                      </div>
+
+                      <div className="dq-foot">
+                        <span className="dq-reward">{formatRewardSummary(reward)}</span>
+                        {claimed ? (
+                          <span className="dq-done-label">수령 완료</span>
+                        ) : (
+                          <button
+                            type="button"
+                            className={`btn btn-sm ${claimable ? 'btn-gold' : ''}`}
+                            disabled={!claimable}
+                            onClick={() => onClaimDailyQuest(def.id)}
+                          >
+                            {claimable ? '보상 받기' : '진행 중'}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* 3개 과제 개근 봉인 도장 보너스 */}
+              <div
+                className={`daily-bonus-card parchment ${
+                  allDailyClaimed && !dailyState.bonusClaimed ? 'claimable' : ''
+                } ${dailyState.bonusClaimed ? 'claimed' : ''}`}
+              >
+                <div className="dq-bonus-head">
+                  <div>
+                    <div className="dq-title">담임 루시아의 개근 봉인 도장</div>
+                    <div className="dq-desc" style={{ marginBottom: 0 }}>
+                      오늘의 과제 3종을 모두 마치고 추가 보상을 받으세요.
+                    </div>
+                  </div>
+                  <div className="wax-stamp-row" aria-label="개근 도장 현황">
+                    {DAILY_QUESTS.map((def) => (
+                      <span
+                        key={def.id}
+                        className={`wax-stamp-slot ${dailyState.claimed[def.id] ? 'stamped' : ''}`}
+                        title={def.title}
+                      >
+                        {dailyState.claimed[def.id] ? '✦' : '·'}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                <div className="dq-foot" style={{ marginTop: 8 }}>
+                  <span className="dq-reward">{formatRewardSummary(dailyBonusReward)}</span>
+                  {dailyState.bonusClaimed ? (
+                    <span className="dq-done-label">개근 완료</span>
+                  ) : (
+                    <button
+                      type="button"
+                      className={`btn btn-sm ${allDailyClaimed ? 'btn-gold' : ''}`}
+                      disabled={!allDailyClaimed}
+                      onClick={onClaimDailyBonus}
+                    >
+                      {allDailyClaimed ? '개근 보상 받기' : `${DAILY_QUESTS.filter((q) => dailyState.claimed[q.id]).length} / 3`}
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
           )}
 
-          <div className="daily-quest-list">
-            {DAILY_QUESTS.map((def) => {
-              const cur = Math.min(def.target, dailyState.progress[def.id]);
-              const pct = Math.min(100, Math.round((cur / def.target) * 100));
-              const claimed = dailyState.claimed[def.id];
-              const claimable = isDailyQuestClaimable(dailyState, def);
-              const reward = getDailyQuestReward(def.id, state);
+          {dailyView === 'heritage' && (
+            <div className="panel school-quest-panel">
+              <div className="panel-title-row">
+                <h2 className="panel-title">
+                  <Sparkles size={14} style={{ verticalAlign: -2, marginRight: 5 }} />
+                  {SCHOOLS[state.school].name} 전승 퀘스트
+                </h2>
+                <span className="panel-sub">
+                  {claimedCurSchool}/{curSchoolQuests.length}장 완료 · 누적 {totalClaimedAllSchools}/
+                  {ALL_SCHOOL_QUESTS.length} (회귀 유지)
+                </span>
+              </div>
 
-              return (
-                <div
-                  key={def.id}
-                  className={`daily-quest-card parchment ${claimable ? 'claimable' : ''} ${
-                    claimed ? 'claimed' : ''
-                  }`}
-                >
-                  <div className="dq-top">
-                    <div className="dq-title-wrap">
-                      <span className="dq-title">{def.title}</span>
-                      <span className="dq-count">
-                        {cur} / {def.target}
-                      </span>
+              {renderProfessorBanner(schoolProfId, `${SCHOOLS[state.school].name} 전승 지도`)}
+
+              <div className="school-quest-bonus-strip">
+                {schoolQuestBonusChips.length > 0 ? (
+                  <>
+                    <span className="sq-bonus-label">
+                      <Sparkles size={11} /> 누적 학파 전승 영구 보너스
+                    </span>
+                    <div className="sq-bonus-chips">
+                      {schoolQuestBonusChips.map((chip) => (
+                        <span key={chip} className="sq-bonus-chip">
+                          {chip}
+                        </span>
+                      ))}
                     </div>
-                    {claimed && (
-                      <span className="wax-seal" aria-label="완료 도장">
-                        <Check size={11} strokeWidth={3} />
-                        {def.stampLabel}
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="dq-desc">{def.description}</div>
-
-                  <div className="dq-progress-track">
-                    <div className="dq-progress-fill" style={{ width: `${pct}%` }} />
-                  </div>
-
-                  <div className="dq-foot">
-                    <span className="dq-reward">{formatRewardSummary(reward)}</span>
-                    {claimed ? (
-                      <span className="dq-done-label">수령 완료</span>
-                    ) : (
-                      <button
-                        type="button"
-                        className={`btn btn-sm ${claimable ? 'btn-gold' : ''}`}
-                        disabled={!claimable}
-                        onClick={() => onClaimDailyQuest(def.id)}
-                      >
-                        {claimable ? '보상 받기' : '진행 중'}
-                      </button>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* 3개 과제 개근 봉인 도장 보너스 */}
-          <div
-            className={`daily-bonus-card parchment ${
-              allDailyClaimed && !dailyState.bonusClaimed ? 'claimable' : ''
-            } ${dailyState.bonusClaimed ? 'claimed' : ''}`}
-          >
-            <div className="dq-bonus-head">
-              <div>
-                <div className="dq-title">담임 루시아의 개근 봉인 도장</div>
-                <div className="dq-desc" style={{ marginBottom: 0 }}>
-                  오늘의 과제 3종을 모두 마치고 추가 보상을 받으세요.
-                </div>
-              </div>
-              <div className="wax-stamp-row" aria-label="개근 도장 현황">
-                {DAILY_QUESTS.map((def) => (
-                  <span
-                    key={def.id}
-                    className={`wax-stamp-slot ${dailyState.claimed[def.id] ? 'stamped' : ''}`}
-                    title={def.title}
-                  >
-                    {dailyState.claimed[def.id] ? '✦' : '·'}
+                  </>
+                ) : (
+                  <span className="sq-bonus-empty">
+                    학파 전승 퀘스트를 완료하면 영구 패시브가 누적되며, 시간 회귀 후 타 학파를 선택해도 기존 전승 보너스가 유지됩니다.
                   </span>
-                ))}
+                )}
+              </div>
+
+              <div className="school-quest-list">
+                {curSchoolQuests.map((q) => {
+                  const claimed = isSchoolQuestClaimed(state, q.id);
+                  const claimable = isSchoolQuestClaimable(state, q);
+                  const cur = Math.min(q.target, Math.max(0, q.getProgress(state)));
+                  const pct = Math.min(100, Math.round((cur / Math.max(1, q.target)) * 100));
+                  const mentorName = PROFESSORS[q.mentorProf].name;
+                  const rewardText = formatSchoolQuestReward(q.reward, mentorName);
+                  const briefingText = q.briefing.replaceAll('{name}', playerName);
+                  const epilogueText = q.epilogueQuote.replaceAll('{name}', playerName);
+
+                  if (claimable) {
+                    return (
+                      <div key={q.id} className="school-quest-card parchment is-claimable">
+                        <div className="sq-head">
+                          <span className="sq-chapter-pill">제{q.chapter}장</span>
+                          <span className="sq-state-pill is-claimable">✦ 완료 보고 가능</span>
+                        </div>
+                        <div className="sq-title-block">
+                          <div className="sq-title">{q.title}</div>
+                          <div className="sq-subtitle">{q.subtitle}</div>
+                        </div>
+                        <div className="sq-briefing">“{briefingText}”</div>
+                        <div className="sq-objective-box">
+                          <div className="sq-objective-row">
+                            <span className="sq-objective-label">{q.objectiveLabel}</span>
+                            <span className="sq-objective-count">
+                              {cur} / {q.target}
+                            </span>
+                          </div>
+                          <div className="sq-progress-track">
+                            <div className="sq-progress-fill" style={{ width: `${pct}%` }} />
+                          </div>
+                        </div>
+                        <div className="sq-foot">
+                          <div className="sq-reward-col">
+                            <span className="sq-reward">{rewardText}</span>
+                            <span className="sq-passive">영구 패시브 · {q.passiveLabel}</span>
+                          </div>
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-gold sq-claim-btn"
+                            onClick={() => onClaimSchoolQuest?.(q.id)}
+                          >
+                            완료 보고
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  if (claimed) {
+                    return (
+                      <div key={q.id} className="school-quest-card is-claimed">
+                        <div className="sq-head">
+                          <span className="sq-chapter-pill">제{q.chapter}장</span>
+                          <span className="sq-seal" aria-label="계승 완료">
+                            <Check size={10} strokeWidth={3} />
+                            계승 완료
+                          </span>
+                        </div>
+                        <div className="sq-title-block">
+                          <div className="sq-title">{q.title}</div>
+                          <div className="sq-subtitle">{q.subtitle}</div>
+                        </div>
+                        <div className="sq-passive">✦ 영구 적용 · {q.passiveLabel}</div>
+                        <div className="sq-epilogue">
+                          {mentorName}: “{epilogueText}”
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div key={q.id} className="school-quest-card is-progress">
+                      <div className="sq-head">
+                        <span className="sq-chapter-pill">제{q.chapter}장</span>
+                        <span className="sq-state-pill is-progress">
+                          {cur} / {q.target}
+                        </span>
+                      </div>
+                      <div className="sq-title-block">
+                        <div className="sq-title">{q.title}</div>
+                        <div className="sq-subtitle">{q.subtitle}</div>
+                      </div>
+                      <div className="sq-briefing">“{briefingText}”</div>
+                      <div className="sq-objective-box">
+                        <div className="sq-objective-row">
+                          <span className="sq-objective-label">{q.objectiveLabel}</span>
+                          <span className="sq-objective-count">
+                            {cur} / {q.target}
+                          </span>
+                        </div>
+                        <div className="sq-progress-track">
+                          <div className="sq-progress-fill" style={{ width: `${pct}%` }} />
+                        </div>
+                      </div>
+                      <div className="sq-foot">
+                        <div className="sq-reward-col">
+                          <span className="sq-reward">{rewardText}</span>
+                          <span className="sq-passive">영구 패시브 · {q.passiveLabel}</span>
+                        </div>
+                        <button type="button" className="btn btn-sm sq-claim-btn" disabled>
+                          진행 중
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
-            <div className="dq-foot" style={{ marginTop: 8 }}>
-              <span className="dq-reward">{formatRewardSummary(dailyBonusReward)}</span>
-              {dailyState.bonusClaimed ? (
-                <span className="dq-done-label">개근 완료</span>
-              ) : (
-                <button
-                  type="button"
-                  className={`btn btn-sm ${allDailyClaimed ? 'btn-gold' : ''}`}
-                  disabled={!allDailyClaimed}
-                  onClick={onClaimDailyBonus}
-                >
-                  {allDailyClaimed ? '개근 보상 받기' : `${DAILY_QUESTS.filter((q) => dailyState.claimed[q.id]).length} / 3`}
-                </button>
-              )}
+          )}
+
+          {dailyView === 'notices' && (
+            <div className="panel noticeboard-panel">
+              <div className="panel-title-row">
+                <h2 className="panel-title">
+                  <ScrollText size={14} style={{ verticalAlign: -2, marginRight: 5 }} />
+                  아스트라 본관 회랑 게시판
+                </h2>
+                <span className="panel-sub">
+                  확인 {readNoticeCount}/{CAMPUS_NOTICES.length} · 회귀 유지
+                </span>
+              </div>
+
+              <div className="noticeboard-intro">
+                본관 중앙 회랑에 게시되는 교내 공고와 사건 기록입니다. 새 공고를 열람하고 확인하면 마석을 수령합니다.
+              </div>
+
+              <div className="campus-notice-list">
+                {CAMPUS_NOTICES.map((def) => {
+                  const unlocked = isCampusNoticeUnlocked(state, def);
+                  const read = isCampusNoticeRead(state, def.id);
+                  const claimable = isCampusNoticeClaimable(state, def);
+
+                  if (claimable) {
+                    return (
+                      <div
+                        key={def.id}
+                        className="campus-notice-card parchment is-claimable"
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => setReadingNotice(def)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            setReadingNotice(def);
+                          }
+                        }}
+                      >
+                        <div className="cn-top">
+                          <div className="cn-tags">
+                            <span className="cn-number-tag">{def.numberTag}</span>
+                            <span className="cn-cat-tag">{def.categoryTag}</span>
+                          </div>
+                          <span className="cn-state-pill is-claimable">NEW</span>
+                        </div>
+                        <div className="cn-title">{def.title}</div>
+                        <div className="cn-author">{def.authorLabel}</div>
+                        <div className="cn-foot">
+                          <span className="cn-reward">+◆{def.rewardStones.toLocaleString()}</span>
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-gold cn-action-btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setReadingNotice(def);
+                            }}
+                          >
+                            열람하기
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  if (read || unlocked) {
+                    return (
+                      <div
+                        key={def.id}
+                        className="campus-notice-card is-read"
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => setReadingNotice(def)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            setReadingNotice(def);
+                          }
+                        }}
+                      >
+                        <div className="cn-top">
+                          <div className="cn-tags">
+                            <span className="cn-number-tag">{def.numberTag}</span>
+                            <span className="cn-cat-tag">{def.categoryTag}</span>
+                          </div>
+                          <span className="cn-state-pill is-read">✓ 확인됨</span>
+                        </div>
+                        <div className="cn-title">{def.title}</div>
+                        <div className="cn-author">{def.authorLabel}</div>
+                        <div className="cn-foot">
+                          <span className="cn-reward">{def.dateLabel}</span>
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-ghost cn-action-btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setReadingNotice(def);
+                            }}
+                          >
+                            다시 보기
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div key={def.id} className="campus-notice-card is-locked">
+                      <div className="cn-top">
+                        <div className="cn-tags">
+                          <span className="cn-number-tag">🔒 {def.numberTag}</span>
+                          <span className="cn-cat-tag">{def.categoryTag}</span>
+                        </div>
+                        <span className="cn-state-pill is-locked">미게시</span>
+                      </div>
+                      <div className="cn-title">미게시 공고</div>
+                      <div className="cn-hint">{def.unlockHint}</div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        </div>
+          )}
+        </>
       )}
 
       {sub === 'class' && (
@@ -1028,6 +1389,97 @@ export const SchoolTab: React.FC<Props> = ({
           onClose={() => setInspectProfessor(null)}
         />
       )}
+
+      {readingNotice && (() => {
+        const canClaim = isCampusNoticeClaimable(state, readingNotice) && Boolean(onClaimCampusNotice);
+        const alreadyRead = isCampusNoticeRead(state, readingNotice.id);
+        return (
+          <div
+            className="modal-backdrop notice-reader-backdrop"
+            onClick={() => setReadingNotice(null)}
+          >
+            <div
+              className="modal-card notice-reader-modal"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="notice-reader-modal-title"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="notice-reader-head">
+                <div className="notice-reader-avatar">
+                  <NpcPortrait
+                    id={readingNotice.authorProf}
+                    variant="avatar"
+                    alt={readingNotice.authorLabel}
+                  />
+                </div>
+                <div className="notice-reader-meta">
+                  <div className="notice-reader-meta-row">
+                    <span className="cn-number-tag">{readingNotice.numberTag}</span>
+                    <span className="cn-cat-tag">{readingNotice.categoryTag}</span>
+                    <span className="notice-reader-date">{readingNotice.dateLabel}</span>
+                  </div>
+                  <h3 id="notice-reader-modal-title" className="modal-title notice-reader-title">
+                    {readingNotice.title}
+                  </h3>
+                  <div className="notice-reader-author">{readingNotice.authorLabel}</div>
+                </div>
+              </div>
+
+              <div className="notice-body parchment">
+                {readingNotice.body.map((paragraph, idx) => (
+                  <p key={idx} className="notice-body-p">
+                    {paragraph.replaceAll('{name}', playerName)}
+                  </p>
+                ))}
+                {readingNotice.marginScribble && (
+                  <div className="notice-margin-scribble">
+                    여백 낙서: {readingNotice.marginScribble.replaceAll('{name}', playerName)}
+                  </div>
+                )}
+              </div>
+
+              <div className="notice-reader-actions">
+                {canClaim ? (
+                  <>
+                    <button
+                      type="button"
+                      className="btn btn-gold btn-block notice-claim-btn"
+                      onClick={() => onClaimCampusNotice?.(readingNotice.id)}
+                    >
+                      ✦ 공고 확인 (+◆{readingNotice.rewardStones.toLocaleString()})
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-block notice-close-btn"
+                      onClick={() => setReadingNotice(null)}
+                    >
+                      닫기
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    {alreadyRead && (
+                      <div className="notice-read-pill">
+                        <Check size={12} strokeWidth={3} />
+                        <span>공고 확인 완료</span>
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      className="btn btn-gold btn-block notice-close-btn"
+                      onClick={() => setReadingNotice(null)}
+                    >
+                      닫기
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 };
+

@@ -85,6 +85,15 @@ import {
   getImprintDef,
   isSanctumUnlocked,
 } from './data/sanctum';
+import {
+  CAMPUS_NOTICE_MAP,
+  ensureSchoolJournal,
+  formatSchoolQuestReward,
+  getTotalJournalClaimableCount,
+  isCampusNoticeClaimable,
+  isSchoolQuestClaimable,
+  SCHOOL_QUEST_MAP,
+} from './data/schoolQuests';
 import { RANKS, SCHOOLS } from './data/schools';
 import { SKILL_MAP } from './data/skills';
 import { STARLIGHT_MAX } from './data/starlight';
@@ -950,7 +959,8 @@ export default function App() {
       rebirthPending ? (state.viewedSideStories ?? []) : [],
       rebirthPending ? (state.claimedTowerMilestones ?? []) : [],
       rebirthPending ? (state.storyChoices ?? {}) : {},
-      rebirthPending ? ensureTruthRoute(state.truthRoute) : undefined
+      rebirthPending ? ensureTruthRoute(state.truthRoute) : undefined,
+      rebirthPending ? ensureSchoolJournal(state.schoolJournal) : undefined
     );
     storyQueueRef.current = [];
     syncStoryQueueCount();
@@ -2147,6 +2157,90 @@ export default function App() {
     }
   };
 
+  // P5-4: 학파별 전용 퀘스트라인 & 교내 일지·게시판 수령
+  const handleClaimSchoolQuest = (questId: string) => {
+    const def = SCHOOL_QUEST_MAP[questId];
+    if (!def || !isSchoolQuestClaimable(state, def)) return;
+    playSfx('victory', state.settings.sfxEnabled);
+    setState((prev) => {
+      if (!isSchoolQuestClaimable(prev, def)) return prev;
+      const prevJournal = ensureSchoolJournal(prev.schoolJournal);
+      const claimedQuests = prevJournal.claimedQuests.includes(questId)
+        ? prevJournal.claimedQuests
+        : [...prevJournal.claimedQuests, questId];
+      const r = def.reward;
+      const remnants = r.starRemnants ?? 0;
+      const affinityGain = r.affinityGain ?? 0;
+      let nextAffinity = prev.affinity;
+      if (affinityGain > 0) {
+        const prevAff = ensureAffinity(prev.affinity);
+        const curPts = prevAff.points[def.mentorProf] ?? 0;
+        const updatedPts = Math.min(AFFINITY_MAX_POINTS, curPts + affinityGain);
+        const affDef = PROFESSOR_AFFINITY[def.mentorProf];
+        const claimed = [...prevAff.claimedEvents];
+        if (affDef) {
+          for (const milestone of affDef.events) {
+            if (updatedPts >= milestone.threshold && !claimed.includes(milestone.eventKey)) {
+              claimed.push(milestone.eventKey);
+            }
+          }
+        }
+        nextAffinity = {
+          points: { ...prevAff.points, [def.mentorProf]: updatedPts },
+          claimedEvents: claimed,
+        };
+      }
+      const next: GameState = {
+        ...prev,
+        stones: prev.stones + (r.stones ?? 0),
+        arcaneDust: prev.arcaneDust + (r.arcaneDust ?? 0),
+        tomeShards: prev.tomeShards + (r.tomeShards ?? 0),
+        prestige:
+          remnants > 0
+            ? {
+                ...prev.prestige,
+                starRemnants: prev.prestige.starRemnants + remnants,
+                totalRemnantsEarned: prev.prestige.totalRemnantsEarned + remnants,
+              }
+            : prev.prestige,
+        affinity: nextAffinity,
+        schoolJournal: {
+          ...prevJournal,
+          claimedQuests,
+        },
+      };
+      saveGameToStorage(next);
+      return next;
+    });
+    showToast(
+      `✦ [${def.title}] 계승 완료! ${formatSchoolQuestReward(def.reward, PROFESSORS[def.mentorProf].name)} · ${def.passiveLabel}`
+    );
+  };
+
+  const handleClaimCampusNotice = (noticeId: string) => {
+    const def = CAMPUS_NOTICE_MAP[noticeId];
+    if (!def || !isCampusNoticeClaimable(state, def)) return;
+    playSfx('victory', state.settings.sfxEnabled);
+    setState((prev) => {
+      if (!isCampusNoticeClaimable(prev, def)) return prev;
+      const prevJournal = ensureSchoolJournal(prev.schoolJournal);
+      const readNotices = prevJournal.readNotices.includes(noticeId)
+        ? prevJournal.readNotices
+        : [...prevJournal.readNotices, noticeId];
+      const next: GameState = {
+        ...prev,
+        stones: prev.stones + def.rewardStones,
+        schoolJournal: {
+          ...prevJournal,
+          readNotices,
+        },
+      };
+      saveGameToStorage(next);
+      return next;
+    });
+    showToast(`📌 [${def.numberTag}] 공고 확인! 마석 +${def.rewardStones.toLocaleString()}`);
+  };
+
   // 알림 점
   const nextRank = state.rank < 5 ? RANKS[state.rank + 1] : null;
   const examReady =
@@ -2155,6 +2249,7 @@ export default function App() {
     (nextRank.reqClearedAct === 0 || state.clearedActs.includes(nextRank.reqClearedAct));
   const dailyClaimable = countClaimableDailyQuests(state);
   const archiveClaimable = useMemo(() => getClaimableArchiveCount(state), [state]);
+  const journalClaimable = useMemo(() => getTotalJournalClaimableCount(state), [state]);
   const equippedTitle = getEquippedTitleDef(state);
   const abyssReady = state.abyss.lanterns >= state.abyss.maxLanterns;
 
@@ -2320,6 +2415,7 @@ export default function App() {
                   stats={stats}
                   dailyClaimable={dailyClaimable}
                   archiveClaimable={archiveClaimable}
+                  journalClaimable={journalClaimable}
                   onAssignTraining={handleAssignTraining}
                   onUnlockDarkSkill={handleUnlockDarkSkill}
                   onUpgradeSkillWithStones={handleUpgradeSkillWithStones}
@@ -2342,6 +2438,8 @@ export default function App() {
                   onClaimAchievement={handleClaimAchievement}
                   onClaimCodex={handleClaimCodex}
                   onEquipTitle={handleEquipTitle}
+                  onClaimSchoolQuest={handleClaimSchoolQuest}
+                  onClaimCampusNotice={handleClaimCampusNotice}
                 />
               )}
 
@@ -2455,8 +2553,8 @@ export default function App() {
                 </i>
                 <span className="nav-label">학교</span>
                 {examReady && <span className="nav-dot" />}
-                {dailyClaimable + archiveClaimable > 0 && (
-                  <span className="nav-quest-dot" title="수령 가능한 과제·기록 보상" />
+                {dailyClaimable + archiveClaimable + journalClaimable > 0 && (
+                  <span className="nav-quest-dot" title="수령 가능한 과제·기록·일지 보상" />
                 )}
               </button>
               <button

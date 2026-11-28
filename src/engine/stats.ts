@@ -9,6 +9,11 @@ import { getGearSetBonuses } from '../data/gearSets';
 import { getActiveInfirmaryEffect } from '../data/infirmary';
 import { getNgPlusBaselineScaling, getRebirthVow } from '../data/rebirthVows';
 import { createDefaultSanctum, ensureSanctum, getSanctumBonuses } from '../data/sanctum';
+import {
+  createDefaultSchoolJournal,
+  ensureSchoolJournal,
+  getSchoolQuestBonuses,
+} from '../data/schoolQuests';
 import { RANKS, SCHOOLS } from '../data/schools';
 import { SKILL_MAP } from '../data/skills';
 import {
@@ -29,6 +34,7 @@ import type {
   ProfessorAffinityState,
   ProfessorId,
   SchoolId,
+  SchoolJournalState,
   TruthRouteState,
 } from '../types/game';
 
@@ -153,7 +159,8 @@ export function createNewGameState(
   existingViewedSideStories?: string[],
   existingTowerMilestones?: number[],
   existingStoryChoices?: Record<string, string>,
-  existingTruthRoute?: TruthRouteState
+  existingTruthRoute?: TruthRouteState,
+  existingSchoolJournal?: SchoolJournalState
 ): GameState {
   const prestige = existingPrestige ?? createDefaultPrestige();
   const startWealthLv = prestige.upgrades.startingWealth ?? 0;
@@ -231,7 +238,7 @@ export function createNewGameState(
     dailyQuests: existingDailyQuests
       ? ensureDailyQuestsCurrent(existingDailyQuests)
       : createFreshDailyQuests(),
-    // 제련소 각인·교수 인연·기록실·동행·외전·무한 탑 마일스톤·진실 루트는 영구 유지
+    // 제련소 각인·교수 인연·기록실·동행·외전·무한 탑 마일스톤·진실 루트·학파 일지는 영구 유지
     sanctum: existingSanctum ? ensureSanctum(existingSanctum) : createDefaultSanctum(),
     affinity: existingAffinity ? ensureAffinity(existingAffinity) : createDefaultAffinity(),
     archive: existingArchive ? ensureArchive(existingArchive) : createDefaultArchive(),
@@ -243,6 +250,9 @@ export function createNewGameState(
     truthRoute: existingTruthRoute
       ? ensureTruthRoute(existingTruthRoute)
       : createDefaultTruthRoute(),
+    schoolJournal: existingSchoolJournal
+      ? ensureSchoolJournal(existingSchoolJournal)
+      : createDefaultSchoolJournal(),
     lastSavedAt: Date.now(),
     totalKills: 0,
   };
@@ -340,11 +350,18 @@ export function computePlayerStats(state: GameState): ComputedStats {
   const escortBonus = getEscortBonuses(state);
   const setBonus = getGearSetBonuses(state.equipped);
   const truthBonus = getTruthRouteBonuses(state);
+  const schoolQuestBonus = getSchoolQuestBonuses(state);
   const vow = getRebirthVow(state.prestige.activeVow);
   if (escortBonus.categoryBonus) {
     categoryBonus[escortBonus.categoryBonus.category] += escortBonus.categoryBonus.pct;
   }
   for (const [cat, pct] of Object.entries(setBonus.categoryBonuses) as [
+    MagicCategory,
+    number | undefined,
+  ][]) {
+    if (pct) categoryBonus[cat] += pct;
+  }
+  for (const [cat, pct] of Object.entries(schoolQuestBonus.categoryBonuses) as [
     MagicCategory,
     number | undefined,
   ][]) {
@@ -356,14 +373,16 @@ export function computePlayerStats(state: GameState): ComputedStats {
     archiveBonus.critRate +
     escortBonus.critRate +
     setBonus.critRate +
-    truthBonus.critRate;
+    truthBonus.critRate +
+    schoolQuestBonus.critRate;
   critDmg +=
     sanctumBonus.critDmgBonus +
     vow.critDmgBonus +
     archiveBonus.critDmg +
     escortBonus.critDmg +
     setBonus.critDmg +
-    truthBonus.critDmg;
+    truthBonus.critDmg +
+    schoolQuestBonus.critDmg;
   mpRegen +=
     affinityBonus.mpRegen +
     archiveBonus.mpRegen +
@@ -382,6 +401,7 @@ export function computePlayerStats(state: GameState): ComputedStats {
       (1 + escortBonus.magicPct / 100) *
       (1 + setBonus.magicPct / 100) *
       (1 + truthBonus.magicPct / 100) *
+      (1 + schoolQuestBonus.magicPct / 100) *
       (infEffect?.magicMult ?? 1) *
       vow.magicMult
   );
@@ -397,6 +417,7 @@ export function computePlayerStats(state: GameState): ComputedStats {
       (1 + escortBonus.hpPct / 100) *
       (1 + setBonus.hpPct / 100) *
       (1 + truthBonus.hpPct / 100) *
+      (1 + schoolQuestBonus.hpPct / 100) *
       (infEffect?.hpMult ?? 1)
   );
   const maxMp = Math.round((baseMp + eqMp) * (state.school === 'frost' ? 1.18 : 1) * vow.maxMpMult);
@@ -412,6 +433,7 @@ export function computePlayerStats(state: GameState): ComputedStats {
       (1 + escortBonus.defPct / 100) *
       (1 + setBonus.defPct / 100) *
       (1 + truthBonus.defPct / 100) *
+      (1 + schoolQuestBonus.defPct / 100) *
       (infEffect?.defMult ?? 1)
   );
 

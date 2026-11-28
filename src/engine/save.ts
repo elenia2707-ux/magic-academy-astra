@@ -4,6 +4,7 @@ import { ensureDailyQuestsCurrent } from '../data/dailyQuests';
 import { PROFESSORS } from '../data/professors';
 import { REBIRTH_VOWS } from '../data/rebirthVows';
 import { ensureSanctum } from '../data/sanctum';
+import { ensureSchoolJournal } from '../data/schoolQuests';
 import { ensureTruthRoute } from '../data/truthRoute';
 import type {
   GameSettings,
@@ -204,6 +205,7 @@ function hydrateState(parsed: Partial<GameState>): GameState | null {
     claimedTowerMilestones: normalizeClaimedTowerMilestones(parsed.claimedTowerMilestones),
     storyChoices: normalizeStoryChoices(parsed.storyChoices),
     truthRoute: ensureTruthRoute(parsed.truthRoute),
+    schoolJournal: ensureSchoolJournal(parsed.schoolJournal),
     ...(normalizedAffinity ? { affinity: normalizedAffinity } : {}),
   });
 }

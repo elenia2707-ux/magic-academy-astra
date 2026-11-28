@@ -419,6 +419,13 @@ export interface TruthRouteState {
   epilogueClaimed: boolean;
 }
 
+export interface SchoolJournalState {
+  /** 완료 보상을 수령한 학파 전승 퀘스트 ID 목록 (회귀 시 유지, 타 학파 누적 가능) */
+  claimedQuests: string[];
+  /** 확인 완료한 교내 게시판 공고 ID 목록 (회귀 시 유지) */
+  readNotices: string[];
+}
+
 export interface GameState {
   version: number;
   created: boolean;
@@ -469,6 +476,8 @@ export interface GameState {
   storyChoices?: Record<string, string>;
   /** P5-3: 회귀(NG+) 진실 루트 서신 & 히든 에필로그 진행도 (회귀 유지) */
   truthRoute?: TruthRouteState;
+  /** P5-4: 학파 전승 퀘스트 & 교내 게시판 열람 기록 (회귀 유지) */
+  schoolJournal?: SchoolJournalState;
   lastSavedAt: number;
   totalKills: number;
 }
