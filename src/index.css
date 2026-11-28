@@ -7343,3 +7343,554 @@ select,
   font-weight: 800;
   box-shadow: inset 0 1px 0 rgba(255, 250, 232, 0.65);
 }
+
+/* ===== P5-3: 회귀 NG+ 진실 루트 & 봉인 서신함 ===== */
+.truth-route-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.truth-route-intro {
+  font-size: 11.5px;
+  line-height: 1.54;
+  color: #cbbba8;
+  word-break: keep-all;
+}
+
+.truth-bonus-strip {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px;
+  border-radius: 9px;
+  background: linear-gradient(180deg, rgba(46, 22, 29, 0.92) 0%, rgba(28, 13, 18, 0.96) 100%);
+  border: 1px solid rgba(212, 174, 102, 0.42);
+  box-shadow: inset 0 1px 0 rgba(255, 236, 196, 0.12);
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.truth-bonus-label {
+  font-family: var(--font-round);
+  font-size: 10.5px;
+  color: #e8cb8a;
+  letter-spacing: 0.02em;
+}
+
+.truth-bonus-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  min-width: 0;
+}
+
+.truth-bonus-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #f9e4b4;
+  background: linear-gradient(180deg, rgba(114, 34, 42, 0.82) 0%, rgba(72, 20, 28, 0.92) 100%);
+  border: 1px solid rgba(226, 178, 108, 0.54);
+  white-space: nowrap;
+}
+
+.truth-letter-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.truth-letter-card {
+  border-radius: 10px;
+  padding: 10px 11px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  border: 1px solid rgba(184, 146, 90, 0.34);
+  background: linear-gradient(180deg, #28151b 0%, #1a0d12 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 232, 190, 0.08),
+    0 2px 6px rgba(0, 0, 0, 0.42);
+  color: #efe3ce;
+  min-width: 0;
+  box-sizing: border-box;
+  transition: border-color 0.15s ease, transform 0.12s ease, box-shadow 0.15s ease;
+}
+
+.truth-letter-card[role='button'] {
+  cursor: pointer;
+}
+
+.truth-letter-card[role='button']:hover,
+.truth-letter-card[role='button']:focus-visible {
+  border-color: rgba(236, 198, 114, 0.82);
+  outline: none;
+}
+
+.truth-letter-card[role='button']:active {
+  transform: translateY(1px);
+}
+
+.truth-letter-card.is-claimable {
+  background: linear-gradient(180deg, #ead9b5 0%, #dbc59a 100%);
+  color: #2e1d12;
+  border: 1.5px solid #9c7028;
+  box-shadow:
+    inset 0 0 18px rgba(96, 62, 26, 0.2),
+    inset 0 1px 0 rgba(255, 248, 228, 0.7),
+    0 0 0 1px rgba(242, 212, 145, 0.5),
+    0 3px 10px rgba(0, 0, 0, 0.44);
+}
+
+.truth-letter-card.is-opened {
+  background: linear-gradient(180deg, #2c171e 0%, #1c0e13 100%);
+  border-color: rgba(212, 174, 102, 0.44);
+}
+
+.truth-letter-card.is-locked {
+  opacity: 0.78;
+  background: linear-gradient(180deg, #1d1216 0%, #140b0e 100%);
+  border-color: rgba(154, 134, 118, 0.24);
+}
+
+.truth-letter-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.truth-wax-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-family: var(--font-round);
+  font-size: 10px;
+  line-height: 1.3;
+  padding: 2px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.truth-wax-pill.is-sealed {
+  color: #fde9c6;
+  background: linear-gradient(180deg, #9d2331 0%, #66131e 100%);
+  border: 1px solid #d9a452;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 214, 198, 0.3),
+    0 1px 3px rgba(0, 0, 0, 0.42);
+}
+
+.truth-wax-pill.is-opened {
+  color: #ecd29c;
+  background: rgba(114, 34, 42, 0.42);
+  border: 1px solid rgba(212, 174, 102, 0.44);
+}
+
+.truth-wax-pill.is-locked {
+  color: #a18f82;
+  background: rgba(40, 26, 30, 0.85);
+  border: 1px solid rgba(154, 134, 118, 0.28);
+}
+
+.truth-letter-state {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-round);
+  font-size: 10px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.truth-letter-state.is-claimable {
+  color: #2b1808;
+  background: linear-gradient(180deg, #f3d796 0%, #c99a49 100%);
+  border: 1px solid #6b4714;
+}
+
+.truth-letter-state.is-opened {
+  color: #f6ddb0;
+  background: linear-gradient(180deg, rgba(114, 34, 40, 0.82) 0%, rgba(72, 20, 26, 0.92) 100%);
+  border: 1px solid rgba(226, 178, 108, 0.54);
+}
+
+.truth-letter-state.is-locked {
+  color: #9a887c;
+  background: rgba(34, 22, 26, 0.8);
+  border: 1px solid rgba(154, 134, 118, 0.26);
+}
+
+.truth-letter-title {
+  font-family: var(--font-round);
+  font-size: 13.5px;
+  line-height: 1.32;
+  color: #f6e7ca;
+  word-break: keep-all;
+}
+
+.truth-letter-card.is-claimable .truth-letter-title {
+  color: #2e1d12;
+}
+
+.truth-letter-card.is-locked .truth-letter-title {
+  color: #a89689;
+}
+
+.truth-letter-sender {
+  font-size: 11px;
+  font-weight: 600;
+  color: #cab6a0;
+  line-height: 1.36;
+  word-break: keep-all;
+}
+
+.truth-letter-card.is-claimable .truth-letter-sender {
+  color: #5c3a1d;
+}
+
+.truth-letter-hint {
+  font-size: 11px;
+  line-height: 1.42;
+  color: #968478;
+  word-break: keep-all;
+}
+
+.truth-letter-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 6px;
+  margin-top: 2px;
+  border-top: 1px solid rgba(184, 146, 90, 0.18);
+  min-width: 0;
+}
+
+.truth-letter-card.is-claimable .truth-letter-foot {
+  border-top-color: rgba(96, 62, 26, 0.24);
+}
+
+.truth-letter-reward {
+  font-size: 11px;
+  font-weight: 700;
+  color: #5a3410;
+  min-width: 0;
+  flex: 1;
+  word-break: keep-all;
+  line-height: 1.35;
+}
+
+.truth-letter-passive {
+  font-size: 11px;
+  font-weight: 700;
+  color: #e3c27d;
+  min-width: 0;
+  flex: 1;
+  word-break: keep-all;
+  line-height: 1.35;
+}
+
+.truth-letter-btn {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+/* True Ending Card */
+.true-ending-card {
+  margin-top: 2px;
+  padding: 12px 12px 11px;
+  border-radius: 11px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.true-ending-card.is-unlocked {
+  background:
+    radial-gradient(circle at 85% 15%, rgba(235, 194, 108, 0.18), transparent 55%),
+    linear-gradient(180deg, #3a1a23 0%, #200e15 100%);
+  border: 1.5px solid #d4a652;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 240, 200, 0.24),
+    0 0 14px rgba(214, 166, 82, 0.22),
+    0 3px 10px rgba(0, 0, 0, 0.48);
+}
+
+.true-ending-card.is-locked {
+  background: linear-gradient(180deg, #211318 0%, #150b0f 100%);
+  border: 1px dashed rgba(184, 146, 90, 0.34);
+  opacity: 0.84;
+}
+
+.true-ending-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.true-ending-badge {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-round);
+  font-size: 10.5px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.true-ending-card.is-unlocked .true-ending-badge {
+  color: #2b1808;
+  background: linear-gradient(180deg, #f6dca0 0%, #c99844 100%);
+  border: 1px solid #6b4714;
+}
+
+.true-ending-card.is-locked .true-ending-badge {
+  color: #a49285;
+  background: rgba(38, 24, 28, 0.86);
+  border: 1px solid rgba(154, 134, 118, 0.3);
+}
+
+.true-ending-progress {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #d8c09c;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.true-ending-title {
+  font-family: var(--font-round);
+  font-size: 14.5px;
+  line-height: 1.3;
+  color: #fae6b8;
+  word-break: keep-all;
+}
+
+.true-ending-card.is-locked .true-ending-title {
+  color: #b5a496;
+}
+
+.true-ending-preview {
+  font-size: 11.5px;
+  font-weight: 700;
+  line-height: 1.44;
+  color: #e4c582;
+  word-break: keep-all;
+}
+
+.true-ending-card.is-locked .true-ending-preview {
+  color: #a9957d;
+}
+
+.true-ending-lock-req {
+  font-size: 11px;
+  line-height: 1.4;
+  color: #9e8c80;
+  padding: 6px 8px;
+  border-radius: 7px;
+  background: rgba(18, 10, 14, 0.65);
+  border: 1px solid rgba(154, 134, 118, 0.22);
+  word-break: keep-all;
+}
+
+.true-ending-btn {
+  margin-top: 2px;
+  padding: 9px 12px;
+  font-size: 12.5px;
+  white-space: normal;
+  word-break: keep-all;
+}
+
+/* Sealed Truth Letter Reader Modal */
+.truth-letter-backdrop {
+  padding: 15px;
+}
+
+.truth-letter-modal {
+  width: 100%;
+  max-width: 380px;
+  max-height: calc(100dvh - 30px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 15px 14px 14px;
+  box-sizing: border-box;
+}
+
+.truth-letter-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+}
+
+.truth-letter-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  overflow: hidden;
+  flex-shrink: 0;
+  border: 1.5px solid #c99a49;
+  background: #1b0e13;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.48);
+}
+
+.truth-letter-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.truth-letter-head-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+  min-width: 0;
+}
+
+.truth-letter-meta-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+  min-width: 0;
+}
+
+.truth-letter-date {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #d4b895;
+  word-break: keep-all;
+}
+
+.truth-letter-modal-title {
+  margin: 1px 0 0;
+  font-size: 15.5px;
+  line-height: 1.3;
+  color: #f6e0aa;
+  word-break: keep-all;
+}
+
+.truth-letter-modal-sender {
+  font-size: 11px;
+  color: #ccb79f;
+  line-height: 1.35;
+  word-break: keep-all;
+}
+
+.truth-letter-body {
+  padding: 13px 13px 12px;
+  border-radius: 9px;
+  background: linear-gradient(180deg, #ead9b5 0%, #dbc59a 100%);
+  color: #2e1d12;
+  border: 1.5px solid #8a622a;
+  box-shadow:
+    inset 0 0 18px rgba(96, 62, 26, 0.24),
+    inset 0 1px 0 rgba(255, 248, 228, 0.68),
+    0 2px 6px rgba(0, 0, 0, 0.4);
+  font-size: 12.5px;
+  line-height: 1.64;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  min-width: 0;
+  box-sizing: border-box;
+  word-break: keep-all;
+}
+
+.truth-letter-p {
+  margin: 0;
+  color: #2e1d12;
+}
+
+.truth-letter-postscript {
+  margin-top: 2px;
+  padding: 7px 9px;
+  border-radius: 6px;
+  background: rgba(70, 38, 20, 0.1);
+  border: 1px solid rgba(112, 74, 24, 0.24);
+  border-left: 3px solid #8f2230;
+  font-style: italic;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: #4b2a19;
+  word-break: keep-all;
+}
+
+.truth-letter-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-top: 2px;
+}
+
+.truth-letter-claim-btn {
+  padding: 9px 10px;
+  font-size: 12px;
+  line-height: 1.38;
+  white-space: normal;
+  word-break: keep-all;
+}
+
+.truth-letter-opened-pill {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(114, 34, 40, 0.72) 0%, rgba(72, 20, 26, 0.86) 100%);
+  border: 1px solid rgba(226, 178, 108, 0.56);
+  color: #f6ddb0;
+  font-size: 11.5px;
+  font-weight: 700;
+  text-align: center;
+  word-break: keep-all;
+}
+
+.truth-letter-close-btn {
+  padding: 8px 12px;
+  font-size: 12.5px;
+}
+
+/* True Ending Story Modal Banner */
+.true-ending-seal-banner {
+  margin: 6px 0 4px;
+  padding: 8px 11px;
+  border-radius: 9px;
+  background: linear-gradient(180deg, #ead9b5 0%, #dbc59a 100%);
+  color: #2e1d12;
+  border: 1.5px solid #9c7028;
+  box-shadow:
+    inset 0 0 14px rgba(96, 62, 26, 0.2),
+    inset 0 1px 0 rgba(255, 248, 228, 0.72),
+    0 2px 6px rgba(0, 0, 0, 0.36);
+  font-family: var(--font-round);
+  font-size: 11.5px;
+  line-height: 1.45;
+  text-align: center;
+  word-break: keep-all;
+  box-sizing: border-box;
+}
+

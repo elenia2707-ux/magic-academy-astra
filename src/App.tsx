@@ -102,6 +102,15 @@ import {
   TOWER_MILESTONES,
 } from './data/towerDepth';
 import { getTowerLordForFloor } from './data/towerLords';
+import {
+  ensureTruthRoute,
+  formatTruthReward,
+  isTrueEndingClaimable,
+  isTrueEndingUnlocked,
+  isTruthLetterClaimable,
+  TRUE_ENDING_REWARD,
+  TRUTH_LETTER_MAP,
+} from './data/truthRoute';
 import { bgmEngine, type BgmTrackId } from './engine/bgm';
 import { createCombatRuntime, stepCombatTurn, triggerStarlightIntervention } from './engine/combat';
 import { processOfflineProgress } from './engine/offline';
@@ -940,7 +949,8 @@ export default function App() {
       rebirthPending ? (state.activeEscort ?? null) : null,
       rebirthPending ? (state.viewedSideStories ?? []) : [],
       rebirthPending ? (state.claimedTowerMilestones ?? []) : [],
-      rebirthPending ? (state.storyChoices ?? {}) : {}
+      rebirthPending ? (state.storyChoices ?? {}) : {},
+      rebirthPending ? ensureTruthRoute(state.truthRoute) : undefined
     );
     storyQueueRef.current = [];
     syncStoryQueueCount();
@@ -2068,6 +2078,75 @@ export default function App() {
     }
   };
 
+  // P5-3: 회귀(NG+) 진실 루트 — 봉인 편지 개봉 & 히든 진엔딩
+  const handleOpenTruthLetter = (letterId: string) => {
+    const def = TRUTH_LETTER_MAP[letterId];
+    if (!def || !isTruthLetterClaimable(state, def)) return;
+    playSfx('victory', state.settings.sfxEnabled);
+    setState((prev) => {
+      if (!isTruthLetterClaimable(prev, def)) return prev;
+      const prevTruth = ensureTruthRoute(prev.truthRoute);
+      const openedLetters = prevTruth.openedLetters.includes(letterId)
+        ? prevTruth.openedLetters
+        : [...prevTruth.openedLetters, letterId];
+      const r = def.reward;
+      const remnants = r.starRemnants ?? 0;
+      const next: GameState = {
+        ...prev,
+        arcaneDust: prev.arcaneDust + (r.arcaneDust ?? 0),
+        tomeShards: prev.tomeShards + (r.tomeShards ?? 0),
+        eggShards: prev.eggShards + (r.eggShards ?? 0),
+        prestige:
+          remnants > 0
+            ? {
+                ...prev.prestige,
+                starRemnants: prev.prestige.starRemnants + remnants,
+                totalRemnantsEarned: prev.prestige.totalRemnantsEarned + remnants,
+              }
+            : prev.prestige,
+        truthRoute: {
+          ...prevTruth,
+          openedLetters,
+        },
+      };
+      saveGameToStorage(next);
+      return next;
+    });
+    showToast(`🕯 [${def.title}] 봉인 해제! ${formatTruthReward(def.reward)} · ${def.passiveLabel}`);
+  };
+
+  const handleOpenTrueEnding = () => {
+    if (!isTrueEndingUnlocked(state)) return;
+    setStoryModal({ kind: 'trueEnding' });
+    if (isTrueEndingClaimable(state)) {
+      playSfx('victory', state.settings.sfxEnabled);
+      setState((prev) => {
+        if (!isTrueEndingClaimable(prev)) return prev;
+        const prevTruth = ensureTruthRoute(prev.truthRoute);
+        const remnants = TRUE_ENDING_REWARD.starRemnants;
+        const next: GameState = {
+          ...prev,
+          prestige: {
+            ...prev.prestige,
+            starRemnants: prev.prestige.starRemnants + remnants,
+            totalRemnantsEarned: prev.prestige.totalRemnantsEarned + remnants,
+          },
+          truthRoute: {
+            ...prevTruth,
+            epilogueClaimed: true,
+          },
+        };
+        saveGameToStorage(next);
+        return next;
+      });
+      showToast(
+        `✦ 히든 진엔딩 해금! 별의 잔재 +${TRUE_ENDING_REWARD.starRemnants} · 성좌의 증인 영구 보너스 활성!`
+      );
+    } else {
+      playSfx('click', state.settings.sfxEnabled);
+    }
+  };
+
   // 알림 점
   const nextRank = state.rank < 5 ? RANKS[state.rank + 1] : null;
   const examReady =
@@ -2320,6 +2399,8 @@ export default function App() {
                   onUpgradeImprint={handleUpgradeImprint}
                   onTransmuteStones={handleTransmuteStones}
                   onBuyPrestigeUpgrade={handleBuyPrestigeUpgrade}
+                  onOpenTruthLetter={handleOpenTruthLetter}
+                  onOpenTrueEnding={handleOpenTrueEnding}
                   onStartRebirthFlow={() => {
                     clearPendingCombatTimer();
                     setRebirthPending(true);

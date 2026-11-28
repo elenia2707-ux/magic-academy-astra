@@ -412,6 +412,13 @@ export interface ArchiveState {
   claimedCodex?: string[];
 }
 
+export interface TruthRouteState {
+  /** 개봉(열람 보상 수령) 완료한 진실 서신 ID 목록 */
+  openedLetters: string[];
+  /** 히든 진엔딩 에필로그 열람 완료 여부 */
+  epilogueClaimed: boolean;
+}
+
 export interface GameState {
   version: number;
   created: boolean;
@@ -460,6 +467,8 @@ export interface GameState {
   claimedTowerMilestones?: number[];
   /** P5-2: 막별 스토리 선택지 분기 기록 (예: "1_mid" -> optionId, 회귀 유지) */
   storyChoices?: Record<string, string>;
+  /** P5-3: 회귀(NG+) 진실 루트 서신 & 히든 에필로그 진행도 (회귀 유지) */
+  truthRoute?: TruthRouteState;
   lastSavedAt: number;
   totalKills: number;
 }

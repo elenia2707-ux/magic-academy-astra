@@ -23,6 +23,7 @@ import {
   getStoryChoiceKey,
   getStoryChoiceNode,
 } from '../data/storyBranches';
+import { TRUE_ENDING_LINES, TRUE_ENDING_REWARD } from '../data/truthRoute';
 import { formatDuration } from '../engine/offline';
 import type {
   ComputedStats,
@@ -38,7 +39,8 @@ import { AstraCrestSvg, MonsterPortrait, NpcPortrait, PlayerPortrait } from './G
 export type StoryModalPayload =
   | { kind: 'act'; act: number; phase: StoryPhase; archiveMode?: boolean; initialSideId?: string }
   | { kind: 'darkUnlock' }
-  | { kind: 'rankExam'; rank: number; stage: 'start' | 'clear' };
+  | { kind: 'rankExam'; rank: number; stage: 'start' | 'clear' }
+  | { kind: 'trueEnding' };
 
 export const OfflineModal: React.FC<{
   summary: OfflineSummary;
@@ -263,6 +265,11 @@ export const StoryModal: React.FC<{
     title = '흑마법 최초 해독';
     lines = DARK_MAGIC_UNLOCK_LINES;
     buttonText = '금단의 힘을 받아들이기';
+  } else if (story.kind === 'trueEnding') {
+    subtitle = '성좌 윤회 진실 루트 · 히든 에필로그';
+    title = '진실의 종장 · 별빛이 돌아온 아침';
+    lines = TRUE_ENDING_LINES;
+    buttonText = '별빛 아래로 돌아가기';
   } else {
     const rankInfo = RANKS[Math.min(5, Math.max(1, story.rank))];
     const examDial = RANK_EXAM_DIALOGUES[story.rank] ?? RANK_EXAM_DIALOGUES[1];
@@ -358,9 +365,20 @@ export const StoryModal: React.FC<{
           </div>
         )}
 
+        {story.kind === 'trueEnding' && (
+          <div className="true-ending-seal-banner parchment">
+            ✦ 성좌의 증인 영구 보너스 활성 · 마력 +{TRUE_ENDING_REWARD.magicPct}% · 체력 +
+            {TRUE_ENDING_REWARD.hpPct}% · 보상 +{TRUE_ENDING_REWARD.rewardPct}%
+          </div>
+        )}
+
         <div style={{ margin: '10px 0 12px' }}>
           {lines.map((line, idx) => (
-            <DialogueRow key={`${activeSideId ?? activePhase}_${idx}`} line={line} state={state} />
+            <DialogueRow
+              key={`${story.kind}_${activeSideId ?? activePhase}_${idx}`}
+              line={line}
+              state={state}
+            />
           ))}
         </div>
 

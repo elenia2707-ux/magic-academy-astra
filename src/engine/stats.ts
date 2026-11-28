@@ -11,6 +11,11 @@ import { getNgPlusBaselineScaling, getRebirthVow } from '../data/rebirthVows';
 import { createDefaultSanctum, ensureSanctum, getSanctumBonuses } from '../data/sanctum';
 import { RANKS, SCHOOLS } from '../data/schools';
 import { SKILL_MAP } from '../data/skills';
+import {
+  createDefaultTruthRoute,
+  ensureTruthRoute,
+  getTruthRouteBonuses,
+} from '../data/truthRoute';
 import type {
   ArcaneSanctumState,
   ArchiveState,
@@ -24,6 +29,7 @@ import type {
   ProfessorAffinityState,
   ProfessorId,
   SchoolId,
+  TruthRouteState,
 } from '../types/game';
 
 import { ECON, EXP_CURVE } from '../data/economy';
@@ -146,7 +152,8 @@ export function createNewGameState(
   existingEscort?: ProfessorId | null,
   existingViewedSideStories?: string[],
   existingTowerMilestones?: number[],
-  existingStoryChoices?: Record<string, string>
+  existingStoryChoices?: Record<string, string>,
+  existingTruthRoute?: TruthRouteState
 ): GameState {
   const prestige = existingPrestige ?? createDefaultPrestige();
   const startWealthLv = prestige.upgrades.startingWealth ?? 0;
@@ -224,7 +231,7 @@ export function createNewGameState(
     dailyQuests: existingDailyQuests
       ? ensureDailyQuestsCurrent(existingDailyQuests)
       : createFreshDailyQuests(),
-    // 제련소 각인·교수 인연·기록실·동행·외전·무한 탑 마일스톤은 영구 유지
+    // 제련소 각인·교수 인연·기록실·동행·외전·무한 탑 마일스톤·진실 루트는 영구 유지
     sanctum: existingSanctum ? ensureSanctum(existingSanctum) : createDefaultSanctum(),
     affinity: existingAffinity ? ensureAffinity(existingAffinity) : createDefaultAffinity(),
     archive: existingArchive ? ensureArchive(existingArchive) : createDefaultArchive(),
@@ -233,6 +240,9 @@ export function createNewGameState(
     viewedSideStories: existingViewedSideStories ? [...existingViewedSideStories] : [],
     claimedTowerMilestones: existingTowerMilestones ? [...existingTowerMilestones] : [],
     storyChoices: existingStoryChoices ? { ...existingStoryChoices } : {},
+    truthRoute: existingTruthRoute
+      ? ensureTruthRoute(existingTruthRoute)
+      : createDefaultTruthRoute(),
     lastSavedAt: Date.now(),
     totalKills: 0,
   };
@@ -329,6 +339,7 @@ export function computePlayerStats(state: GameState): ComputedStats {
   const archiveBonus = getArchiveBonuses(state);
   const escortBonus = getEscortBonuses(state);
   const setBonus = getGearSetBonuses(state.equipped);
+  const truthBonus = getTruthRouteBonuses(state);
   const vow = getRebirthVow(state.prestige.activeVow);
   if (escortBonus.categoryBonus) {
     categoryBonus[escortBonus.categoryBonus.category] += escortBonus.categoryBonus.pct;
@@ -344,13 +355,15 @@ export function computePlayerStats(state: GameState): ComputedStats {
     affinityBonus.critRate +
     archiveBonus.critRate +
     escortBonus.critRate +
-    setBonus.critRate;
+    setBonus.critRate +
+    truthBonus.critRate;
   critDmg +=
     sanctumBonus.critDmgBonus +
     vow.critDmgBonus +
     archiveBonus.critDmg +
     escortBonus.critDmg +
-    setBonus.critDmg;
+    setBonus.critDmg +
+    truthBonus.critDmg;
   mpRegen +=
     affinityBonus.mpRegen +
     archiveBonus.mpRegen +
@@ -368,6 +381,7 @@ export function computePlayerStats(state: GameState): ComputedStats {
       (1 + archiveBonus.magicPct / 100) *
       (1 + escortBonus.magicPct / 100) *
       (1 + setBonus.magicPct / 100) *
+      (1 + truthBonus.magicPct / 100) *
       (infEffect?.magicMult ?? 1) *
       vow.magicMult
   );
@@ -382,6 +396,7 @@ export function computePlayerStats(state: GameState): ComputedStats {
       (1 + archiveBonus.hpPct / 100) *
       (1 + escortBonus.hpPct / 100) *
       (1 + setBonus.hpPct / 100) *
+      (1 + truthBonus.hpPct / 100) *
       (infEffect?.hpMult ?? 1)
   );
   const maxMp = Math.round((baseMp + eqMp) * (state.school === 'frost' ? 1.18 : 1) * vow.maxMpMult);
@@ -396,6 +411,7 @@ export function computePlayerStats(state: GameState): ComputedStats {
       (1 + archiveBonus.defPct / 100) *
       (1 + escortBonus.defPct / 100) *
       (1 + setBonus.defPct / 100) *
+      (1 + truthBonus.defPct / 100) *
       (infEffect?.defMult ?? 1)
   );
 
@@ -434,6 +450,7 @@ export function getRewardMultiplier(state: GameState): number {
   const aff = getAffinityBonuses(state);
   const affRewardAvg = (aff.expPct + aff.stonePct) / 200;
   const archiveBonus = getArchiveBonuses(state);
+  const truthBonus = getTruthRouteBonuses(state);
   const escortBonus = getEscortBonuses(state);
   const escortRewardAvg = (escortBonus.expPct + escortBonus.stonePct) / 200;
   const vow = getRebirthVow(state.prestige.activeVow);
@@ -443,6 +460,7 @@ export function getRewardMultiplier(state: GameState): number {
     wealthLv * 0.15 +
     affRewardAvg +
     archiveBonus.rewardPct / 100 +
+    truthBonus.rewardPct / 100 +
     escortRewardAvg +
     vow.rewardMultBonus +
     (ngScale.rewardMult - 1)

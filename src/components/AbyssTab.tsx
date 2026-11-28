@@ -5,6 +5,7 @@ import {
   Dices,
   Flame,
   Lock,
+  Mail,
   Music,
   RotateCcw,
   Save,
@@ -35,6 +36,19 @@ import {
   TOWER_MILESTONES,
 } from '../data/towerDepth';
 import { getNextTowerLordFloor } from '../data/towerLords';
+import {
+  formatTruthReward,
+  getOpenedTruthLetterCount,
+  getTruthRouteBonuses,
+  isTrueEndingClaimable,
+  isTrueEndingUnlocked,
+  isTruthLetterClaimable,
+  isTruthLetterOpened,
+  isTruthLetterUnlocked,
+  TRUE_ENDING_REWARD,
+  TRUTH_LETTERS,
+  type TruthLetterDef,
+} from '../data/truthRoute';
 import { BGM_TRACKS, type BgmTrackId } from '../engine/bgm';
 import { exportSaveCode } from '../engine/save';
 import type {
@@ -45,7 +59,7 @@ import type {
   GameState,
   PrestigeUpgradeId,
 } from '../types/game';
-import { MonsterPortrait } from './GothicArt';
+import { MonsterPortrait, NpcPortrait } from './GothicArt';
 
 /** 3x3 주사위 눈 도트 위치 (0..8) */
 const DIE_PIPS: Record<number, number[]> = {
@@ -70,6 +84,8 @@ interface Props {
   onTransmuteStones: (id: ArcaneTransmuteId) => void;
   onBuyPrestigeUpgrade: (id: PrestigeUpgradeId) => void;
   onStartRebirthFlow: () => void;
+  onOpenTruthLetter?: (letterId: string) => void;
+  onOpenTrueEnding?: () => void;
   onToggleSfx: () => void;
   onToggleBgm: () => void;
   onChangeBgmVolume: (volume: number) => void;
@@ -90,6 +106,8 @@ export const AbyssTab: React.FC<Props> = ({
   onTransmuteStones,
   onBuyPrestigeUpgrade,
   onStartRebirthFlow,
+  onOpenTruthLetter,
+  onOpenTrueEnding,
   onToggleSfx,
   onToggleBgm,
   onChangeBgmVolume,
@@ -101,6 +119,7 @@ export const AbyssTab: React.FC<Props> = ({
   const [copyMsg, setCopyMsg] = useState<string | null>(null);
   const [isRolling, setIsRolling] = useState(false);
   const [rollingFace, setRollingFace] = useState<number>(state.abyss.lastRoll ?? 1);
+  const [readingLetter, setReadingLetter] = useState<TruthLetterDef | null>(null);
   const rollTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -569,6 +588,17 @@ export const AbyssTab: React.FC<Props> = ({
         const specialVows = REBIRTH_VOW_ORDER.filter((id) => id !== 'none').map(
           (id) => REBIRTH_VOWS[id]
         );
+        const openedCount = getOpenedTruthLetterCount(state);
+        const truthBonuses = getTruthRouteBonuses(state);
+        const truthBonusChips: string[] = [];
+        if (truthBonuses.magicPct > 0) truthBonusChips.push(`마력 +${truthBonuses.magicPct}%`);
+        if (truthBonuses.hpPct > 0) truthBonusChips.push(`체력 +${truthBonuses.hpPct}%`);
+        if (truthBonuses.defPct > 0) truthBonusChips.push(`방어 +${truthBonuses.defPct}%`);
+        if (truthBonuses.critRate > 0) truthBonusChips.push(`치명 +${truthBonuses.critRate}%`);
+        if (truthBonuses.critDmg > 0) truthBonusChips.push(`치피 +${truthBonuses.critDmg}%`);
+        if (truthBonuses.rewardPct > 0) truthBonusChips.push(`보상 +${truthBonuses.rewardPct}%`);
+        const trueEndingUnlocked = isTrueEndingUnlocked(state);
+        const trueEndingClaimable = isTrueEndingClaimable(state);
         return (
           <>
             <div className="panel">
@@ -637,6 +667,176 @@ export const AbyssTab: React.FC<Props> = ({
                   ? `시간 회귀 실행 (+${rebirthReward} 별의 잔재 획득)`
                   : '4막 클리어 또는 5계급(심연 마도사)부터 회귀 가능'}
               </button>
+            </div>
+
+            {/* P5-3: 회귀(NG+) 진실 루트 & 봉인된 진실 서신함 */}
+            <div className="panel truth-route-panel">
+              <div className="panel-title-row">
+                <h2 className="panel-title">
+                  <Mail size={14} style={{ verticalAlign: -2, marginRight: 5 }} />
+                  성좌 윤회 · 봉인된 진실 서신함
+                </h2>
+                <span className="panel-sub" style={{ color: '#e3c481' }}>
+                  개봉 {openedCount} / {TRUTH_LETTERS.length} · 회귀 유지
+                </span>
+              </div>
+
+              <div className="truth-route-intro">
+                시간 회귀를 거듭할수록 아스트라의 숨겨진 기록이 밀랍 봉인을 뚫고 도착합니다.
+                서신을 개봉하면 즉시 보상과 영구 능력치를 얻고, 모든 진실 서신을 열람하면 히든
+                에필로그가 해금됩니다.
+              </div>
+
+              {truthBonusChips.length > 0 && (
+                <div className="truth-bonus-strip">
+                  <span className="truth-bonus-label">진실 루트 영구 보너스</span>
+                  <div className="truth-bonus-chips">
+                    {truthBonusChips.map((chip) => (
+                      <span key={chip} className="truth-bonus-chip">
+                        {chip}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="truth-letter-list">
+                {TRUTH_LETTERS.map((def) => {
+                  const unlocked = isTruthLetterUnlocked(state, def);
+                  const opened = isTruthLetterOpened(state, def.id);
+                  const claimable = isTruthLetterClaimable(state, def);
+
+                  if (claimable) {
+                    return (
+                      <div
+                        key={def.id}
+                        className="truth-letter-card parchment is-claimable"
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => setReadingLetter(def)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            setReadingLetter(def);
+                          }
+                        }}
+                      >
+                        <div className="truth-letter-top">
+                          <span className="truth-wax-pill is-sealed">✦ {def.waxLabel}</span>
+                          <span className="truth-letter-state is-claimable">미개봉 서신</span>
+                        </div>
+                        <div className="truth-letter-title">{def.title}</div>
+                        <div className="truth-letter-sender">
+                          {def.senderName} · {def.senderRole}
+                        </div>
+                        <div className="truth-letter-foot">
+                          <span className="truth-letter-reward">
+                            {formatTruthReward(def.reward)} · {def.passiveLabel}
+                          </span>
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-crimson truth-letter-btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setReadingLetter(def);
+                            }}
+                          >
+                            개봉하기
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  if (opened || unlocked) {
+                    return (
+                      <div
+                        key={def.id}
+                        className="truth-letter-card is-opened"
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => setReadingLetter(def)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            setReadingLetter(def);
+                          }
+                        }}
+                      >
+                        <div className="truth-letter-top">
+                          <span className="truth-wax-pill is-opened">{def.waxLabel}</span>
+                          <span className="truth-letter-state is-opened">✓ 개봉됨</span>
+                        </div>
+                        <div className="truth-letter-title">{def.title}</div>
+                        <div className="truth-letter-sender">
+                          {def.senderName} · {def.senderRole}
+                        </div>
+                        <div className="truth-letter-foot">
+                          <span className="truth-letter-passive">{def.passiveLabel}</span>
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-ghost truth-letter-btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setReadingLetter(def);
+                            }}
+                          >
+                            다시 읽기
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div key={def.id} className="truth-letter-card is-locked">
+                      <div className="truth-letter-top">
+                        <span className="truth-wax-pill is-locked">🔒 {def.waxLabel}</span>
+                        <span className="truth-letter-state is-locked">봉인됨</span>
+                      </div>
+                      <div className="truth-letter-title">봉인된 진실 서신</div>
+                      <div className="truth-letter-hint">{def.unlockHint}</div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div
+                className={`true-ending-card ${trueEndingUnlocked ? 'is-unlocked' : 'is-locked'}`}
+              >
+                <div className="true-ending-head">
+                  <span className="true-ending-badge">
+                    {trueEndingUnlocked
+                      ? trueEndingClaimable
+                        ? '✦ 해금됨 · 미열람'
+                        : '✓ 진엔딩 열람 완료'
+                      : '🔒 진실의 종장'}
+                  </span>
+                  <span className="true-ending-progress">
+                    서신 {openedCount} / {TRUTH_LETTERS.length}
+                  </span>
+                </div>
+                <div className="true-ending-title">히든 진엔딩 · 별빛이 돌아온 아침</div>
+                <div className="true-ending-preview">
+                  별의 잔재 +{TRUE_ENDING_REWARD.starRemnants} · 마력/체력 +
+                  {TRUE_ENDING_REWARD.magicPct}% · 보상 +{TRUE_ENDING_REWARD.rewardPct}%
+                </div>
+                {trueEndingUnlocked ? (
+                  <button
+                    type="button"
+                    className="btn btn-gold btn-block true-ending-btn"
+                    onClick={() => onOpenTrueEnding?.()}
+                  >
+                    {trueEndingClaimable
+                      ? '✦ 히든 에필로그 열람하기'
+                      : '✓ 히든 에필로그 다시 보기'}
+                  </button>
+                ) : (
+                  <div className="true-ending-lock-req">
+                    시간 회귀 1회 이상 + 진실 서신 5/5 개봉 시 해금
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="panel">
@@ -823,6 +1023,99 @@ export const AbyssTab: React.FC<Props> = ({
           </div>
         </>
       )}
+
+      {/* P5-3: 봉인된 진실 서신 열람 모달 */}
+      {readingLetter && (() => {
+        const playerName = state.playerName || '견습생';
+        const canClaim = isTruthLetterClaimable(state, readingLetter) && Boolean(onOpenTruthLetter);
+        const alreadyOpened = isTruthLetterOpened(state, readingLetter.id);
+        return (
+          <div
+            className="modal-backdrop truth-letter-backdrop"
+            onClick={() => setReadingLetter(null)}
+          >
+            <div
+              className="modal-card truth-letter-modal"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="truth-letter-modal-title"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="truth-letter-head">
+                <div className="truth-letter-avatar">
+                  <NpcPortrait
+                    id={readingLetter.portraitProf}
+                    variant="avatar"
+                    alt={readingLetter.senderName}
+                  />
+                </div>
+                <div className="truth-letter-head-meta">
+                  <div className="truth-letter-meta-row">
+                    <span className="truth-wax-pill is-sealed">✦ {readingLetter.waxLabel}</span>
+                    <span className="truth-letter-date">{readingLetter.dateTag}</span>
+                  </div>
+                  <h3 id="truth-letter-modal-title" className="modal-title truth-letter-modal-title">
+                    {readingLetter.title}
+                  </h3>
+                  <div className="truth-letter-modal-sender">
+                    {readingLetter.senderName} · {readingLetter.senderRole}
+                  </div>
+                </div>
+              </div>
+
+              <div className="truth-letter-body parchment">
+                {readingLetter.body.map((paragraph, idx) => (
+                  <p key={idx} className="truth-letter-p">
+                    {paragraph.replaceAll('{name}', playerName)}
+                  </p>
+                ))}
+                {readingLetter.postscript && (
+                  <div className="truth-letter-postscript">
+                    {readingLetter.postscript.replaceAll('{name}', playerName)}
+                  </div>
+                )}
+              </div>
+
+              <div className="truth-letter-actions">
+                {canClaim ? (
+                  <>
+                    <button
+                      type="button"
+                      className="btn btn-gold btn-block truth-letter-claim-btn"
+                      onClick={() => onOpenTruthLetter?.(readingLetter.id)}
+                    >
+                      ✦ 봉인 해제 &amp; 보상 수령 ({formatTruthReward(readingLetter.reward)} ·{' '}
+                      {readingLetter.passiveLabel})
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-block truth-letter-close-btn"
+                      onClick={() => setReadingLetter(null)}
+                    >
+                      닫기
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    {alreadyOpened && (
+                      <div className="truth-letter-opened-pill">
+                        ✓ 봉인 해제 완료 · {readingLetter.passiveLabel}
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      className="btn btn-gold btn-block truth-letter-close-btn"
+                      onClick={() => setReadingLetter(null)}
+                    >
+                      닫기
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 };
