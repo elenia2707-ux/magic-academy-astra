@@ -14,6 +14,19 @@ import {
   generateAbyssNodeForTile,
 } from './data/abyssEvents';
 import {
+  ACHIEVEMENT_MAP,
+  BESTIARY_ENTRIES,
+  BESTIARY_MAP,
+  ensureArchive,
+  formatArchiveReward,
+  getClaimableArchiveCount,
+  getEquippedTitleDef,
+  isAchievementClaimable,
+  isBestiaryClaimable,
+  recordBestiaryKill,
+  recordPerfectIntervention,
+} from './data/archive';
+import {
   formatEventReward,
   pickBlackComedyEvent,
   resolveEventReward,
@@ -714,6 +727,7 @@ export default function App() {
             ...(isBossVictory ? { boss: 1 } : {}),
           }),
           infirmary: consumeInfirmaryBattle(prev.infirmary),
+          archive: recordBestiaryKill(prev.archive, curCombat.enemy.artKey),
           totalKills: prev.totalKills + 1,
         };
       });
@@ -781,6 +795,13 @@ export default function App() {
     combatRef.current = outcome.combat;
     setCombat(outcome.combat);
     playSfx(outcome.sfx, curState.settings.sfxEnabled);
+
+    if (outcome.combat.starlightFlash?.perfect) {
+      setState((prev) => ({
+        ...prev,
+        archive: recordPerfectIntervention(prev.archive),
+      }));
+    }
 
     if (outcome.result === 'victory') {
       const ms = curState.settings.speed === 3 ? 460 : curState.settings.speed === 2 ? 780 : 1320;
@@ -888,7 +909,8 @@ export default function App() {
       nextPrestige,
       rebirthPending ? state.dailyQuests : undefined,
       rebirthPending ? ensureSanctum(state.sanctum) : undefined,
-      rebirthPending ? ensureAffinity(state.affinity) : undefined
+      rebirthPending ? ensureAffinity(state.affinity) : undefined,
+      rebirthPending ? ensureArchive(state.archive) : undefined
     );
     storyQueueRef.current = [];
     syncStoryQueueCount();
@@ -1645,6 +1667,121 @@ export default function App() {
     showToast(`✨ 비전 연성 완료: ${def.name} (${def.rewardLabel})`);
   };
 
+  // P4-2: 아스트라 기록실 — 마물 도감 기록 · 업적 수령 · 칭호 장착
+  const handleClaimBestiary = (artKey: string) => {
+    const entry = BESTIARY_MAP[artKey];
+    if (!entry || !isBestiaryClaimable(state, entry)) return;
+    playSfx('victory', state.settings.sfxEnabled);
+    setState((prev) => {
+      if (!isBestiaryClaimable(prev, entry)) return prev;
+      const prevArchive = ensureArchive(prev.archive);
+      const next: GameState = {
+        ...prev,
+        stones: prev.stones + (entry.reward.stones ?? 0),
+        arcaneDust: prev.arcaneDust + (entry.reward.arcaneDust ?? 0),
+        archive: {
+          ...prevArchive,
+          claimedBestiary: [...prevArchive.claimedBestiary, artKey],
+        },
+      };
+      saveGameToStorage(next);
+      return next;
+    });
+    showToast(`📖 [${entry.name}] 도감 기록 완료! ${formatArchiveReward(entry.reward)} · ${entry.passiveLabel}`);
+  };
+
+  const handleClaimAllBestiary = () => {
+    const claimable = BESTIARY_ENTRIES.filter((e) => isBestiaryClaimable(state, e));
+    if (claimable.length === 0) return;
+    const totalStones = claimable.reduce((acc, e) => acc + (e.reward.stones ?? 0), 0);
+    const totalDust = claimable.reduce((acc, e) => acc + (e.reward.arcaneDust ?? 0), 0);
+    playSfx('victory', state.settings.sfxEnabled);
+    setState((prev) => {
+      const prevClaimable = BESTIARY_ENTRIES.filter((e) => isBestiaryClaimable(prev, e));
+      if (prevClaimable.length === 0) return prev;
+      const prevArchive = ensureArchive(prev.archive);
+      const addStones = prevClaimable.reduce((acc, e) => acc + (e.reward.stones ?? 0), 0);
+      const addDust = prevClaimable.reduce((acc, e) => acc + (e.reward.arcaneDust ?? 0), 0);
+      const addKeys = prevClaimable.map((e) => e.artKey);
+      const next: GameState = {
+        ...prev,
+        stones: prev.stones + addStones,
+        arcaneDust: prev.arcaneDust + addDust,
+        archive: {
+          ...prevArchive,
+          claimedBestiary: [...prevArchive.claimedBestiary, ...addKeys],
+        },
+      };
+      saveGameToStorage(next);
+      return next;
+    });
+    showToast(
+      `📖 도감 ${claimable.length}종 일괄 기록! ${formatArchiveReward({ stones: totalStones, arcaneDust: totalDust })}`
+    );
+  };
+
+  const handleClaimAchievement = (id: string) => {
+    const def = ACHIEVEMENT_MAP[id];
+    if (!def || !isAchievementClaimable(state, def)) return;
+    playSfx('victory', state.settings.sfxEnabled);
+    setState((prev) => {
+      if (!isAchievementClaimable(prev, def)) return prev;
+      const prevArchive = ensureArchive(prev.archive);
+      const r = def.reward;
+      const remnants = r.starRemnants ?? 0;
+      const next: GameState = {
+        ...prev,
+        stones: prev.stones + (r.stones ?? 0),
+        arcaneDust: prev.arcaneDust + (r.arcaneDust ?? 0),
+        tomeShards: prev.tomeShards + (r.tomeShards ?? 0),
+        eggShards: prev.eggShards + (r.eggShards ?? 0),
+        prestige:
+          remnants > 0
+            ? {
+                ...prev.prestige,
+                starRemnants: prev.prestige.starRemnants + remnants,
+                totalRemnantsEarned: prev.prestige.totalRemnantsEarned + remnants,
+              }
+            : prev.prestige,
+        archive: {
+          ...prevArchive,
+          claimedAchievements: [...prevArchive.claimedAchievements, id],
+        },
+      };
+      saveGameToStorage(next);
+      return next;
+    });
+    showToast(
+      `🏆 업적 [${def.name}] 달성! 칭호 「${def.titleName}」 해금 · ${formatArchiveReward(def.reward)}`
+    );
+  };
+
+  const handleEquipTitle = (id: string | null) => {
+    const curArchive = ensureArchive(state.archive);
+    if (id !== null && !curArchive.claimedAchievements.includes(id)) return;
+    const nextTitle = id === null || curArchive.equippedTitle === id ? null : id;
+    if (nextTitle === curArchive.equippedTitle) return;
+    playSfx('click', state.settings.sfxEnabled);
+    setState((prev) => {
+      const prevArchive = ensureArchive(prev.archive);
+      if (nextTitle !== null && !prevArchive.claimedAchievements.includes(nextTitle)) return prev;
+      const next: GameState = {
+        ...prev,
+        archive: {
+          ...prevArchive,
+          equippedTitle: nextTitle,
+        },
+      };
+      saveGameToStorage(next);
+      return next;
+    });
+    if (nextTitle && ACHIEVEMENT_MAP[nextTitle]) {
+      showToast(`✦ 칭호 「${ACHIEVEMENT_MAP[nextTitle].titleName}」 장착!`);
+    } else {
+      showToast('칭호 장착을 해제했습니다.');
+    }
+  };
+
   // 알림 점
   const nextRank = state.rank < 5 ? RANKS[state.rank + 1] : null;
   const examReady =
@@ -1652,6 +1789,8 @@ export default function App() {
     state.level >= nextRank.reqLevel &&
     (nextRank.reqClearedAct === 0 || state.clearedActs.includes(nextRank.reqClearedAct));
   const dailyClaimable = countClaimableDailyQuests(state);
+  const archiveClaimable = useMemo(() => getClaimableArchiveCount(state), [state]);
+  const equippedTitle = getEquippedTitleDef(state);
   const abyssReady = state.abyss.lanterns >= state.abyss.maxLanterns;
 
   const expReq = expForNextLevel(state.level);
@@ -1698,6 +1837,7 @@ export default function App() {
                       <span className="rank-tag">{RANKS[state.rank].name}</span>
                     </div>
                     <div className="player-sub">
+                      {equippedTitle ? `「${equippedTitle.titleName}」 · ` : ''}
                       {SCHOOLS[state.school].name}
                       {state.prestige.rebirthCount > 0 ? ` · ${state.prestige.rebirthCount}회귀` : ''}
                     </div>
@@ -1813,6 +1953,7 @@ export default function App() {
                   state={state}
                   stats={stats}
                   dailyClaimable={dailyClaimable}
+                  archiveClaimable={archiveClaimable}
                   onAssignTraining={handleAssignTraining}
                   onUnlockDarkSkill={handleUnlockDarkSkill}
                   onUpgradeSkillWithStones={handleUpgradeSkillWithStones}
@@ -1828,6 +1969,10 @@ export default function App() {
                   }}
                   onClaimDailyQuest={handleClaimDailyQuest}
                   onClaimDailyBonus={handleClaimDailyBonus}
+                  onClaimBestiary={handleClaimBestiary}
+                  onClaimAllBestiary={handleClaimAllBestiary}
+                  onClaimAchievement={handleClaimAchievement}
+                  onEquipTitle={handleEquipTitle}
                 />
               )}
 
@@ -1936,8 +2081,8 @@ export default function App() {
                 </i>
                 <span className="nav-label">학교</span>
                 {examReady && <span className="nav-dot" />}
-                {dailyClaimable > 0 && (
-                  <span className="nav-quest-dot" title="완료된 오늘의 과제" />
+                {dailyClaimable + archiveClaimable > 0 && (
+                  <span className="nav-quest-dot" title="수령 가능한 과제·기록 보상" />
                 )}
               </button>
               <button

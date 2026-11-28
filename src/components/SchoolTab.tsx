@@ -40,6 +40,7 @@ import type {
   SkillDef,
   SkillRuneBranch,
 } from '../types/game';
+import { ArchivePanel } from './ArchivePanel';
 import { MonsterPortrait, NpcPortrait } from './GothicArt';
 import { MonsterShowcaseModal, ProfessorShowcaseModal } from './Modals';
 import { SkillIcon } from './SkillArt';
@@ -48,6 +49,7 @@ interface Props {
   state: GameState;
   stats: ComputedStats;
   dailyClaimable: number;
+  archiveClaimable: number;
   onAssignTraining: (slotIdx: number, skillId: string | null) => void;
   onUnlockDarkSkill: (skillId: string) => void;
   onUpgradeSkillWithStones: (skillId: string) => void;
@@ -58,6 +60,10 @@ interface Props {
   onSelectAct: (act: number) => void;
   onClaimDailyQuest: (id: DailyQuestId) => void;
   onClaimDailyBonus: () => void;
+  onClaimBestiary: (artKey: string) => void;
+  onClaimAllBestiary: () => void;
+  onClaimAchievement: (id: string) => void;
+  onEquipTitle: (id: string | null) => void;
 }
 
 type ClassroomFilter = 'all' | 'school' | 'ward' | 'holy';
@@ -66,6 +72,7 @@ export const SchoolTab: React.FC<Props> = ({
   state,
   stats,
   dailyClaimable,
+  archiveClaimable,
   onAssignTraining,
   onUnlockDarkSkill,
   onUpgradeSkillWithStones,
@@ -76,12 +83,19 @@ export const SchoolTab: React.FC<Props> = ({
   onSelectAct,
   onClaimDailyQuest,
   onClaimDailyBonus,
+  onClaimBestiary,
+  onClaimAllBestiary,
+  onClaimAchievement,
+  onEquipTitle,
 }) => {
-  const [sub, setSub] = useState<'class' | 'forbidden' | 'headmaster' | 'daily'>('class');
+  const [sub, setSub] = useState<'class' | 'forbidden' | 'headmaster' | 'daily' | 'archive'>('class');
   const [classFilter, setClassFilter] = useState<ClassroomFilter>('all');
-  const [inspectBoss, setInspectBoss] = useState<{ monster: MonsterDef; actLabel: string } | null>(
-    null
-  );
+  const [inspectBoss, setInspectBoss] = useState<{
+    monster: MonsterDef;
+    actLabel: string;
+    researchNote?: string;
+    killCount?: number;
+  } | null>(null);
   const [inspectProfessor, setInspectProfessor] = useState<ProfessorId | null>(null);
   const [selectedAffinityProf, setSelectedAffinityProf] = useState<ProfessorId>('lucia');
 
@@ -333,6 +347,14 @@ export const SchoolTab: React.FC<Props> = ({
         >
           과제
           {dailyClaimable > 0 && <span className="subtab-badge">{dailyClaimable}</span>}
+        </button>
+        <button
+          type="button"
+          className={`subtab-btn ${sub === 'archive' ? 'active' : ''}`}
+          onClick={() => setSub('archive')}
+        >
+          기록실
+          {archiveClaimable > 0 && <span className="subtab-badge">{archiveClaimable}</span>}
         </button>
       </div>
 
@@ -877,11 +899,24 @@ export const SchoolTab: React.FC<Props> = ({
         </>
       )}
 
+      {sub === 'archive' && (
+        <ArchivePanel
+          state={state}
+          onClaimBestiary={onClaimBestiary}
+          onClaimAllBestiary={onClaimAllBestiary}
+          onClaimAchievement={onClaimAchievement}
+          onEquipTitle={onEquipTitle}
+          onInspectMonster={(payload) => setInspectBoss(payload)}
+        />
+      )}
+
       {inspectBoss && (
         <MonsterShowcaseModal
           monster={inspectBoss.monster}
           actLabel={inspectBoss.actLabel}
           rebirthCount={state.prestige.rebirthCount}
+          researchNote={inspectBoss.researchNote}
+          killCount={inspectBoss.killCount}
           onClose={() => setInspectBoss(null)}
         />
       )}

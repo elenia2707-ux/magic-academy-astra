@@ -1,4 +1,5 @@
 import { createDefaultAffinity, ensureAffinity, getAffinityBonuses } from '../data/affinity';
+import { createDefaultArchive, ensureArchive, getArchiveBonuses } from '../data/archive';
 import { createFreshDailyQuests, ensureDailyQuestsCurrent } from '../data/dailyQuests';
 import { getEnhanceMultiplier, generateEquipment } from '../data/equipment';
 import { FAMILIARS } from '../data/familiars';
@@ -10,6 +11,7 @@ import { RANKS, SCHOOLS } from '../data/schools';
 import { SKILL_MAP } from '../data/skills';
 import type {
   ArcaneSanctumState,
+  ArchiveState,
   ComputedStats,
   DailyQuestState,
   GameState,
@@ -136,7 +138,8 @@ export function createNewGameState(
   existingPrestige?: PrestigeState,
   existingDailyQuests?: DailyQuestState,
   existingSanctum?: ArcaneSanctumState,
-  existingAffinity?: ProfessorAffinityState
+  existingAffinity?: ProfessorAffinityState,
+  existingArchive?: ArchiveState
 ): GameState {
   const prestige = existingPrestige ?? createDefaultPrestige();
   const startWealthLv = prestige.upgrades.startingWealth ?? 0;
@@ -214,9 +217,10 @@ export function createNewGameState(
     dailyQuests: existingDailyQuests
       ? ensureDailyQuestsCurrent(existingDailyQuests)
       : createFreshDailyQuests(),
-    // 제련소 각인과 교수 인연은 영구 유지
+    // 제련소 각인·교수 인연·기록실은 영구 유지
     sanctum: existingSanctum ? ensureSanctum(existingSanctum) : createDefaultSanctum(),
     affinity: existingAffinity ? ensureAffinity(existingAffinity) : createDefaultAffinity(),
+    archive: existingArchive ? ensureArchive(existingArchive) : createDefaultArchive(),
     grimoireSeal: null,
     lastSavedAt: Date.now(),
     totalKills: 0,
@@ -305,16 +309,17 @@ export function computePlayerStats(state: GameState): ComputedStats {
     }
   }
 
-  // 학파 + 계급 + 별의 성좌(환생) + P1-3 양호실 처방 + P1-7 심연 비전 각인 + P3-5 교수 인연 배율 + P3-4 성좌 서약
+  // 학파 + 계급 + 별의 성좌(환생) + P1-3 양호실 처방 + P1-7 심연 비전 각인 + P3-5 교수 인연 배율 + P3-4 성좌 서약 + P4-2 기록실
   const starPowerMult = 1 + (up.starPower ?? 0) * 0.18;
   const starVitMult = 1 + (up.starVitality ?? 0) * 0.18;
   const infEffect = getActiveInfirmaryEffect(state);
   const sanctumBonus = getSanctumBonuses(state);
   const affinityBonus = getAffinityBonuses(state);
+  const archiveBonus = getArchiveBonuses(state);
   const vow = getRebirthVow(state.prestige.activeVow);
-  critRate += sanctumBonus.critRateBonus + affinityBonus.critRate;
-  critDmg += sanctumBonus.critDmgBonus + vow.critDmgBonus;
-  mpRegen += affinityBonus.mpRegen;
+  critRate += sanctumBonus.critRateBonus + affinityBonus.critRate + archiveBonus.critRate;
+  critDmg += sanctumBonus.critDmgBonus + vow.critDmgBonus + archiveBonus.critDmg;
+  mpRegen += affinityBonus.mpRegen + archiveBonus.mpRegen;
 
   const magic = Math.round(
     (baseMagic + eqMagic) *
@@ -324,6 +329,7 @@ export function computePlayerStats(state: GameState): ComputedStats {
       starPowerMult *
       sanctumBonus.magicMult *
       (1 + affinityBonus.magicPct / 100) *
+      (1 + archiveBonus.magicPct / 100) *
       (infEffect?.magicMult ?? 1) *
       vow.magicMult
   );
@@ -335,6 +341,7 @@ export function computePlayerStats(state: GameState): ComputedStats {
       starVitMult *
       sanctumBonus.hpMult *
       (1 + affinityBonus.hpPct / 100) *
+      (1 + archiveBonus.hpPct / 100) *
       (infEffect?.hpMult ?? 1)
   );
   const maxMp = Math.round((baseMp + eqMp) * (state.school === 'frost' ? 1.18 : 1) * vow.maxMpMult);
@@ -346,6 +353,7 @@ export function computePlayerStats(state: GameState): ComputedStats {
       starVitMult *
       sanctumBonus.defMult *
       (1 + affinityBonus.defPct / 100) *
+      (1 + archiveBonus.defPct / 100) *
       (infEffect?.defMult ?? 1)
   );
 
@@ -379,9 +387,17 @@ export function getRewardMultiplier(state: GameState): number {
   const wealthLv = state.prestige.upgrades.startingWealth ?? 0;
   const aff = getAffinityBonuses(state);
   const affRewardAvg = (aff.expPct + aff.stonePct) / 200;
+  const archiveBonus = getArchiveBonuses(state);
   const vow = getRebirthVow(state.prestige.activeVow);
   const ngScale = getNgPlusBaselineScaling(state.prestige.rebirthCount);
-  return 1 + wealthLv * 0.15 + affRewardAvg + vow.rewardMultBonus + (ngScale.rewardMult - 1);
+  return (
+    1 +
+    wealthLv * 0.15 +
+    affRewardAvg +
+    archiveBonus.rewardPct / 100 +
+    vow.rewardMultBonus +
+    (ngScale.rewardMult - 1)
+  );
 }
 
 export function applyExpAndLevelUp(

@@ -381,6 +381,19 @@ export interface ProfessorAffinityState {
   claimedEvents: string[];
 }
 
+export interface ArchiveState {
+  /** 몬스터/보스 artKey별 누적 처치 수 */
+  killCounts: Record<string, number>;
+  /** 도감 연구 보상을 수령한 artKey 목록 */
+  claimedBestiary: string[];
+  /** 보상을 수령한 업적 ID 목록 */
+  claimedAchievements: string[];
+  /** 상단 헤더에 장착한 칭호의 업적 ID (null이면 미장착) */
+  equippedTitle: string | null;
+  /** 별빛 완벽 개입 누적 횟수 */
+  perfectInterventions: number;
+}
+
 export interface GameState {
   version: number;
   created: boolean;
@@ -419,6 +432,8 @@ export interface GameState {
   affinity?: ProfessorAffinityState;
   /** P3-3: 전술 마도서 인장 (막 보스 고유 기믹 대응) */
   grimoireSeal?: GrimoireSealId | null;
+  /** P4-2: 아스트라 기록실 (몬스터·보스 도감 & 업적·칭호, 회귀 시 유지) */
+  archive?: ArchiveState;
   lastSavedAt: number;
   totalKills: number;
 }

@@ -1,6 +1,7 @@
 import { effectiveStoneReward } from '../data/economy';
 import React, { useEffect, useState } from 'react';
 import { ACTS } from '../data/acts';
+import { getEquippedTitleDef } from '../data/archive';
 import { hasAwakenedHeroArt } from '../data/art';
 import {
   DARK_MAGIC_UNLOCK_LINES,
@@ -304,6 +305,7 @@ export const HeroPortraitModal: React.FC<{
   const hasAw = hasAwakenedHeroArt(state.school, state.gender);
   const isAwakenedUnlocked = state.rank >= 3 && hasAw;
   const [showAwakened, setShowAwakened] = useState(isAwakenedUnlocked);
+  const equippedTitle = getEquippedTitleDef(state);
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
@@ -349,6 +351,9 @@ export const HeroPortraitModal: React.FC<{
           <h3 className="modal-title" style={{ margin: '3px 0 4px', textAlign: 'center' }}>
             {state.playerName} — {getCharacterTitle(state.school, state.gender)}
           </h3>
+          {equippedTitle && (
+            <div className="hero-title-badge">「{equippedTitle.titleName}」</div>
+          )}
           <div style={{ fontSize: 11.5, color: '#c5bdb0', marginBottom: 10 }}>
             “{getCharacterQuote(state.school, state.gender)}”
           </div>
@@ -383,8 +388,10 @@ export const MonsterShowcaseModal: React.FC<{
   monster: MonsterDef;
   actLabel?: string;
   rebirthCount?: number;
+  researchNote?: string;
+  killCount?: number;
   onClose: () => void;
-}> = ({ monster, actLabel, rebirthCount = 0, onClose }) => {
+}> = ({ monster, actLabel, rebirthCount = 0, researchNote, killCount, onClose }) => {
   const quote =
     rebirthCount >= 1 && monster.ngPlusQuote ? monster.ngPlusQuote : monster.encounterQuote;
 
@@ -439,6 +446,17 @@ export const MonsterShowcaseModal: React.FC<{
           <div className="list-card" style={{ marginBottom: 10, fontSize: 11.5 }}>
             <span style={{ color: '#e07b7f', fontWeight: 700 }}>보스 필살기</span> ·{' '}
             <strong>{monster.heavyName}</strong> ({monster.heavyInterval ?? 3}턴 주기)
+          </div>
+        )}
+        {researchNote && (
+          <div className="familiar-lore-box parchment">
+            <div className="familiar-lore-title archive-lore-head">
+              <span>아스트라 박물 연구 메모</span>
+              {typeof killCount === 'number' && killCount > 0 && (
+                <span className="archive-lore-kills">처치 {killCount.toLocaleString()}회</span>
+              )}
+            </div>
+            <div className="familiar-lore-note">{researchNote}</div>
           </div>
         )}
         <button type="button" className="btn btn-gold btn-block" onClick={onClose}>

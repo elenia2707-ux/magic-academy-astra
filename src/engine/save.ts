@@ -1,3 +1,4 @@
+import { ensureArchive } from '../data/archive';
 import { GRIMOIRE_SEALS } from '../data/bossGimmicks';
 import { ensureDailyQuestsCurrent } from '../data/dailyQuests';
 import { REBIRTH_VOWS } from '../data/rebirthVows';
@@ -151,6 +152,7 @@ function hydrateState(parsed: Partial<GameState>): GameState | null {
     }, parsed.settings?.gearDefaultsV2 === true),
     dailyQuests: ensureDailyQuestsCurrent(parsed.dailyQuests),
     sanctum: ensureSanctum(parsed.sanctum),
+    archive: ensureArchive(parsed.archive),
     grimoireSeal: normalizeGrimoireSeal(parsed.grimoireSeal),
     ...(normalizedAffinity ? { affinity: normalizedAffinity } : {}),
   });
