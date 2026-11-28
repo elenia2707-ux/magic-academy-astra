@@ -1,5 +1,6 @@
 import type { ArchiveState, GameState, MonsterDef } from '../types/game';
 import { ACTS } from './acts';
+import { getClaimableCodexCount, getCodexBonuses } from './codex';
 import { RANK_EXAM_BOSSES, RANKS } from './schools';
 
 export type BestiaryGroup = 'act1' | 'act2' | 'act3' | 'act4' | 'act5' | 'act6' | 'exam';
@@ -425,6 +426,7 @@ export function createDefaultArchive(): ArchiveState {
     killCounts: {},
     claimedBestiary: [],
     claimedAchievements: [],
+    claimedCodex: [],
     equippedTitle: null,
     perfectInterventions: 0,
   };
@@ -461,6 +463,15 @@ export function ensureArchive(raw?: Partial<ArchiveState> | null): ArchiveState 
     }
   }
 
+  const codexSet = new Set<string>();
+  if (Array.isArray(raw.claimedCodex)) {
+    for (const id of raw.claimedCodex) {
+      if (typeof id === 'string' && id.length > 0) {
+        codexSet.add(id);
+      }
+    }
+  }
+
   const claimedAchievements = Array.from(achievementSet);
   const equippedTitle =
     typeof raw.equippedTitle === 'string' && achievementSet.has(raw.equippedTitle)
@@ -478,6 +489,7 @@ export function ensureArchive(raw?: Partial<ArchiveState> | null): ArchiveState 
     killCounts,
     claimedBestiary: Array.from(bestiarySet),
     claimedAchievements,
+    claimedCodex: Array.from(codexSet),
     equippedTitle,
     perfectInterventions,
   };
@@ -545,7 +557,11 @@ export function getClaimableAchievementCount(state: GameState): number {
 }
 
 export function getClaimableArchiveCount(state: GameState): number {
-  return getClaimableBestiaryCount(state) + getClaimableAchievementCount(state);
+  return (
+    getClaimableBestiaryCount(state) +
+    getClaimableAchievementCount(state) +
+    getClaimableCodexCount(state)
+  );
 }
 
 export function recordBestiaryKill(archive: ArchiveState | undefined, artKey: string): ArchiveState {
@@ -600,8 +616,16 @@ export function getArchiveBonuses(state: GameState): ArchiveBonuses {
     if (def.passive.rewardPct) totals.rewardPct += def.passive.rewardPct;
   }
 
+  const codexBonuses = getCodexBonuses(state);
+  if (codexBonuses.magicPct) totals.magicPct += codexBonuses.magicPct;
+  if (codexBonuses.hpPct) totals.hpPct += codexBonuses.hpPct;
+  if (codexBonuses.defPct) totals.defPct += codexBonuses.defPct;
+  if (codexBonuses.rewardPct) totals.rewardPct += codexBonuses.rewardPct;
+
   totals.magicPct = Math.round(totals.magicPct * 10) / 10;
   totals.hpPct = Math.round(totals.hpPct * 10) / 10;
+  totals.defPct = Math.round(totals.defPct * 10) / 10;
+  totals.rewardPct = Math.round(totals.rewardPct * 10) / 10;
 
   return totals;
 }

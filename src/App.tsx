@@ -32,6 +32,7 @@ import {
   resolveEventReward,
   type AcademyEventDef,
 } from './data/blackComedyEvents';
+import { CODEX_MAP, isCodexClaimable } from './data/codex';
 import {
   areAllDailyQuestsClaimed,
   countClaimableDailyQuests,
@@ -1966,6 +1967,31 @@ export default function App() {
     );
   };
 
+  const handleClaimCodex = (codexId: string) => {
+    const entry = CODEX_MAP[codexId];
+    if (!entry || !isCodexClaimable(state, entry)) return;
+    playSfx('victory', state.settings.sfxEnabled);
+    setState((prev) => {
+      if (!isCodexClaimable(prev, entry)) return prev;
+      const prevArchive = ensureArchive(prev.archive);
+      const prevClaimed = prevArchive.claimedCodex ?? [];
+      if (prevClaimed.includes(codexId)) return prev;
+      const next: GameState = {
+        ...prev,
+        stones: prev.stones + entry.rewardStones,
+        archive: {
+          ...prevArchive,
+          claimedCodex: [...prevClaimed, codexId],
+        },
+      };
+      saveGameToStorage(next);
+      return next;
+    });
+    showToast(
+      `📜 [${entry.title}] 열람 기록 완료! 마석 +${entry.rewardStones.toLocaleString()} · ${entry.passiveLabel}`
+    );
+  };
+
   const handleEquipTitle = (id: string | null) => {
     const curArchive = ensureArchive(state.archive);
     if (id !== null && !curArchive.claimedAchievements.includes(id)) return;
@@ -2185,6 +2211,7 @@ export default function App() {
                   onClaimBestiary={handleClaimBestiary}
                   onClaimAllBestiary={handleClaimAllBestiary}
                   onClaimAchievement={handleClaimAchievement}
+                  onClaimCodex={handleClaimCodex}
                   onEquipTitle={handleEquipTitle}
                 />
               )}

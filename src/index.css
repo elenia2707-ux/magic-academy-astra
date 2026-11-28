@@ -4040,6 +4040,8 @@ select,
   pointer-events: none;
   max-width: calc(100% - 28px);
   text-align: center;
+  white-space: normal;
+  line-height: 1.35;
 }
 
 /* 전투 배경 시인성 살짝 개선 (카드 가독성은 유지) */
@@ -5102,8 +5104,8 @@ select,
 
 .archive-mode-tabs {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 5px;
   padding: 4px;
   border-radius: 12px;
   background: linear-gradient(180deg, var(--wood-lo) 0%, #240d12 100%);
@@ -5115,18 +5117,31 @@ select,
   border: none;
   background: transparent;
   color: #c9a9a0;
-  padding: 7px 6px;
+  padding: 8px 4px;
   border-radius: 9px;
   font-family: var(--font-round);
-  font-size: 12.5px;
+  font-size: 11px;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 5px;
+  gap: 3px;
   white-space: nowrap;
   min-width: 0;
+  overflow: hidden;
   transition: all 0.15s ease;
+}
+
+.archive-mode-btn svg {
+  flex-shrink: 0;
+}
+
+.archive-mode-btn .subtab-badge {
+  font-size: 9.5px;
+  padding: 0 4px;
+  min-width: 15px;
+  height: 15px;
+  flex-shrink: 0;
 }
 
 .archive-mode-btn.active {
@@ -6644,4 +6659,398 @@ select,
 .tower-milestone-card.is-locked .tower-ms-reward {
   color: #9a8b7d;
 }
+
+/* ===== P5-1: 아스트라 연대기 & 세계관 사전 코덱스 ===== */
+.archive-codex-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.codex-head-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  padding: 7px 10px;
+  border-radius: 9px;
+  background: linear-gradient(180deg, #2b151c 0%, #1c0d12 100%);
+  border: 1px solid rgba(196, 156, 92, 0.34);
+  box-shadow: inset 0 1px 0 rgba(255, 232, 190, 0.1), 0 2px 5px rgba(0, 0, 0, 0.35);
+}
+
+.codex-head-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-round);
+  font-size: 12px;
+  color: #f2dca4;
+}
+
+.codex-head-counts {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #cfb79d;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.codex-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.codex-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.codex-card {
+  border-radius: 10px;
+  padding: 10px 11px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  border: 1px solid rgba(184, 146, 90, 0.32);
+  background: linear-gradient(180deg, #28151b 0%, #1a0d12 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 232, 190, 0.08), 0 2px 6px rgba(0, 0, 0, 0.42);
+  color: #efe3ce;
+  min-width: 0;
+  transition: border-color 0.15s ease, transform 0.12s ease, box-shadow 0.15s ease;
+}
+
+.codex-card[role='button'] {
+  cursor: pointer;
+}
+
+.codex-card[role='button']:active {
+  transform: translateY(1px);
+}
+
+.codex-card.is-claimable {
+  background: linear-gradient(180deg, #ead9b5 0%, #dbc59a 100%);
+  color: #2e1d12;
+  border: 1.5px solid #9c7028;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 248, 228, 0.68),
+    0 0 0 1px rgba(242, 212, 145, 0.55),
+    0 3px 10px rgba(0, 0, 0, 0.45);
+}
+
+.codex-card.is-claimed {
+  background: linear-gradient(180deg, #2d181e 0%, #1d0f14 100%);
+  border-color: rgba(212, 174, 102, 0.46);
+}
+
+.codex-card.is-locked {
+  opacity: 0.78;
+  background: linear-gradient(180deg, #1d1216 0%, #140b0e 100%);
+  border-color: rgba(154, 134, 118, 0.24);
+}
+
+.codex-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  min-width: 0;
+}
+
+.codex-era-tag {
+  display: inline-flex;
+  align-items: center;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 999px;
+  color: #dfcaab;
+  background: rgba(184, 146, 90, 0.16);
+  border: 1px solid rgba(184, 146, 90, 0.34);
+  max-width: 72%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.codex-card.is-claimable .codex-era-tag {
+  color: #5b3714;
+  background: rgba(112, 74, 24, 0.15);
+  border-color: rgba(112, 74, 24, 0.34);
+}
+
+.codex-card.is-locked .codex-era-tag {
+  color: #9b897c;
+  background: rgba(120, 104, 92, 0.16);
+  border-color: rgba(140, 122, 108, 0.26);
+}
+
+.codex-unread-tag {
+  font-family: var(--font-round);
+  font-size: 10px;
+  color: #2b1808;
+  background: linear-gradient(180deg, #f3d796 0%, #c99a49 100%);
+  border: 1px solid #6b4714;
+  border-radius: 999px;
+  padding: 1px 8px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.codex-claimed-seal {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-family: var(--font-round);
+  font-size: 10px;
+  color: #f6ddb0;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(114, 34, 40, 0.82) 0%, rgba(72, 20, 26, 0.92) 100%);
+  border: 1px solid rgba(226, 178, 108, 0.54);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.codex-lock-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #9a887c;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: rgba(34, 22, 26, 0.8);
+  border: 1px solid rgba(154, 134, 118, 0.28);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.codex-card-title {
+  font-family: var(--font-round);
+  font-size: 13.5px;
+  line-height: 1.28;
+  color: #f6e7ca;
+  word-break: keep-all;
+}
+
+.codex-card.is-claimable .codex-card-title {
+  color: #2e1d12;
+}
+
+.codex-card.is-locked .codex-card-title {
+  color: #a69588;
+}
+
+.codex-card-subtitle {
+  font-size: 11px;
+  font-weight: 700;
+  color: #6b451c;
+  line-height: 1.3;
+}
+
+.codex-card-summary {
+  font-size: 11.5px;
+  line-height: 1.44;
+  color: #c8b6a4;
+  word-break: keep-all;
+}
+
+.codex-card.is-claimable .codex-card-summary {
+  color: #4b311d;
+}
+
+.codex-lock-hint {
+  font-size: 11px;
+  line-height: 1.4;
+  color: #8f7e73;
+  word-break: keep-all;
+}
+
+.codex-card-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 5px;
+  margin-top: 2px;
+  border-top: 1px solid rgba(184, 146, 90, 0.16);
+}
+
+.codex-card.is-claimable .codex-card-foot {
+  border-top-color: rgba(96, 62, 26, 0.24);
+}
+
+.codex-reward-preview {
+  font-size: 11px;
+  font-weight: 700;
+  color: #5b3610;
+  min-width: 0;
+  flex: 1;
+  word-break: keep-all;
+}
+
+.codex-passive-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #e3c27d;
+  min-width: 0;
+  flex: 1;
+  word-break: keep-all;
+}
+
+.codex-open-btn,
+.codex-reread-btn {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+/* Codex Manuscript Reader Modal */
+.codex-reader-backdrop {
+  padding: 16px;
+}
+
+.codex-reader-modal {
+  width: 100%;
+  max-width: 380px;
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 15px 14px 14px;
+  box-sizing: border-box;
+}
+
+.codex-modal-header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: left;
+}
+
+.codex-modal-meta-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.codex-modal-cat-pill {
+  font-family: var(--font-round);
+  font-size: 10.5px;
+  color: #2b1808;
+  background: linear-gradient(180deg, #f1d38e 0%, #c69645 100%);
+  border: 1px solid #6b4714;
+  border-radius: 999px;
+  padding: 1px 8px;
+  white-space: nowrap;
+}
+
+.codex-modal-era {
+  font-size: 11px;
+  font-weight: 700;
+  color: #d4b895;
+}
+
+.codex-modal-title {
+  margin: 2px 0 0;
+  font-size: 16.5px;
+  line-height: 1.3;
+  color: #f6e0aa;
+  word-break: keep-all;
+}
+
+.codex-modal-subtitle {
+  font-size: 11.5px;
+  color: #cbb59c;
+  line-height: 1.38;
+  word-break: keep-all;
+}
+
+.codex-manuscript-body {
+  padding: 12px 13px;
+  border-radius: 9px;
+  background: linear-gradient(180deg, #ead9b5 0%, #dbc59a 100%);
+  color: #2e1d12;
+  border: 1.5px solid #8a622a;
+  box-shadow:
+    inset 0 0 18px rgba(96, 62, 26, 0.24),
+    inset 0 1px 0 rgba(255, 248, 228, 0.65),
+    0 2px 6px rgba(0, 0, 0, 0.38);
+  font-size: 12.5px;
+  line-height: 1.62;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  word-break: keep-all;
+}
+
+.codex-manuscript-p {
+  margin: 0;
+  color: #2e1d12;
+}
+
+.codex-curator-note {
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: linear-gradient(180deg, rgba(44, 22, 28, 0.88) 0%, rgba(26, 13, 18, 0.94) 100%);
+  border: 1px solid rgba(196, 156, 92, 0.34);
+  border-left: 3px solid #c99a49;
+  font-size: 11.5px;
+  line-height: 1.48;
+  color: #d9c6b0;
+  word-break: keep-all;
+}
+
+.codex-curator-speaker {
+  font-weight: 700;
+  color: #ebd094;
+}
+
+.codex-curator-text {
+  font-style: italic;
+  color: #d9c6b0;
+}
+
+.codex-modal-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-top: 2px;
+}
+
+.codex-claim-btn {
+  padding: 9px 10px;
+  font-size: 12px;
+  line-height: 1.35;
+  white-space: normal;
+  word-break: keep-all;
+}
+
+.codex-claimed-pill {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(114, 34, 40, 0.65) 0%, rgba(72, 20, 26, 0.8) 100%);
+  border: 1px solid rgba(226, 178, 108, 0.54);
+  color: #f6ddb0;
+  font-size: 11.5px;
+  font-weight: 700;
+  text-align: center;
+  word-break: keep-all;
+}
+
+.codex-close-btn {
+  padding: 8px 12px;
+  font-size: 12.5px;
+}
+
 

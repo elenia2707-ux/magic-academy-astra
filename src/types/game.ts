@@ -408,6 +408,8 @@ export interface ArchiveState {
   equippedTitle: string | null;
   /** 별빛 완벽 개입 누적 횟수 */
   perfectInterventions: number;
+  /** P5-1: 열람 보상 수령 완료한 연대기·사전 문서 ID 목록 */
+  claimedCodex?: string[];
 }
 
 export interface GameState {

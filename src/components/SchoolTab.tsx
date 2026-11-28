@@ -73,6 +73,7 @@ interface Props {
   onClaimAllBestiary: () => void;
   onClaimAchievement: (id: string) => void;
   onEquipTitle: (id: string | null) => void;
+  onClaimCodex?: (codexId: string) => void;
 }
 
 type ClassroomFilter = 'all' | 'school' | 'ward' | 'holy';
@@ -98,6 +99,7 @@ export const SchoolTab: React.FC<Props> = ({
   onClaimAllBestiary,
   onClaimAchievement,
   onEquipTitle,
+  onClaimCodex,
 }) => {
   const [sub, setSub] = useState<'class' | 'forbidden' | 'headmaster' | 'daily' | 'archive'>('class');
   const [classFilter, setClassFilter] = useState<ClassroomFilter>('all');
@@ -990,6 +992,7 @@ export const SchoolTab: React.FC<Props> = ({
           onClaimAllBestiary={onClaimAllBestiary}
           onClaimAchievement={onClaimAchievement}
           onEquipTitle={onEquipTitle}
+          onClaimCodex={onClaimCodex}
           onInspectMonster={(payload) => setInspectBoss(payload)}
         />
       )}

@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Award, BookOpen, Check, Crown, HelpCircle, Sparkles } from 'lucide-react';
+import { Award, BookOpen, Check, Crown, HelpCircle, Lock, ScrollText, Sparkles } from 'lucide-react';
 import {
   ACHIEVEMENTS,
   BESTIARY_ENTRIES,
@@ -15,6 +15,17 @@ import {
   isBestiaryClaimable,
 } from '../data/archive';
 import type { BestiaryGroup } from '../data/archive';
+import {
+  CODEX_CATEGORIES,
+  CODEX_ENTRIES,
+  getClaimableCodexCount,
+  getClaimedCodexCount,
+  getUnlockedCodexCount,
+  isCodexClaimable,
+  isCodexClaimed,
+  isCodexUnlocked,
+} from '../data/codex';
+import type { CodexCategory, CodexEntry } from '../data/codex';
 import type { GameState, MonsterDef } from '../types/game';
 import { MonsterPortrait } from './GothicArt';
 
@@ -24,6 +35,7 @@ interface Props {
   onClaimAllBestiary: () => void;
   onClaimAchievement: (id: string) => void;
   onEquipTitle: (id: string | null) => void;
+  onClaimCodex?: (codexId: string) => void;
   onInspectMonster: (payload: {
     monster: MonsterDef;
     actLabel: string;
@@ -32,8 +44,9 @@ interface Props {
   }) => void;
 }
 
-type ArchiveMode = 'bestiary' | 'achievements';
+type ArchiveMode = 'bestiary' | 'achievements' | 'codex';
 type BestiaryFilter = 'all' | BestiaryGroup;
+type CodexFilter = 'all' | CodexCategory;
 
 const BESTIARY_FILTERS: { id: BestiaryFilter; label: string }[] = [
   { id: 'all', label: '전체' },
@@ -52,16 +65,22 @@ export const ArchivePanel: React.FC<Props> = ({
   onClaimAllBestiary,
   onClaimAchievement,
   onEquipTitle,
+  onClaimCodex,
   onInspectMonster,
 }) => {
   const [mode, setMode] = useState<ArchiveMode>('bestiary');
   const [filter, setFilter] = useState<BestiaryFilter>('all');
+  const [codexFilter, setCodexFilter] = useState<CodexFilter>('all');
+  const [readingCodex, setReadingCodex] = useState<CodexEntry | null>(null);
 
   const archive = ensureArchive(state.archive);
   const discoveredCount = getDiscoveredBestiaryCount(state);
   const claimedAchCount = archive.claimedAchievements.length;
   const claimableBestiary = getClaimableBestiaryCount(state);
   const claimableAchievements = getClaimableAchievementCount(state);
+  const unlockedCodex = getUnlockedCodexCount(state);
+  const claimedCodex = getClaimedCodexCount(state);
+  const claimableCodex = getClaimableCodexCount(state);
   const equippedTitle = getEquippedTitleDef(state);
   const bonuses = getArchiveBonuses(state);
 
@@ -82,6 +101,19 @@ export const ArchivePanel: React.FC<Props> = ({
     return BESTIARY_ENTRIES.filter((entry) => entry.group === filter);
   }, [filter]);
 
+  const filteredCodex = useMemo(() => {
+    if (codexFilter === 'all') return CODEX_ENTRIES;
+    return CODEX_ENTRIES.filter((entry) => entry.category === codexFilter);
+  }, [codexFilter]);
+
+  const codexCategoryLabels = useMemo(() => {
+    const map = {} as Record<CodexCategory, string>;
+    for (const cat of CODEX_CATEGORIES) {
+      map[cat.id] = cat.label;
+    }
+    return map;
+  }, []);
+
   const sortedAchievements = useMemo(() => {
     return ACHIEVEMENTS.map((def, idx) => {
       const claimed = archive.claimedAchievements.includes(def.id);
@@ -100,7 +132,7 @@ export const ArchivePanel: React.FC<Props> = ({
             <BookOpen size={14} style={{ verticalAlign: -2, marginRight: 5 }} />
             아스트라 기록실
           </h2>
-          <span className="panel-sub">도감 · 업적 영구 누적 (회귀 유지)</span>
+          <span className="panel-sub">도감 · 업적 · 연대기 영구 누적 (회귀 유지)</span>
         </div>
 
         <div className="archive-stat-row">
@@ -140,20 +172,20 @@ export const ArchivePanel: React.FC<Props> = ({
             </>
           ) : (
             <span className="archive-bonus-empty">
-              몬스터를 기록하거나 업적을 달성하면 영구 능력치가 누적됩니다.
+              몬스터를 기록하거나 업적·코덱스를 달성하면 영구 능력치가 누적됩니다.
             </span>
           )}
         </div>
       </div>
 
-      {/* Inner 2-tab switch */}
+      {/* Inner 3-tab switch */}
       <div className="archive-mode-tabs">
         <button
           type="button"
           className={`archive-mode-btn ${mode === 'bestiary' ? 'active' : ''}`}
           onClick={() => setMode('bestiary')}
         >
-          <BookOpen size={13} />
+          <BookOpen size={12} />
           <span>몬스터 도감</span>
           {claimableBestiary > 0 && <span className="subtab-badge">{claimableBestiary}</span>}
         </button>
@@ -162,11 +194,20 @@ export const ArchivePanel: React.FC<Props> = ({
           className={`archive-mode-btn ${mode === 'achievements' ? 'active' : ''}`}
           onClick={() => setMode('achievements')}
         >
-          <Award size={13} />
+          <Award size={12} />
           <span>업적 · 칭호</span>
           {claimableAchievements > 0 && (
             <span className="subtab-badge">{claimableAchievements}</span>
           )}
+        </button>
+        <button
+          type="button"
+          className={`archive-mode-btn ${mode === 'codex' ? 'active' : ''}`}
+          onClick={() => setMode('codex')}
+        >
+          <ScrollText size={12} />
+          <span>연대기·사전</span>
+          {claimableCodex > 0 && <span className="subtab-badge">{claimableCodex}</span>}
         </button>
       </div>
 
@@ -408,6 +449,235 @@ export const ArchivePanel: React.FC<Props> = ({
           })}
         </div>
       )}
+
+      {/* P5-1: Chronicle & Glossary Codex View */}
+      {mode === 'codex' && (
+        <div className="archive-codex-section">
+          <div className="codex-head-bar">
+            <span className="codex-head-title">
+              <ScrollText size={12} />
+              아스트라 세계관 코덱스
+            </span>
+            <span className="codex-head-counts">
+              해금 {unlockedCodex}/{CODEX_ENTRIES.length} · 열람 {claimedCodex}/{CODEX_ENTRIES.length}
+            </span>
+          </div>
+
+          <div className="codex-filter-row" role="tablist" aria-label="코덱스 분류 필터">
+            <button
+              type="button"
+              className={`filter-pill archive-filter-pill ${codexFilter === 'all' ? 'active' : ''}`}
+              onClick={() => setCodexFilter('all')}
+            >
+              전체
+            </button>
+            {CODEX_CATEGORIES.map((cat) => (
+              <button
+                key={cat.id}
+                type="button"
+                className={`filter-pill archive-filter-pill ${codexFilter === cat.id ? 'active' : ''}`}
+                onClick={() => setCodexFilter(cat.id)}
+              >
+                {cat.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="codex-list">
+            {filteredCodex.map((entry) => {
+              const unlocked = isCodexUnlocked(state, entry);
+              const claimed = isCodexClaimed(state, entry.id);
+              const claimable = isCodexClaimable(state, entry);
+
+              if (!unlocked) {
+                const lockedTitle =
+                  entry.category === 'secrets' ? '봉인된 극비 문서' : entry.title;
+                return (
+                  <div key={entry.id} className="codex-card is-locked">
+                    <div className="codex-card-head">
+                      <span className="codex-era-tag">{entry.eraTag}</span>
+                      <span className="codex-lock-pill">
+                        <Lock size={11} />
+                        봉인
+                      </span>
+                    </div>
+                    <div className="codex-card-title">{lockedTitle}</div>
+                    <div className="codex-lock-hint">{entry.unlockHint}</div>
+                  </div>
+                );
+              }
+
+              if (claimable) {
+                return (
+                  <div
+                    key={entry.id}
+                    role="button"
+                    tabIndex={0}
+                    className="codex-card parchment is-claimable"
+                    onClick={() => setReadingCodex(entry)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setReadingCodex(entry);
+                      }
+                    }}
+                  >
+                    <div className="codex-card-head">
+                      <span className="codex-era-tag">{entry.eraTag}</span>
+                      <span className="codex-unread-tag">✦ 미열람</span>
+                    </div>
+                    <div className="codex-card-title">{entry.title}</div>
+                    {entry.subtitle && (
+                      <div className="codex-card-subtitle">{entry.subtitle}</div>
+                    )}
+                    <div className="codex-card-summary">{entry.summary}</div>
+                    <div className="codex-card-foot">
+                      <span className="codex-reward-preview">
+                        +◆{entry.rewardStones.toLocaleString()} · {entry.passiveLabel}
+                      </span>
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-gold codex-open-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setReadingCodex(entry);
+                        }}
+                      >
+                        열람하기
+                      </button>
+                    </div>
+                  </div>
+                );
+              }
+
+              return (
+                <div
+                  key={entry.id}
+                  role="button"
+                  tabIndex={0}
+                  className={`codex-card ${claimed ? 'is-claimed' : ''}`}
+                  onClick={() => setReadingCodex(entry)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setReadingCodex(entry);
+                    }
+                  }}
+                >
+                  <div className="codex-card-head">
+                    <span className="codex-era-tag">{entry.eraTag}</span>
+                    <span className="codex-claimed-seal">
+                      <Check size={10} strokeWidth={3} />
+                      열람됨
+                    </span>
+                  </div>
+                  <div className="codex-card-title">{entry.title}</div>
+                  <div className="codex-card-summary">{entry.summary}</div>
+                  <div className="codex-card-foot">
+                    <span className="codex-passive-label">{entry.passiveLabel}</span>
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-ghost codex-reread-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setReadingCodex(entry);
+                      }}
+                    >
+                      다시 읽기
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* P5-1: Codex Manuscript Reader Modal */}
+      {readingCodex && (() => {
+        const canClaim = isCodexClaimable(state, readingCodex) && Boolean(onClaimCodex);
+        const alreadyClaimed = isCodexClaimed(state, readingCodex.id);
+        const categoryLabel =
+          codexCategoryLabels[readingCodex.category] ?? readingCodex.category;
+        return (
+          <div
+            className="modal-backdrop codex-reader-backdrop"
+            onClick={() => setReadingCodex(null)}
+          >
+            <div
+              className="modal-card codex-reader-modal"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="codex-modal-title"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="codex-modal-header">
+                <div className="codex-modal-meta-row">
+                  <span className="codex-modal-cat-pill">{categoryLabel}</span>
+                  <span className="codex-modal-era">{readingCodex.eraTag}</span>
+                </div>
+                <h3 id="codex-modal-title" className="modal-title codex-modal-title">
+                  {readingCodex.title}
+                </h3>
+                {readingCodex.subtitle && (
+                  <div className="codex-modal-subtitle">{readingCodex.subtitle}</div>
+                )}
+              </div>
+
+              <div className="codex-manuscript-body parchment">
+                {readingCodex.body.map((paragraph, idx) => (
+                  <p key={idx} className="codex-manuscript-p">
+                    {paragraph}
+                  </p>
+                ))}
+              </div>
+
+              <div className="codex-curator-note">
+                <span className="codex-curator-speaker">— {readingCodex.curatorName}:</span>{' '}
+                <span className="codex-curator-text">“{readingCodex.curatorNote}”</span>
+              </div>
+
+              <div className="codex-modal-actions">
+                {canClaim ? (
+                  <>
+                    <button
+                      type="button"
+                      className="btn btn-gold btn-block codex-claim-btn"
+                      onClick={() => onClaimCodex?.(readingCodex.id)}
+                    >
+                      ✦ 열람 기록 완료 (+◆{readingCodex.rewardStones.toLocaleString()} ·{' '}
+                      {readingCodex.passiveLabel})
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-block codex-close-btn"
+                      onClick={() => setReadingCodex(null)}
+                    >
+                      닫기
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    {alreadyClaimed && (
+                      <div className="codex-claimed-pill">
+                        <Check size={12} strokeWidth={3} />
+                        <span>열람 기록 완료 · {readingCodex.passiveLabel}</span>
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      className="btn btn-gold btn-block codex-close-btn"
+                      onClick={() => setReadingCodex(null)}
+                    >
+                      닫기
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 };
