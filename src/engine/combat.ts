@@ -3,6 +3,7 @@ import { ACTS, createAbyssEliteMonster, createTowerMonster } from '../data/acts'
 import { FAMILIARS } from '../data/familiars';
 import { getActiveInfirmaryEffect } from '../data/infirmary';
 import { RANK_EXAM_BOSSES } from '../data/schools';
+import { applyRuneToSkill } from '../data/runes';
 import { SKILL_MAP } from '../data/skills';
 import {
   STARLIGHT_GAIN_CRIT,
@@ -276,18 +277,23 @@ export function stepCombatTurn(
     // P0-2: 강공격 예고 턴엔 덱에 있는 보호막 스킬을 우선 사용 (예고 → 대응 플레이)
     if (prev.enemyTelegraph) {
       for (const sid of validDeck) {
-        const def = SKILL_MAP[sid];
-        if (!def?.isShield || !state.skills[sid]?.unlocked) continue;
+        const baseDef = SKILL_MAP[sid];
+        const learned = state.skills[sid];
+        if (!baseDef || !learned?.unlocked) continue;
+        const { effective: def, runeDef } = applyRuneToSkill(baseDef, learned.rune);
+        if (!def.isShield) continue;
         if ((cooldowns[sid] ?? 0) > 0 || playerMp < def.mpCost) continue;
         chosenSkillId = sid;
-        newLogs.push(nextLog(turn, `강공격에 대비해 [${def.name}]을(를) 먼저 펼칩니다!`, 'status'));
+        const tag = runeDef ? `${def.name}·${runeDef.name}` : def.name;
+        newLogs.push(nextLog(turn, `강공격에 대비해 [${tag}]을(를) 먼저 펼칩니다!`, 'status'));
         break;
       }
     }
     for (const sid of chosenSkillId ? [] : validDeck) {
-      const def = SKILL_MAP[sid];
+      const baseDef = SKILL_MAP[sid];
       const learned = state.skills[sid];
-      if (!def || !learned?.unlocked) continue;
+      if (!baseDef || !learned?.unlocked) continue;
+      const { effective: def } = applyRuneToSkill(baseDef, learned.rune);
       if ((cooldowns[sid] ?? 0) > 0) continue;
       if (playerMp < def.mpCost) continue;
       // P0-4: 순수 방어 스킬(보호막 버프)은 보호막이 이미 남아 있으면 아껴둔다 (강공격 예고 대비)
@@ -311,8 +317,10 @@ export function stepCombatTurn(
       (getStatus(enemyStatuses, 'curse')?.value ?? 0);
 
     if (chosenSkillId) {
-      const def = SKILL_MAP[chosenSkillId];
+      const baseDef = SKILL_MAP[chosenSkillId];
       const learned = state.skills[chosenSkillId];
+      const { effective: def, runeDef } = applyRuneToSkill(baseDef, learned.rune);
+      const skillTag = runeDef ? `${def.name}·${runeDef.name}` : def.name;
       const lvMult = getSkillPowerMultiplier(learned.level);
       const catMult = 1 + (stats.categoryBonus[def.category] ?? 0) / 100;
       const darkMult = def.category === 'dark' ? stats.darkDamageMult : 1;
@@ -341,6 +349,13 @@ export function stepCombatTurn(
             value: def.applyStatus.value,
           });
         }
+        if (def.secondaryStatus && def.secondaryStatus.target === 'self') {
+          playerStatuses = addOrRefreshStatus(playerStatuses, {
+            type: def.secondaryStatus.type,
+            turns: def.secondaryStatus.turns,
+            value: def.secondaryStatus.value,
+          });
+        }
         sfx = 'heal';
         lastVfx = {
           id: vfxIdCounter++,
@@ -348,12 +363,12 @@ export function stepCombatTurn(
           category: def.category,
           amountText: `+${healVal.toLocaleString()}`,
           isHeal: true,
-          label: def.name,
+          label: skillTag,
         };
         newLogs.push(
           nextLog(
             turn,
-            `[${def.name}] 시전! 체력 +${healVal.toLocaleString()} 회복${def.isCleanse ? ' (상태이상 정화)' : ''}.`,
+            `[${skillTag}] 시전! 체력 +${healVal.toLocaleString()} 회복${def.isCleanse ? ' (상태이상 정화)' : ''}.`,
             'heal'
           )
         );
@@ -365,6 +380,13 @@ export function stepCombatTurn(
             value: def.applyStatus.value,
           });
         }
+        if (def.secondaryStatus && def.secondaryStatus.target === 'self') {
+          playerStatuses = addOrRefreshStatus(playerStatuses, {
+            type: def.secondaryStatus.type,
+            turns: def.secondaryStatus.turns,
+            value: def.secondaryStatus.value,
+          });
+        }
         sfx = 'heal';
         lastVfx = {
           id: vfxIdCounter++,
@@ -372,9 +394,9 @@ export function stepCombatTurn(
           category: def.category,
           amountText: '강화!',
           isHeal: true,
-          label: def.name,
+          label: skillTag,
         };
-        newLogs.push(nextLog(turn, `[${def.name}] 발동! 마력이 강하게 요동칩니다.`, 'player'));
+        newLogs.push(nextLog(turn, `[${skillTag}] 발동! 마력이 강하게 요동칩니다.`, 'player'));
       } else if (def.isShield && def.isBuff) {
         const shieldVal = Math.round(stats.magic * (def.powerPct / 100) * lvMult);
         playerShield = Math.max(playerShield, shieldVal);
@@ -399,10 +421,10 @@ export function stepCombatTurn(
           category: def.category,
           amountText: `보호막 ${shieldVal.toLocaleString()}`,
           isHeal: true,
-          label: def.name,
+          label: skillTag,
         };
         newLogs.push(
-          nextLog(turn, `[${def.name}] 전개! ${shieldVal.toLocaleString()} 보호막 형성.`, 'player')
+          nextLog(turn, `[${skillTag}] 전개! ${shieldVal.toLocaleString()} 보호막 형성.`, 'player')
         );
       } else {
         // 공격 마법 (단일/다단)
@@ -493,13 +515,13 @@ export function stepCombatTurn(
           category: def.category,
           amountText: `${totalDmg.toLocaleString()}${anyCrit ? '!' : ''}`,
           isCrit: anyCrit,
-          label: def.name,
+          label: skillTag,
         };
         const statusTail = statusNotes.length > 0 ? ` [${statusNotes.join('·')}]` : '';
         newLogs.push(
           nextLog(
             turn,
-            `[${def.name}] → ${prev.enemy.name}에게 ${totalDmg.toLocaleString()} 피해!${
+            `[${skillTag}] → ${prev.enemy.name}에게 ${totalDmg.toLocaleString()} 피해!${
               anyCrit ? ' (치명타)' : ''
             }${drainText}${statusTail}`,
             def.category === 'dark' ? 'dark' : anyCrit ? 'crit' : 'player'

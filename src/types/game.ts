@@ -58,11 +58,16 @@ export interface SkillDef {
   };
 }
 
+export type SkillRuneBranch = 'a' | 'b';
+
 export interface LearnedSkill {
   id: string;
   level: number;
   exp: number; // 수련 누적치 (0 ~ trainCostSec for unlock; 이후 레벨업 누적)
   unlocked: boolean;
+  /** P3-2: Lv10 각성 룬 갈래 ('a' | 'b') */
+  rune?: SkillRuneBranch | null;
+  runeAwakened?: boolean;
 }
 
 export interface EquipmentStats {
@@ -331,6 +336,13 @@ export interface ArcaneSanctumState {
   totalStonesSpent: number;
 }
 
+export interface ProfessorAffinityState {
+  /** 교수별 친밀도 점수 (0 ~ 100) */
+  points: Partial<Record<ProfessorId, number>>;
+  /** 수령 완료한 친밀도 이벤트 키 (예: "lucia_1", "karen_2") */
+  claimedEvents: string[];
+}
+
 export interface GameState {
   version: number;
   created: boolean;
@@ -366,6 +378,7 @@ export interface GameState {
   dailyQuests: DailyQuestState;
   infirmary?: InfirmaryState | null;
   sanctum?: ArcaneSanctumState;
+  affinity?: ProfessorAffinityState;
   lastSavedAt: number;
   totalKills: number;
 }

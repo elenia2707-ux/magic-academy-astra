@@ -27,6 +27,7 @@ import {
   getImprintCost,
 } from '../data/sanctum';
 import { SCHOOLS } from '../data/schools';
+import { getNextTowerLordFloor } from '../data/towerLords';
 import { BGM_TRACKS, type BgmTrackId } from '../engine/bgm';
 import { exportSaveCode } from '../engine/save';
 import type {
@@ -37,6 +38,7 @@ import type {
   GameState,
   PrestigeUpgradeId,
 } from '../types/game';
+import { MonsterPortrait } from './GothicArt';
 
 /** 3x3 주사위 눈 도트 위치 (0..8) */
 const DIE_PIPS: Record<number, number[]> = {
@@ -233,21 +235,25 @@ export const AbyssTab: React.FC<Props> = ({
                 ))}
               </div>
 
-              <button
-                type="button"
-                className="btn btn-gold btn-sm abyss-roll-btn"
-                disabled={!canRoll}
-                onClick={handleRollDice}
-              >
-                <Dices size={13} />
-                {isRolling
-                  ? '굴리는 중…'
-                  : state.abyss.activeNode
-                    ? '선택지 확인'
+              {state.abyss.activeNode ? (
+                <div className="dice-pending-hint" role="status">
+                  아래 선택지를 골라주세요 ↓
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  className="btn btn-gold btn-sm abyss-roll-btn"
+                  disabled={!canRoll}
+                  onClick={handleRollDice}
+                >
+                  <Dices size={13} />
+                  {isRolling
+                    ? '굴리는 중…'
                     : state.abyss.lanterns <= 0
                       ? '등불 부족'
                       : '굴리기 (등불 1)'}
-              </button>
+                </button>
+              )}
             </div>
           </div>
 
@@ -302,28 +308,58 @@ export const AbyssTab: React.FC<Props> = ({
                     증가합니다.
                   </div>
                 </div>
-              ) : (
-                <div className="list-card highlight">
-                  <div className="list-top">
-                    <span className="list-title" style={{ color: '#e3c481' }}>
-                      도전 가능: 제 {state.towerFloor}층
-                    </span>
-                    <span className="tag">보상: 금서·마석·회귀 점수</span>
+              ) : (() => {
+                const upcoming = getNextTowerLordFloor(state.towerFloor);
+                const isLordFloor = upcoming.floor === state.towerFloor;
+                const quote =
+                  state.prestige.rebirthCount >= 1
+                    ? upcoming.lord.ngPlusQuote
+                    : upcoming.lord.encounterQuote;
+                return (
+                  <div className="list-card highlight">
+                    <div className="list-top">
+                      <span className="list-title" style={{ color: '#e3c481' }}>
+                        도전 가능: 제 {state.towerFloor}층
+                      </span>
+                      <span className="tag">
+                        {isLordFloor
+                          ? `✦ 군주전 · 금서 +${upcoming.lord.bonusTomeShards}`
+                          : `다음 군주 ${upcoming.floor}층`}
+                      </span>
+                    </div>
+                    <div className={`tower-lord-preview${isLordFloor ? ' is-now' : ''}`}>
+                      <div className="wc-boss-thumb">
+                        <MonsterPortrait
+                          artKey={upcoming.lord.artKey}
+                          isBoss
+                          variant="thumb"
+                          alt={upcoming.lord.name}
+                        />
+                      </div>
+                      <div className="tower-lord-info">
+                        <div className="tower-lord-head">
+                          <span className="tower-lord-floor">
+                            {isLordFloor ? `${upcoming.floor}층 군주 출현` : `${upcoming.floor}층 예고`}
+                          </span>
+                          <span className="tower-lord-name">{upcoming.lord.name}</span>
+                        </div>
+                        <div className="tower-lord-sub">
+                          {upcoming.lord.title} · 강공격 [{upcoming.lord.heavyName}]
+                        </div>
+                        <div className="tower-lord-quote">“{quote}”</div>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      className="btn btn-crimson btn-block"
+                      onClick={onChallengeTower}
+                    >
+                      <Swords size={14} />
+                      무한 심연 탑 {state.towerFloor}층 도전
+                    </button>
                   </div>
-                  <div className="list-desc">
-                    층수가 오를수록 적이 기하급수적으로 강해집니다. 덱 순서와 흑마법·사역마를
-                    극한까지 조합해 보세요.
-                  </div>
-                  <button
-                    type="button"
-                    className="btn btn-crimson btn-block"
-                    onClick={onChallengeTower}
-                  >
-                    <Swords size={14} />
-                    무한 심연 탑 {state.towerFloor}층 도전
-                  </button>
-                </div>
-              )}
+                );
+              })()}
             </div>
 
             {/* P1-7: 후반 마석 소모처 — 심연 비전 제련소 */}
@@ -470,7 +506,7 @@ export const AbyssTab: React.FC<Props> = ({
             >
               {canRebirth
                 ? `시간 회귀 실행 (+${rebirthReward} 별의 잔재 획득)`
-                : '3막 클리어 또는 3계급(정규 마법사)부터 회귀 가능'}
+                : '4막 클리어 또는 5계급(심연 마도사)부터 회귀 가능'}
             </button>
           </div>
 

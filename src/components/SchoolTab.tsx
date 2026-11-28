@@ -2,6 +2,15 @@ import React, { useState } from 'react';
 import { BookMarked, Check, Flame, GraduationCap, Lock, ScrollText, Sparkles, Swords, Users } from 'lucide-react';
 import { ACTS } from '../data/acts';
 import {
+  AFFINITY_GIFT_POINTS,
+  AFFINITY_MAX_POINTS,
+  ensureAffinity,
+  getAffinityStage,
+  getGiftCost,
+  PROFESSOR_AFFINITY,
+  resolveAffinityDialogue,
+} from '../data/affinity';
+import {
   areAllDailyQuestsClaimed,
   DAILY_QUESTS,
   ensureDailyQuestsCurrent,
@@ -18,6 +27,7 @@ import {
   PROFESSOR_ORDER,
   PROFESSORS,
 } from '../data/professors';
+import { getRuneAwakenCost, getSkillRunes, RUNE_UNLOCK_LEVEL } from '../data/runes';
 import { CATEGORY_META, RANK_EXAM_BOSSES, RANKS, SCHOOLS } from '../data/schools';
 import { getSkillsForPlayer, SKILL_MAP } from '../data/skills';
 import { getSkillUpgradeCost } from '../engine/stats';
@@ -28,6 +38,7 @@ import type {
   MonsterDef,
   ProfessorId,
   SkillDef,
+  SkillRuneBranch,
 } from '../types/game';
 import { MonsterPortrait, NpcPortrait } from './GothicArt';
 import { MonsterShowcaseModal, ProfessorShowcaseModal } from './Modals';
@@ -40,6 +51,8 @@ interface Props {
   onAssignTraining: (slotIdx: number, skillId: string | null) => void;
   onUnlockDarkSkill: (skillId: string) => void;
   onUpgradeSkillWithStones: (skillId: string) => void;
+  onAwakenOrSwitchRune: (skillId: string, branch: SkillRuneBranch) => void;
+  onGiftProfessor: (profId: ProfessorId) => void;
   onChallengeRankExam: () => void;
   onOpenStory: (act: number, archiveMode?: boolean) => void;
   onSelectAct: (act: number) => void;
@@ -56,6 +69,8 @@ export const SchoolTab: React.FC<Props> = ({
   onAssignTraining,
   onUnlockDarkSkill,
   onUpgradeSkillWithStones,
+  onAwakenOrSwitchRune,
+  onGiftProfessor,
   onChallengeRankExam,
   onOpenStory,
   onSelectAct,
@@ -68,6 +83,7 @@ export const SchoolTab: React.FC<Props> = ({
     null
   );
   const [inspectProfessor, setInspectProfessor] = useState<ProfessorId | null>(null);
+  const [selectedAffinityProf, setSelectedAffinityProf] = useState<ProfessorId>('lucia');
 
   const dailyState = ensureDailyQuestsCurrent(state.dailyQuests);
   const allDailyClaimed = areAllDailyQuestsClaimed(dailyState);
@@ -237,6 +253,51 @@ export const SchoolTab: React.FC<Props> = ({
             </div>
           )}
         </div>
+
+        {/* P3-2: Lv10 스킬 각성 룬 갈래 선택 (최초 1회 각성 후 A/B 무료 전환) */}
+        {unlocked && learned.level >= RUNE_UNLOCK_LEVEL && (() => {
+          const pair = getSkillRunes(skill.id);
+          if (!pair) return null;
+          const awakened = Boolean(learned.runeAwakened && learned.rune);
+          const cost = getRuneAwakenCost(skill);
+          const canAfford = state.stones >= cost.stones && state.arcaneDust >= cost.dust;
+          return (
+            <div className={`rune-awaken-box${awakened ? ' is-awakened' : ''}`}>
+              <div className="rune-awaken-head">
+                <span className="rune-awaken-title">✦ 비전 룬 각성 (Lv.{RUNE_UNLOCK_LEVEL}+)</span>
+                {awakened ? (
+                  <span className="rune-awakened-badge">각성 완료 · 무료 전환</span>
+                ) : (
+                  <span className="rune-cost-label">
+                    ◆{cost.stones.toLocaleString()} · 가루 {cost.dust}
+                  </span>
+                )}
+              </div>
+              <div className="rune-branch-grid">
+                {(['a', 'b'] as const).map((br) => {
+                  const def = pair[br];
+                  const isActive = learned.rune === br;
+                  const disabled = !awakened && !canAfford;
+                  return (
+                    <button
+                      key={br}
+                      type="button"
+                      className={`rune-branch-btn${isActive ? ' is-active' : ''}`}
+                      disabled={disabled || isActive}
+                      onClick={() => onAwakenOrSwitchRune(skill.id, br)}
+                    >
+                      <span className="rune-branch-top">
+                        <span className="rune-branch-tag">{br.toUpperCase()}</span>
+                        <span className="rune-branch-name">{def.name}</span>
+                      </span>
+                      <span className="rune-branch-desc">{def.summary}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })()}
       </div>
     );
   };
@@ -592,31 +653,38 @@ export const SchoolTab: React.FC<Props> = ({
             )}
           </div>
 
-          {/* 아스트라 교사진 도감 (9인 전원 열람 & 대화) */}
+          {/* 아스트라 교사진 도감 & P3-5 교수 인연(친밀도) */}
           <div className="panel">
             <div className="panel-title-row">
               <h2 className="panel-title">
                 <Users size={14} style={{ verticalAlign: -2, marginRight: 5 }} />
-                아스트라 교사진 도감 (9인)
+                아스트라 교사진 &amp; 인연 (9인)
               </h2>
-              <span className="panel-sub">탭하여 원화 · 대사 보기</span>
+              <span className="panel-sub">교수 선택 후 선물 · 비화 해금</span>
             </div>
             <div className="faculty-grid">
               {PROFESSOR_ORDER.map((pid) => {
                 const prof = PROFESSORS[pid];
                 const isMine = pid === schoolProfId;
                 const isHomeroom = pid === 'lucia';
+                const affState = ensureAffinity(state.affinity);
+                const pts = affState.points[pid] ?? 0;
+                const stage = getAffinityStage(pts);
+                const isSelected = selectedAffinityProf === pid;
                 return (
                   <button
                     key={pid}
                     type="button"
-                    className={`faculty-card ${isMine ? 'mine' : ''}`}
-                    onClick={() => setInspectProfessor(pid)}
+                    className={`faculty-card ${isMine ? 'mine' : ''}${isSelected ? ' is-selected' : ''}`}
+                    onClick={() => setSelectedAffinityProf(pid)}
                   >
                     <div className="faculty-portrait-box">
                       <NpcPortrait id={pid} variant="card" alt={prof.name} />
                       {(isMine || isHomeroom) && (
                         <span className="faculty-badge">{isHomeroom ? '담임' : '내 학파'}</span>
+                      )}
+                      {stage > 0 && (
+                        <span className="faculty-aff-badge">★{stage}</span>
                       )}
                     </div>
                     <div className="faculty-name">{prof.name}</div>
@@ -625,6 +693,99 @@ export const SchoolTab: React.FC<Props> = ({
                 );
               })}
             </div>
+
+            {(() => {
+              const affState = ensureAffinity(state.affinity);
+              const prof = PROFESSORS[selectedAffinityProf];
+              const affDef = PROFESSOR_AFFINITY[selectedAffinityProf];
+              const pts = affState.points[selectedAffinityProf] ?? 0;
+              const stage = getAffinityStage(pts);
+              const cost = getGiftCost(pts, selectedAffinityProf);
+              const isMaxAff = pts >= AFFINITY_MAX_POINTS;
+              const canGift =
+                !isMaxAff && state.stones >= cost.stones && state.arcaneDust >= cost.dust;
+              return (
+                <div className="affinity-section">
+                  <div className="affinity-card">
+                    <div className="affinity-head">
+                      <button
+                        type="button"
+                        className="wc-npc-thumb"
+                        onClick={() => setInspectProfessor(selectedAffinityProf)}
+                        title={`${prof.name} 원화 크게 보기`}
+                      >
+                        <NpcPortrait id={selectedAffinityProf} variant="avatar" alt={prof.name} />
+                      </button>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div className="list-top" style={{ marginBottom: 3 }}>
+                          <span className="list-title" style={{ color: prof.accent }}>
+                            {prof.name} · 인연 {stage}단계
+                          </span>
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-ghost"
+                            onClick={() => setInspectProfessor(selectedAffinityProf)}
+                          >
+                            원화
+                          </button>
+                        </div>
+                        <div className="affinity-meter-row">
+                          <div className="progress-bar" style={{ flex: 1, margin: 0 }}>
+                            <div
+                              className="progress-fill"
+                              style={{ width: `${Math.min(100, pts)}%` }}
+                            />
+                          </div>
+                          <span className="affinity-pts">
+                            {pts}/{AFFINITY_MAX_POINTS}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      className={`btn btn-sm btn-gold btn-block affinity-gift-btn`}
+                      disabled={!canGift}
+                      onClick={() => onGiftProfessor(selectedAffinityProf)}
+                    >
+                      {isMaxAff
+                        ? `✦ ${prof.name} 교수와 최고 인연 달성!`
+                        : `${affDef.favoriteGiftName} 선물 (+${AFFINITY_GIFT_POINTS}) · ◆${cost.stones.toLocaleString()} · 가루 ${cost.dust}`}
+                    </button>
+
+                    <div className="affinity-milestones">
+                      {affDef.events.map((ev) => {
+                        const unlocked =
+                          pts >= ev.threshold || affState.claimedEvents.includes(ev.eventKey);
+                        return (
+                          <div
+                            key={ev.eventKey}
+                            className={`affinity-milestone${unlocked ? ' is-unlocked parchment' : ''}`}
+                          >
+                            <div className="affinity-ms-top">
+                              <span className="affinity-ms-title">
+                                {unlocked ? '✦' : '🔒'} {ev.stage}단계 ({ev.threshold}점) · {ev.title}
+                              </span>
+                              <span className="affinity-ms-bonus">{ev.bonusLabel}</span>
+                            </div>
+                            {unlocked ? (
+                              <div className="affinity-ms-dialogue">
+                                “{resolveAffinityDialogue(ev.dialogue, state.playerName)}”
+                              </div>
+                            ) : (
+                              <div className="affinity-ms-locked">
+                                친밀도 {ev.threshold}점 달성 시 교수의 비화와 영구 패시브 해금
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
 
           <div className="panel">

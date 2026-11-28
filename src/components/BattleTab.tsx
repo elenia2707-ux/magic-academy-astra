@@ -47,6 +47,15 @@ const STATUS_LABEL: Record<StatusType, string> = {
   regen: '재생',
 };
 
+const SHORT_ACT_LOCATION: Record<number, string> = {
+  1: '수정 광산',
+  2: '지하 대서고',
+  3: '님펜의 숲',
+  4: '데런 왕도',
+  5: '안개 협곡',
+  6: '검은 왕좌',
+};
+
 const StatusRow: React.FC<{ list: StatusEffect[] }> = ({ list }) => (
   <div className="status-row">
     {list.map((st) => (
@@ -156,14 +165,21 @@ export const BattleTab: React.FC<Props> = ({
             </button>
           )}
           <div style={{ minWidth: 0 }}>
-            <div className="stage-label">
+            <div
+              className="stage-label"
+              title={
+                combat.mode === 'stage'
+                  ? `${state.selectedAct}-${state.selectedStage + 1} · ${actDef.location}`
+                  : undefined
+              }
+            >
               {combat.mode === 'rankBoss'
                 ? '교장실 승급 시험전'
                 : combat.mode === 'tower'
                   ? `무한 심연 탑 · ${combat.towerFloor}층`
                   : combat.mode === 'abyssElite'
                     ? '심연 미궁 정예전'
-                    : `${state.selectedAct}-${state.selectedStage + 1} · ${actDef.location}`}
+                    : `${state.selectedAct}-${state.selectedStage + 1} · ${SHORT_ACT_LOCATION[state.selectedAct] ?? actDef.location}`}
             </div>
           </div>
           {!isSpecialMode && (
@@ -610,7 +626,10 @@ export const BattleTab: React.FC<Props> = ({
       )}
 
       {/* 클래식 텍스트 전투 로그 */}
-      <div className="combat-log-box" ref={logRef}>
+      <div
+        className={`combat-log-box${combat.logs.length <= 2 ? ' is-sparse' : ''}`}
+        ref={logRef}
+      >
         {combat.logs.map((entry) => (
           <div key={entry.id} className={`log-line ${entry.tone}`}>
             <span className="log-turn">T{entry.turn}</span>

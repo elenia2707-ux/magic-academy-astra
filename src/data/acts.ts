@@ -1,4 +1,5 @@
 import type { ActDef, MonsterDef } from '../types/game';
+import { getTowerLordForFloor } from './towerLords';
 
 export const ACTS: ActDef[] = [
   {
@@ -844,7 +845,8 @@ export const ACTS: ActDef[] = [
 ];
 
 export function createTowerMonster(floor: number): MonsterDef {
-  const isMilestone = floor % 5 === 0;
+  const lord = getTowerLordForFloor(floor);
+  const isMilestone = lord !== null;
   const scale = Math.pow(1.22, floor - 1);
   const pool = [
     { name: '심연의 잔영', artKey: 'm5_4_apostle' },
@@ -856,9 +858,9 @@ export function createTowerMonster(floor: number): MonsterDef {
   const pick = pool[(floor - 1) % pool.length];
   return {
     id: `tower_${floor}`,
-    name: isMilestone ? `심연 군주 · ${floor}층 수호자` : `${pick.name} (${floor}층)`,
-    title: isMilestone ? '무한 심연 탑 군주' : '무한 심연 탑 수호체',
-    artKey: isMilestone ? 'demon_lord' : pick.artKey,
+    name: lord ? lord.name : `${pick.name} (${floor}층)`,
+    title: lord ? lord.title : '무한 심연 탑 수호체',
+    artKey: lord ? lord.artKey : pick.artKey,
     element: 'dark',
     hp: Math.round(320000 * scale * (isMilestone ? 1.55 : 1)),
     atk: Math.round(1800 * Math.pow(1.15, floor - 1) * (isMilestone ? 1.25 : 1)),
@@ -867,8 +869,14 @@ export function createTowerMonster(floor: number): MonsterDef {
     stoneReward: Math.round(36000 * Math.pow(1.18, floor - 1)),
     isBoss: isMilestone,
     heavyInterval: isMilestone ? 3 : 4,
-    heavyName: '심연 파동',
+    heavyName: lord ? lord.heavyName : '심연 파동',
     heavyMult: isMilestone ? 2.3 : 1.8,
+    ...(lord
+      ? {
+          encounterQuote: lord.encounterQuote,
+          ngPlusQuote: lord.ngPlusQuote,
+        }
+      : {}),
   };
 }
 

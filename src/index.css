@@ -4009,3 +4009,334 @@ select,
   padding: 2px 4px;
 }
 
+/* ================= P3 Round-1 UI 폴리싱 ================= */
+/* 토스트를 하단 내비 바로 위로 이동 → 상단 스테이지 이동 줄 가림 방지 */
+.toast-float {
+  top: auto;
+  bottom: 84px;
+  pointer-events: none;
+  max-width: calc(100% - 28px);
+  text-align: center;
+}
+
+/* 전투 배경 시인성 살짝 개선 (카드 가독성은 유지) */
+.arena-bg-layer {
+  opacity: 0.74;
+}
+.arena-bg-layer::after {
+  background:
+    radial-gradient(ellipse at 50% 44%, rgba(18, 10, 15, 0.04) 0%, rgba(16, 9, 14, 0.44) 88%),
+    linear-gradient(180deg, rgba(20, 11, 16, 0.48) 0%, rgba(18, 10, 15, 0.08) 26%, rgba(18, 10, 15, 0.18) 68%, rgba(15, 9, 13, 0.58) 100%);
+}
+
+/* 전투 시작 직후(로그 2줄 이하)엔 빈 로그 칸이 화면 절반을 차지하지 않도록 컴팩트 처리 */
+.combat-log-box.is-sparse {
+  height: auto;
+  min-height: 54px;
+  max-height: 92px;
+  padding: 8px 11px;
+}
+
+/* 주사위판 선택지 대기 상태 배지 (중복 비활성 버튼 대체) */
+.dice-pending-hint {
+  width: 100%;
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px dashed rgba(214, 178, 106, 0.48);
+  background: rgba(26, 16, 20, 0.76);
+  color: #e6cb8e;
+  font-size: 11px;
+  font-weight: 600;
+  text-align: center;
+  line-height: 1.25;
+}
+
+/* ================= P3-2 스킬 각성 룬 ================= */
+.rune-awaken-box {
+  margin-top: 9px;
+  padding: 8px 9px;
+  border-radius: 9px;
+  border: 1px solid rgba(196, 158, 96, 0.35);
+  background: linear-gradient(180deg, rgba(28, 18, 24, 0.92) 0%, rgba(18, 11, 16, 0.96) 100%);
+}
+
+.rune-awaken-box.is-awakened {
+  border-color: rgba(226, 186, 108, 0.62);
+  box-shadow: inset 0 0 0 1px rgba(235, 204, 134, 0.14);
+}
+
+.rune-awaken-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.rune-awaken-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: #ebd094;
+}
+
+.rune-cost-label {
+  font-size: 10.5px;
+  color: #c9b597;
+}
+
+.rune-awakened-badge {
+  font-size: 10px;
+  font-weight: 700;
+  color: #21120a;
+  background: linear-gradient(180deg, #e2bf74 0%, #b1843b 100%);
+  padding: 2px 7px;
+  border-radius: 999px;
+}
+
+.rune-branch-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.rune-branch-btn {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 6px 7px;
+  border-radius: 8px;
+  border: 1px solid rgba(184, 146, 90, 0.28);
+  background: rgba(34, 21, 27, 0.85);
+  color: #d8c8b2;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.16s ease, background 0.16s ease;
+}
+
+.rune-branch-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.rune-branch-btn.is-active {
+  opacity: 1;
+  border-color: #e4c175;
+  background: linear-gradient(180deg, rgba(84, 56, 28, 0.56) 0%, rgba(44, 26, 22, 0.88) 100%);
+  box-shadow: inset 0 0 0 1px rgba(246, 220, 152, 0.25);
+}
+
+.rune-branch-top {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.rune-branch-tag {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  background: rgba(214, 178, 106, 0.22);
+  border: 1px solid rgba(214, 178, 106, 0.45);
+  color: #f3d89b;
+  font-size: 9.5px;
+  font-weight: 800;
+}
+
+.rune-branch-btn.is-active .rune-branch-tag {
+  background: #d8ae5d;
+  color: #20120a;
+}
+
+.rune-branch-name {
+  font-size: 11px;
+  font-weight: 700;
+  color: #f0dfc0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rune-branch-desc {
+  font-size: 10px;
+  line-height: 1.3;
+  color: #b7a690;
+}
+
+/* ================= P3-5 무한 탑 군주 예고 & 교수 인연 ================= */
+.tower-lord-preview {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin: 8px 0 10px;
+  padding: 8px 9px;
+  border-radius: 10px;
+  border: 1px solid rgba(184, 146, 90, 0.34);
+  background: linear-gradient(180deg, rgba(32, 18, 24, 0.92) 0%, rgba(20, 12, 16, 0.96) 100%);
+}
+
+.tower-lord-preview.is-now {
+  border-color: rgba(216, 96, 86, 0.68);
+  background: linear-gradient(180deg, rgba(64, 22, 26, 0.88) 0%, rgba(26, 12, 16, 0.96) 100%);
+}
+
+.tower-lord-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.tower-lord-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 2px;
+}
+
+.tower-lord-floor {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(180, 58, 58, 0.35);
+  border: 1px solid rgba(226, 122, 114, 0.55);
+  color: #f7c7be;
+}
+
+.tower-lord-name {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #f2dca4;
+}
+
+.tower-lord-sub {
+  font-size: 10.5px;
+  color: #bca994;
+  margin-bottom: 3px;
+}
+
+.tower-lord-quote {
+  font-size: 11px;
+  line-height: 1.4;
+  color: #e4d4be;
+  font-style: italic;
+}
+
+.faculty-card.is-selected {
+  border-color: #e6c276;
+  box-shadow:
+    inset 0 0 0 1px rgba(244, 214, 142, 0.45),
+    0 2px 8px rgba(0, 0, 0, 0.55);
+}
+
+.faculty-aff-badge {
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: rgba(26, 14, 18, 0.88);
+  border: 1px solid #d8b263;
+  color: #f4d88e;
+  font-size: 9.5px;
+  font-weight: 800;
+}
+
+.affinity-section {
+  margin-top: 10px;
+}
+
+.affinity-card {
+  padding: 10px;
+  border-radius: 11px;
+  border: 1px solid rgba(196, 158, 96, 0.4);
+  background: linear-gradient(180deg, #27171e 0%, #1b1016 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.affinity-head {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+}
+
+.affinity-meter-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.affinity-pts {
+  font-size: 11px;
+  font-weight: 700;
+  color: #e8cf95;
+  flex-shrink: 0;
+}
+
+.affinity-milestones {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.affinity-milestone {
+  padding: 7px 9px;
+  border-radius: 9px;
+  border: 1px solid rgba(184, 146, 90, 0.22);
+  background: rgba(18, 11, 15, 0.65);
+  color: #9e9182;
+}
+
+.affinity-milestone.is-unlocked {
+  border-color: #8f6b3a;
+  background: linear-gradient(180deg, #ead9b5 0%, #dbc59a 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 248, 228, 0.55);
+  color: #2e1d12;
+}
+
+.affinity-ms-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  margin-bottom: 3px;
+}
+
+.affinity-ms-title {
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+.affinity-ms-bonus {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(184, 146, 90, 0.22);
+  color: #e5c682;
+  flex-shrink: 0;
+}
+
+.affinity-milestone.is-unlocked .affinity-ms-bonus {
+  background: #5b3a1d;
+  color: #f6e1b2;
+}
+
+.affinity-ms-dialogue {
+  font-size: 11.5px;
+  line-height: 1.48;
+  color: #362214;
+}
+
+.affinity-ms-locked {
+  font-size: 10.5px;
+  color: #8b7e70;
+}
+
+

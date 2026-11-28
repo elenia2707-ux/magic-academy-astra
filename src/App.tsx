@@ -50,6 +50,15 @@ import {
   PRESTIGE_UPGRADES,
 } from './data/prestige';
 import {
+  AFFINITY_GIFT_POINTS,
+  AFFINITY_MAX_POINTS,
+  ensureAffinity,
+  getGiftCost,
+  PROFESSOR_AFFINITY,
+} from './data/affinity';
+import { PROFESSORS } from './data/professors';
+import { getRuneAwakenCost, getSkillRunes, RUNE_UNLOCK_LEVEL } from './data/runes';
+import {
   ARCANE_TRANSMUTES,
   ensureSanctum,
   getImprintCost,
@@ -59,6 +68,7 @@ import {
 import { RANKS, SCHOOLS } from './data/schools';
 import { SKILL_MAP } from './data/skills';
 import { STARLIGHT_MAX } from './data/starlight';
+import { getTowerLordForFloor } from './data/towerLords';
 import { bgmEngine, type BgmTrackId } from './engine/bgm';
 import { createCombatRuntime, stepCombatTurn, triggerStarlightIntervention } from './engine/combat';
 import { processOfflineProgress } from './engine/offline';
@@ -97,9 +107,11 @@ import type {
   MagicCategory,
   OfflineSummary,
   PrestigeUpgradeId,
+  ProfessorId,
   RankIndex,
   Rarity,
   SchoolId,
+  SkillRuneBranch,
 } from './types/game';
 
 type TabId = 'battle' | 'school' | 'deck' | 'familiar' | 'abyss';
@@ -521,7 +533,10 @@ export default function App() {
         nextStage = curState.selectedStage;
       } else if (curCombat.mode === 'tower') {
         nextTower = curCombat.towerFloor + 1;
-        toastToShow = `무한 심연 탑 ${curCombat.towerFloor}층 돌파!`;
+        const lord = getTowerLordForFloor(curCombat.towerFloor);
+        toastToShow = lord
+          ? `✦ ${lord.name} 토벌! ${lord.clearNote}`
+          : `무한 심연 탑 ${curCombat.towerFloor}층 돌파!`;
       } else if (curCombat.mode === 'abyssElite') {
         toastToShow = '심연 정예 토벌 완료!';
         nextMode = 'stage';
@@ -617,7 +632,8 @@ export default function App() {
         } else if (curCombat.mode === 'tower') {
           highestTowerFloor = Math.max(highestTowerFloor, curCombat.towerFloor);
           towerFloor = curCombat.towerFloor + 1;
-          tomeShards += curCombat.towerFloor % 5 === 0 ? 3 : 1;
+          const lord = getTowerLordForFloor(curCombat.towerFloor);
+          tomeShards += lord ? lord.bonusTomeShards : 1;
         } else if (curCombat.mode === 'abyssElite') {
           tomeShards += 2;
           eggShards += 2;
@@ -855,7 +871,8 @@ export default function App() {
       school,
       nextPrestige,
       rebirthPending ? state.dailyQuests : undefined,
-      rebirthPending ? ensureSanctum(state.sanctum) : undefined
+      rebirthPending ? ensureSanctum(state.sanctum) : undefined,
+      rebirthPending ? ensureAffinity(state.affinity) : undefined
     );
     storyQueueRef.current = [];
     syncStoryQueueCount();
@@ -967,6 +984,107 @@ export default function App() {
       },
       dailyQuests: incrementDailyQuest(prev.dailyQuests, { skillUpgrade: 1 }),
     }));
+  };
+
+  // P3-2: Lv10 스킬 비전 룬 각성 (최초 1회 마석+가루 소모) 및 A/B 갈래 무료 전환
+  const handleAwakenOrSwitchRune = (skillId: string, branch: SkillRuneBranch) => {
+    const def = SKILL_MAP[skillId];
+    const learned = state.skills[skillId];
+    const pair = getSkillRunes(skillId);
+    if (!def || !learned?.unlocked || learned.level < RUNE_UNLOCK_LEVEL || !pair) return;
+    const targetRune = pair[branch];
+    const alreadyAwakened = Boolean(learned.runeAwakened && learned.rune);
+    if (alreadyAwakened && learned.rune === branch) return;
+
+    if (!alreadyAwakened) {
+      const cost = getRuneAwakenCost(def);
+      if (state.stones < cost.stones || state.arcaneDust < cost.dust) return;
+      playSfx('starlight', state.settings.sfxEnabled);
+      setState((prev) => {
+        const cur = prev.skills[skillId];
+        if (!cur?.unlocked || cur.level < RUNE_UNLOCK_LEVEL) return prev;
+        if (prev.stones < cost.stones || prev.arcaneDust < cost.dust) return prev;
+        const next: GameState = {
+          ...prev,
+          stones: prev.stones - cost.stones,
+          arcaneDust: prev.arcaneDust - cost.dust,
+          skills: {
+            ...prev.skills,
+            [skillId]: { ...cur, rune: branch, runeAwakened: true },
+          },
+        };
+        saveGameToStorage(next);
+        return next;
+      });
+      showToast(`✦ [${def.name}] 룬 각성 완료 — ${targetRune.name}!`);
+    } else {
+      playSfx('click', state.settings.sfxEnabled);
+      setState((prev) => {
+        const cur = prev.skills[skillId];
+        if (!cur?.unlocked) return prev;
+        const next: GameState = {
+          ...prev,
+          skills: {
+            ...prev.skills,
+            [skillId]: { ...cur, rune: branch, runeAwakened: true },
+          },
+        };
+        saveGameToStorage(next);
+        return next;
+      });
+      showToast(`✦ [${def.name}] 각성 룬 전환: ${targetRune.name}`);
+    }
+  };
+
+  // P3-5: 교수 인연(친밀도) 선물 & 마일스톤 자동 해금
+  const handleGiftProfessor = (profId: ProfessorId) => {
+    const affDef = PROFESSOR_AFFINITY[profId];
+    const prof = PROFESSORS[profId];
+    if (!affDef || !prof) return;
+    const curAff = ensureAffinity(state.affinity);
+    const curPts = curAff.points[profId] ?? 0;
+    if (curPts >= AFFINITY_MAX_POINTS) return;
+    const cost = getGiftCost(curPts, profId);
+    if (state.stones < cost.stones || state.arcaneDust < cost.dust) return;
+
+    const nextPts = Math.min(AFFINITY_MAX_POINTS, curPts + AFFINITY_GIFT_POINTS);
+    const newlyUnlocked = affDef.events.filter(
+      (ev) => nextPts >= ev.threshold && !curAff.claimedEvents.includes(ev.eventKey)
+    );
+    playSfx(newlyUnlocked.length > 0 ? 'victory' : 'heal', state.settings.sfxEnabled);
+
+    setState((prev) => {
+      const prevAff = ensureAffinity(prev.affinity);
+      const pts = prevAff.points[profId] ?? 0;
+      if (pts >= AFFINITY_MAX_POINTS) return prev;
+      const c = getGiftCost(pts, profId);
+      if (prev.stones < c.stones || prev.arcaneDust < c.dust) return prev;
+      const updatedPts = Math.min(AFFINITY_MAX_POINTS, pts + AFFINITY_GIFT_POINTS);
+      const claimed = [...prevAff.claimedEvents];
+      for (const ev of affDef.events) {
+        if (updatedPts >= ev.threshold && !claimed.includes(ev.eventKey)) {
+          claimed.push(ev.eventKey);
+        }
+      }
+      const next: GameState = {
+        ...prev,
+        stones: prev.stones - c.stones,
+        arcaneDust: prev.arcaneDust - c.dust,
+        affinity: {
+          points: { ...prevAff.points, [profId]: updatedPts },
+          claimedEvents: claimed,
+        },
+      };
+      saveGameToStorage(next);
+      return next;
+    });
+
+    if (newlyUnlocked.length > 0) {
+      const ev = newlyUnlocked[newlyUnlocked.length - 1];
+      showToast(`✦ ${prof.name} 인연 ${ev.stage}단계 해금! (${ev.bonusLabel})`);
+    } else {
+      showToast(`${prof.name} 교수에게 [${affDef.favoriteGiftName}] 선물 (+${AFFINITY_GIFT_POINTS})`);
+    }
   };
 
   // P1-2: 루시아 "오늘의 과제" 개별 보상 & 개근 도장 보너스 수령
@@ -1644,6 +1762,8 @@ export default function App() {
                   onAssignTraining={handleAssignTraining}
                   onUnlockDarkSkill={handleUnlockDarkSkill}
                   onUpgradeSkillWithStones={handleUpgradeSkillWithStones}
+                  onAwakenOrSwitchRune={handleAwakenOrSwitchRune}
+                  onGiftProfessor={handleGiftProfessor}
                   onChallengeRankExam={handleChallengeRankExam}
                   onOpenStory={(act, archiveMode) =>
                     setStoryModal({ kind: 'act', act, phase: 'intro', archiveMode })

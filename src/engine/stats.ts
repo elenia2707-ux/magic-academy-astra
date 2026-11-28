@@ -1,3 +1,4 @@
+import { createDefaultAffinity, ensureAffinity, getAffinityBonuses } from '../data/affinity';
 import { createFreshDailyQuests, ensureDailyQuestsCurrent } from '../data/dailyQuests';
 import { getEnhanceMultiplier, generateEquipment } from '../data/equipment';
 import { FAMILIARS } from '../data/familiars';
@@ -14,6 +15,7 @@ import type {
   MagicCategory,
   PrestigeState,
   PrestigeUpgradeId,
+  ProfessorAffinityState,
   SchoolId,
 } from '../types/game';
 
@@ -130,7 +132,8 @@ export function createNewGameState(
   school: SchoolId,
   existingPrestige?: PrestigeState,
   existingDailyQuests?: DailyQuestState,
-  existingSanctum?: ArcaneSanctumState
+  existingSanctum?: ArcaneSanctumState,
+  existingAffinity?: ProfessorAffinityState
 ): GameState {
   const prestige = existingPrestige ?? createDefaultPrestige();
   const startWealthLv = prestige.upgrades.startingWealth ?? 0;
@@ -208,8 +211,9 @@ export function createNewGameState(
     dailyQuests: existingDailyQuests
       ? ensureDailyQuestsCurrent(existingDailyQuests)
       : createFreshDailyQuests(),
-    // 제련소 각인은 '영구 전투 각인' — 시간 회귀 후에도 유지
+    // 제련소 각인과 교수 인연은 영구 유지
     sanctum: existingSanctum ? ensureSanctum(existingSanctum) : createDefaultSanctum(),
+    affinity: existingAffinity ? ensureAffinity(existingAffinity) : createDefaultAffinity(),
     lastSavedAt: Date.now(),
     totalKills: 0,
   };
@@ -285,13 +289,15 @@ export function computePlayerStats(state: GameState): ComputedStats {
     }
   }
 
-  // 학파 + 계급 + 별의 성좌(환생) + P1-3 양호실 처방 + P1-7 심연 비전 각인 배율
+  // 학파 + 계급 + 별의 성좌(환생) + P1-3 양호실 처방 + P1-7 심연 비전 각인 + P3-5 교수 인연 배율
   const starPowerMult = 1 + (up.starPower ?? 0) * 0.18;
   const starVitMult = 1 + (up.starVitality ?? 0) * 0.18;
   const infEffect = getActiveInfirmaryEffect(state);
   const sanctumBonus = getSanctumBonuses(state);
-  critRate += sanctumBonus.critRateBonus;
+  const affinityBonus = getAffinityBonuses(state);
+  critRate += sanctumBonus.critRateBonus + affinityBonus.critRate;
   critDmg += sanctumBonus.critDmgBonus;
+  mpRegen += affinityBonus.mpRegen;
 
   const magic = Math.round(
     (baseMagic + eqMagic) *
@@ -300,6 +306,7 @@ export function computePlayerStats(state: GameState): ComputedStats {
       (1 + famMagicPct / 100) *
       starPowerMult *
       sanctumBonus.magicMult *
+      (1 + affinityBonus.magicPct / 100) *
       (infEffect?.magicMult ?? 1)
   );
   const maxHp = Math.round(
@@ -309,6 +316,7 @@ export function computePlayerStats(state: GameState): ComputedStats {
       (1 + famHpPct / 100) *
       starVitMult *
       sanctumBonus.hpMult *
+      (1 + affinityBonus.hpPct / 100) *
       (infEffect?.hpMult ?? 1)
   );
   const maxMp = Math.round((baseMp + eqMp) * (state.school === 'frost' ? 1.18 : 1));
@@ -319,13 +327,14 @@ export function computePlayerStats(state: GameState): ComputedStats {
       (1 + famDefPct / 100) *
       starVitMult *
       sanctumBonus.defMult *
+      (1 + affinityBonus.defPct / 100) *
       (infEffect?.defMult ?? 1)
   );
 
   const maxDeckSlots = rankInfo.deckSlots + (up.sixthDeckSlot ?? 0);
   const maxTrainSlots = rankInfo.trainSlots + (up.extraTrainSlot ?? 0);
   const maxSkillLevel = 10 + (up.skillCapBreak ?? 0) * 5;
-  const trainSpeedMult = 1 + (up.trainAccel ?? 0) * 0.25;
+  const trainSpeedMult = (1 + (up.trainAccel ?? 0) * 0.25) * (1 + affinityBonus.trainSpeedPct / 100);
   const darkDamageMult = 1 + (up.darkMastery ?? 0) * 0.15;
 
   return {
@@ -347,7 +356,9 @@ export function computePlayerStats(state: GameState): ComputedStats {
 
 export function getRewardMultiplier(state: GameState): number {
   const wealthLv = state.prestige.upgrades.startingWealth ?? 0;
-  return 1 + wealthLv * 0.15;
+  const aff = getAffinityBonuses(state);
+  const affRewardAvg = (aff.expPct + aff.stonePct) / 200;
+  return 1 + wealthLv * 0.15 + affRewardAvg;
 }
 
 export function applyExpAndLevelUp(

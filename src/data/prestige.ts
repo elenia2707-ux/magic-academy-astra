@@ -87,7 +87,7 @@ export const PRESTIGE_UPGRADES: PrestigeUpgradeDef[] = [
 
 export function calculateRebirthReward(state: GameState): number {
   const cleared = state.clearedActs.length;
-  if (cleared < 3 && state.rank < 2) return 0;
+  if (cleared < 4 && state.rank < 4) return 0;
   const fromActs = cleared * 4 + (state.clearedActs.includes(6) ? 14 : 0);
   const fromRank = state.rank * 3;
   const fromLevel = Math.floor(state.level / 4);

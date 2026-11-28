@@ -1,6 +1,12 @@
 import { ensureDailyQuestsCurrent } from '../data/dailyQuests';
 import { ensureSanctum } from '../data/sanctum';
-import type { GameSettings, GameState } from '../types/game';
+import type {
+  GameSettings,
+  GameState,
+  LearnedSkill,
+  ProfessorAffinityState,
+  SkillRuneBranch,
+} from '../types/game';
 import { createDefaultPrestige, createEmptyUncreatedState, ensureStarterKit, SAVE_VERSION } from './stats';
 
 const STORAGE_KEY = 'magic_academy_astra_save_v1';
@@ -43,15 +49,57 @@ function migrateGearSettings(settings: GameSettings, alreadyMigrated: boolean): 
   };
 }
 
+function normalizeSkills(
+  rawSkills?: Record<string, Partial<LearnedSkill>> | null
+): Record<string, LearnedSkill> {
+  if (!rawSkills || typeof rawSkills !== 'object') return {};
+  const result: Record<string, LearnedSkill> = {};
+  for (const [id, entry] of Object.entries(rawSkills)) {
+    if (!entry || typeof entry !== 'object') continue;
+    const runeVal: SkillRuneBranch | null =
+      entry.rune === 'a' || entry.rune === 'b' ? entry.rune : null;
+    const runeAwakened = Boolean(entry.runeAwakened || runeVal !== null);
+    result[id] = {
+      id: typeof entry.id === 'string' && entry.id ? entry.id : id,
+      level: typeof entry.level === 'number' && Number.isFinite(entry.level) ? Math.max(0, entry.level) : 0,
+      exp: typeof entry.exp === 'number' && Number.isFinite(entry.exp) ? Math.max(0, entry.exp) : 0,
+      unlocked: Boolean(entry.unlocked),
+      ...(runeAwakened ? { runeAwakened: true } : {}),
+      ...(runeVal !== null ? { rune: runeVal } : runeAwakened ? { rune: null } : {}),
+    };
+  }
+  return result;
+}
+
+function normalizeAffinity(
+  rawAffinity?: Partial<ProfessorAffinityState> | null
+): ProfessorAffinityState | undefined {
+  if (!rawAffinity || typeof rawAffinity !== 'object') return undefined;
+  const points: ProfessorAffinityState['points'] = {};
+  if (rawAffinity.points && typeof rawAffinity.points === 'object') {
+    for (const [profId, val] of Object.entries(rawAffinity.points)) {
+      if (typeof val === 'number' && Number.isFinite(val)) {
+        points[profId as keyof ProfessorAffinityState['points']] = Math.max(0, Math.min(100, val));
+      }
+    }
+  }
+  const claimedEvents = Array.isArray(rawAffinity.claimedEvents)
+    ? rawAffinity.claimedEvents.filter((k): k is string => typeof k === 'string')
+    : [];
+  return { points, claimedEvents };
+}
+
 function hydrateState(parsed: Partial<GameState>): GameState | null {
   if (!parsed || typeof parsed !== 'object' || !parsed.created) return null;
   const fallback = createEmptyUncreatedState();
+  const normalizedAffinity = normalizeAffinity(parsed.affinity);
   // P0-4: 기존 세이브에도 시작 스킬 3종 지급 + 덱 빈칸 채움
   // P1-2: 기존 세이브에 dailyQuests 자동 생성 및 자정 경과 시 초기화
   return ensureStarterKit({
     ...fallback,
     ...parsed,
     version: SAVE_VERSION,
+    skills: normalizeSkills(parsed.skills),
     prestige: {
       ...createDefaultPrestige(),
       ...(parsed.prestige ?? {}),
@@ -84,6 +132,7 @@ function hydrateState(parsed: Partial<GameState>): GameState | null {
     }, parsed.settings?.gearDefaultsV2 === true),
     dailyQuests: ensureDailyQuestsCurrent(parsed.dailyQuests),
     sanctum: ensureSanctum(parsed.sanctum),
+    ...(normalizedAffinity ? { affinity: normalizedAffinity } : {}),
   });
 }
 
