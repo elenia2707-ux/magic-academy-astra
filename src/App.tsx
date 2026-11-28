@@ -58,8 +58,9 @@ import {
 } from './data/sanctum';
 import { RANKS, SCHOOLS } from './data/schools';
 import { SKILL_MAP } from './data/skills';
+import { STARLIGHT_MAX } from './data/starlight';
 import { bgmEngine, type BgmTrackId } from './engine/bgm';
-import { createCombatRuntime, stepCombatTurn } from './engine/combat';
+import { createCombatRuntime, stepCombatTurn, triggerStarlightIntervention } from './engine/combat';
 import { processOfflineProgress } from './engine/offline';
 import {
   clearGameStorage,
@@ -266,10 +267,22 @@ export default function App() {
       mode: CombatMode,
       act?: number,
       stageIndex?: number,
-      towerFloor?: number
+      towerFloor?: number,
+      carryStarlight = true
     ) => {
       clearPendingCombatTimer();
-      setCombat(createCombatRuntime(nextState, nextStats, mode, act, stageIndex, towerFloor));
+      const carried = carryStarlight ? (combatRef.current?.starlightGauge ?? 0) : 0;
+      const next = createCombatRuntime(
+        nextState,
+        nextStats,
+        mode,
+        act,
+        stageIndex,
+        towerFloor,
+        carried
+      );
+      combatRef.current = next;
+      setCombat(next);
     },
     [clearPendingCombatTimer]
   );
@@ -481,6 +494,274 @@ export default function App() {
     };
   };
 
+  const resolveCombatVictory = useCallback(
+    (curCombat: CombatRuntime, curState: GameState, carryStarlight: number, tickMs: number) => {
+      combatTransitionRef.current = true;
+      const rewardMult = getRewardMultiplier(curState);
+      const enemy = curCombat.enemy;
+      const expGain = Math.round(enemy.expReward * rewardMult);
+      const stoneGain = Math.round(enemy.stoneReward * rewardMult);
+
+      // 전환 대상 및 사이드이펙트를 state updater 밖에서 결정적으로 계산
+      let nextMode: CombatMode = curCombat.mode;
+      let nextAct = curCombat.act;
+      let nextStage = curCombat.stageIndex;
+      let nextTower = curCombat.towerFloor;
+      let toastToShow: string | null = null;
+      let clearStoryAct: number | null = null;
+      let promotedRankForModal: number | null = null;
+      let autoBossNow = false;
+
+      if (curCombat.mode === 'rankBoss') {
+        const promoted = Math.min(5, curState.rank + 1) as RankIndex;
+        promotedRankForModal = promoted;
+        toastToShow = `승급 성공! [${RANKS[promoted].name}]이(가) 되었습니다!`;
+        nextMode = 'stage';
+        nextAct = curState.selectedAct;
+        nextStage = curState.selectedStage;
+      } else if (curCombat.mode === 'tower') {
+        nextTower = curCombat.towerFloor + 1;
+        toastToShow = `무한 심연 탑 ${curCombat.towerFloor}층 돌파!`;
+      } else if (curCombat.mode === 'abyssElite') {
+        toastToShow = '심연 정예 토벌 완료!';
+        nextMode = 'stage';
+        nextAct = curState.selectedAct;
+        nextStage = curState.selectedStage;
+      } else {
+        const isActBoss = curCombat.stageIndex === 4;
+        if (isActBoss) {
+          if (!curState.clearedActs.includes(curCombat.act)) {
+            clearStoryAct = curCombat.act;
+          }
+          if (curState.settings.autoAdvance && curCombat.act < 6) {
+            nextAct = curCombat.act + 1;
+            nextStage = 0;
+          }
+        } else if (curState.settings.autoAdvance && curCombat.stageIndex < 3) {
+          nextStage = curCombat.stageIndex + 1;
+        } else if (curState.settings.autoAdvance && curCombat.stageIndex === 3) {
+          // P0-1: 4번째 사냥터 클리어 시 막 보스 자동 도전 (패배 후엔 쿨다운 소진 뒤 재도전)
+          if (bossRetryRef.current > 0) {
+            bossRetryRef.current -= 1;
+            setBossRetryIn(bossRetryRef.current);
+          } else if (
+            // P0-7: 첫 보스 조우 스토리는 직전 스토리와 숨 고르기 간격을 둔 뒤에 (대기 스토리가 먼저)
+            storyQueueRef.current.length > 0 ||
+            (!(curState.viewedStoryKeys ?? []).includes(`${curCombat.act}_boss`) &&
+              Date.now() - lastStoryClosedRef.current < STORY_GAP_MS)
+          ) {
+            // 4번째 사냥터에서 계속 수련
+          } else {
+            autoBossNow = true;
+            nextStage = 4;
+            toastToShow = `⚔ 제 ${curCombat.act}막 보스에게 자동 도전합니다!`;
+          }
+        }
+      }
+
+      const droppedItem: EquipmentItem | null =
+        curCombat.mode === 'tower'
+          ? generateEquipment(6, undefined, rollRarity(6, 20))
+          : curCombat.mode === 'abyssElite'
+            ? generateEquipment(curState.highestAct, undefined, rollRarity(curState.highestAct, 25))
+            : curCombat.mode === 'stage' &&
+                Math.random() < (curCombat.stageIndex === 4 ? 1.0 : 0.24)
+              ? generateEquipment(
+                  curCombat.act,
+                  undefined,
+                  curCombat.stageIndex === 4 ? rollRarity(curCombat.act, 24) : undefined
+                )
+              : null;
+      const extraTomeRoll =
+        curCombat.mode === 'stage' && curCombat.stageIndex >= 2 && curCombat.stageIndex < 4 && Math.random() < 0.12
+          ? 1
+          : 0;
+      const extraEggRoll =
+        curCombat.mode === 'stage' && curCombat.stageIndex >= 1 && curCombat.stageIndex < 4 && Math.random() < 0.14
+          ? 1
+          : 0;
+
+      setState((prev) => {
+        const lvRes = applyExpAndLevelUp(prev.level, prev.exp, expGain);
+        let rank = prev.rank;
+        let highestAct = prev.highestAct;
+        let highestStageInAct = prev.highestStageInAct;
+        const clearedActs = [...prev.clearedActs];
+        let tomeShards = prev.tomeShards;
+        let eggShards = prev.eggShards;
+        let inventory = prev.inventory;
+        let arcaneDust = prev.arcaneDust;
+        let selectedAct = prev.selectedAct;
+        let selectedStage = prev.selectedStage;
+        let towerFloor = prev.towerFloor;
+        let highestTowerFloor = prev.highestTowerFloor;
+        const trainingSlots = [...prev.trainingSlots];
+        let abyss = prev.abyss;
+        let deck = prev.deck;
+
+        if (droppedItem) {
+          const res = addDroppedItem(prev, droppedItem);
+          inventory = res.inventory;
+          arcaneDust = res.arcaneDust;
+        }
+
+        if (curCombat.mode === 'rankBoss') {
+          const promoted = Math.min(5, prev.rank + 1) as RankIndex;
+          rank = promoted;
+          const newTrainMax =
+            RANKS[promoted].trainSlots + (prev.prestige.upgrades.extraTrainSlot ?? 0);
+          while (trainingSlots.length < newTrainMax) trainingSlots.push(null);
+          // P0-4: 승급으로 늘어난 덱 칸을 해금 스킬로 자동 채움
+          deck = fillDeckWith(prev.deck, getMaxDeckSlots({ ...prev, rank: promoted }), rankDeckCandidates(prev));
+          tomeShards += 2;
+        } else if (curCombat.mode === 'tower') {
+          highestTowerFloor = Math.max(highestTowerFloor, curCombat.towerFloor);
+          towerFloor = curCombat.towerFloor + 1;
+          tomeShards += curCombat.towerFloor % 5 === 0 ? 3 : 1;
+        } else if (curCombat.mode === 'abyssElite') {
+          tomeShards += 2;
+          eggShards += 2;
+          abyss = {
+            ...prev.abyss,
+            lastResult: `정예 등불 사냥꾼 토벌! 금서 조각 +2, 알 조각 +2${
+              droppedItem ? `, [${droppedItem.name}] 획득!` : '!'
+            }`,
+          };
+        } else {
+          const isActBoss = curCombat.stageIndex === 4;
+          if (isActBoss) {
+            tomeShards += 2;
+            eggShards += 1;
+            if (!clearedActs.includes(curCombat.act)) {
+              clearedActs.push(curCombat.act);
+              if (curCombat.act < 6 && highestAct <= curCombat.act) {
+                highestAct = curCombat.act + 1;
+                highestStageInAct = 0;
+              }
+            }
+            if (prev.settings.autoAdvance && curCombat.act < 6) {
+              selectedAct = curCombat.act + 1;
+              selectedStage = 0;
+            }
+          } else {
+            tomeShards += extraTomeRoll;
+            eggShards += extraEggRoll;
+            if (curCombat.act === highestAct && curCombat.stageIndex >= highestStageInAct) {
+              highestStageInAct = Math.min(4, curCombat.stageIndex + 1);
+            }
+            if (prev.settings.autoAdvance && curCombat.stageIndex < 3) {
+              selectedStage = curCombat.stageIndex + 1;
+            } else if (autoBossNow) {
+              selectedStage = 4;
+            }
+          }
+        }
+
+        const isBossVictory =
+          curCombat.mode === 'rankBoss' ||
+          curCombat.mode === 'tower' ||
+          curCombat.mode === 'abyssElite' ||
+          curCombat.stageIndex === 4;
+
+        return {
+          ...prev,
+          level: lvRes.level,
+          exp: lvRes.exp,
+          rank,
+          stones: prev.stones + stoneGain,
+          tomeShards,
+          eggShards,
+          arcaneDust,
+          highestAct,
+          highestStageInAct,
+          clearedActs,
+          selectedAct,
+          selectedStage,
+          towerFloor,
+          highestTowerFloor,
+          inventory,
+          trainingSlots,
+          deck,
+          abyss,
+          dailyQuests: incrementDailyQuest(prev.dailyQuests, {
+            kills: 1,
+            ...(isBossVictory ? { boss: 1 } : {}),
+          }),
+          infirmary: consumeInfirmaryBattle(prev.infirmary),
+          totalKills: prev.totalKills + 1,
+        };
+      });
+
+      if (toastToShow) showToast(toastToShow);
+      if (clearStoryAct !== null) {
+        setStoryModal({ kind: 'act', act: clearStoryAct, phase: 'clear' });
+      } else if (promotedRankForModal !== null) {
+        setStoryModal({ kind: 'rankExam', rank: promotedRankForModal, stage: 'clear' });
+      } else if (
+        // P1-4: 일반 사냥 승리 시 확률로 건조한 블랙코미디 교내 이벤트 발생 (비차단 양피지 카드)
+        curCombat.mode === 'stage' &&
+        curCombat.stageIndex < 4 &&
+        !activeEventRef.current &&
+        !storyModalRef.current &&
+        !offlineOpenRef.current &&
+        Date.now() - lastEventAtRef.current >= ACADEMY_EVENT_COOLDOWN_MS &&
+        Math.random() < ACADEMY_EVENT_CHANCE
+      ) {
+        const ev = pickBlackComedyEvent(lastEventIdRef.current);
+        lastEventAtRef.current = Date.now();
+        lastEventIdRef.current = ev.id;
+        activeEventRef.current = ev;
+        setActiveEvent(ev);
+      }
+
+      nextCombatTimerRef.current = window.setTimeout(() => {
+        nextCombatTimerRef.current = null;
+        combatTransitionRef.current = false;
+        const freshState = stateRef.current;
+        const freshStats = statsRef.current;
+        const nextRuntime = createCombatRuntime(
+          freshState,
+          freshStats,
+          nextMode,
+          nextAct,
+          nextStage,
+          nextTower,
+          carryStarlight
+        );
+        combatRef.current = nextRuntime;
+        setCombat(nextRuntime);
+        // P0-7: 막 클리어 직후의 다음 막 도입 스토리도 대기열로 (예전엔 모달 중복을 피하려고 아예 건너뜀)
+        if (
+          nextMode === 'stage' &&
+          (nextAct !== curCombat.act || nextStage !== curCombat.stageIndex)
+        ) {
+          maybeTriggerStageStory(nextAct, nextStage, freshState);
+        }
+      }, Math.min(480, Math.round(tickMs * 0.6)));
+    },
+    [showToast, maybeTriggerStageStory]
+  );
+
+  // P3-1: 별빛 개입 수동 발동 핸들러 (즉시 실행, 예고 타이밍 시 강공격 파훼 + 보너스)
+  const handleTriggerStarlight = useCallback(() => {
+    if (combatTransitionRef.current) return;
+    const curState = stateRef.current;
+    const curStats = statsRef.current;
+    const curCombat = combatRef.current;
+    if (!curState.created || curCombat.enemyHp <= 0 || curCombat.playerHp <= 0) return;
+    if ((curCombat.starlightGauge ?? 0) < STARLIGHT_MAX) return;
+
+    const outcome = triggerStarlightIntervention(curCombat, curState, curStats);
+    combatRef.current = outcome.combat;
+    setCombat(outcome.combat);
+    playSfx(outcome.sfx, curState.settings.sfxEnabled);
+
+    if (outcome.result === 'victory') {
+      const ms = curState.settings.speed === 3 ? 460 : curState.settings.speed === 2 ? 780 : 1320;
+      resolveCombatVictory(curCombat, curState, outcome.combat.starlightGauge, ms);
+    }
+  }, [resolveCombatVictory]);
+
   // 자동 턴제 전투 틱 (스토리 모달 열람 중 일시정지, 전환 중 중복 틱 및 이중 보상 방지)
   useEffect(() => {
     if (!state.created || rebirthPending || storyModal) return;
@@ -493,244 +774,12 @@ export default function App() {
       if (curCombat.enemyHp <= 0 || curCombat.playerHp <= 0) return;
 
       const outcome = stepCombatTurn(curCombat, curState, curStats);
+      combatRef.current = outcome.combat;
       setCombat(outcome.combat);
       playSfx(outcome.sfx, curState.settings.sfxEnabled);
 
       if (outcome.result === 'victory') {
-        combatTransitionRef.current = true;
-        const rewardMult = getRewardMultiplier(curState);
-        const enemy = curCombat.enemy;
-        const expGain = Math.round(enemy.expReward * rewardMult);
-        const stoneGain = Math.round(enemy.stoneReward * rewardMult);
-
-        // 전환 대상 및 사이드이펙트를 state updater 밖에서 결정적으로 계산
-        let nextMode: CombatMode = curCombat.mode;
-        let nextAct = curCombat.act;
-        let nextStage = curCombat.stageIndex;
-        let nextTower = curCombat.towerFloor;
-        let toastToShow: string | null = null;
-        let clearStoryAct: number | null = null;
-        let promotedRankForModal: number | null = null;
-        let autoBossNow = false;
-
-        if (curCombat.mode === 'rankBoss') {
-          const promoted = Math.min(5, curState.rank + 1) as RankIndex;
-          promotedRankForModal = promoted;
-          toastToShow = `승급 성공! [${RANKS[promoted].name}]이(가) 되었습니다!`;
-          nextMode = 'stage';
-          nextAct = curState.selectedAct;
-          nextStage = curState.selectedStage;
-        } else if (curCombat.mode === 'tower') {
-          nextTower = curCombat.towerFloor + 1;
-          toastToShow = `무한 심연 탑 ${curCombat.towerFloor}층 돌파!`;
-        } else if (curCombat.mode === 'abyssElite') {
-          toastToShow = '심연 정예 토벌 완료!';
-          nextMode = 'stage';
-          nextAct = curState.selectedAct;
-          nextStage = curState.selectedStage;
-        } else {
-          const isActBoss = curCombat.stageIndex === 4;
-          if (isActBoss) {
-            if (!curState.clearedActs.includes(curCombat.act)) {
-              clearStoryAct = curCombat.act;
-            }
-            if (curState.settings.autoAdvance && curCombat.act < 6) {
-              nextAct = curCombat.act + 1;
-              nextStage = 0;
-            }
-          } else if (curState.settings.autoAdvance && curCombat.stageIndex < 3) {
-            nextStage = curCombat.stageIndex + 1;
-          } else if (curState.settings.autoAdvance && curCombat.stageIndex === 3) {
-            // P0-1: 4번째 사냥터 클리어 시 막 보스 자동 도전 (패배 후엔 쿨다운 소진 뒤 재도전)
-            if (bossRetryRef.current > 0) {
-              bossRetryRef.current -= 1;
-              setBossRetryIn(bossRetryRef.current);
-            } else if (
-              // P0-7: 첫 보스 조우 스토리는 직전 스토리와 숨 고르기 간격을 둔 뒤에 (대기 스토리가 먼저)
-              storyQueueRef.current.length > 0 ||
-              (!(curState.viewedStoryKeys ?? []).includes(`${curCombat.act}_boss`) &&
-                Date.now() - lastStoryClosedRef.current < STORY_GAP_MS)
-            ) {
-              // 4번째 사냥터에서 계속 수련
-            } else {
-              autoBossNow = true;
-              nextStage = 4;
-              toastToShow = `⚔ 제 ${curCombat.act}막 보스에게 자동 도전합니다!`;
-            }
-          }
-        }
-
-        const droppedItem: EquipmentItem | null =
-          curCombat.mode === 'tower'
-            ? generateEquipment(6, undefined, rollRarity(6, 20))
-            : curCombat.mode === 'abyssElite'
-              ? generateEquipment(curState.highestAct, undefined, rollRarity(curState.highestAct, 25))
-              : curCombat.mode === 'stage' &&
-                  Math.random() < (curCombat.stageIndex === 4 ? 1.0 : 0.24)
-                ? generateEquipment(
-                    curCombat.act,
-                    undefined,
-                    curCombat.stageIndex === 4 ? rollRarity(curCombat.act, 24) : undefined
-                  )
-                : null;
-        const extraTomeRoll =
-          curCombat.mode === 'stage' && curCombat.stageIndex >= 2 && curCombat.stageIndex < 4 && Math.random() < 0.12
-            ? 1
-            : 0;
-        const extraEggRoll =
-          curCombat.mode === 'stage' && curCombat.stageIndex >= 1 && curCombat.stageIndex < 4 && Math.random() < 0.14
-            ? 1
-            : 0;
-
-        setState((prev) => {
-          const lvRes = applyExpAndLevelUp(prev.level, prev.exp, expGain);
-          let rank = prev.rank;
-          let highestAct = prev.highestAct;
-          let highestStageInAct = prev.highestStageInAct;
-          const clearedActs = [...prev.clearedActs];
-          let tomeShards = prev.tomeShards;
-          let eggShards = prev.eggShards;
-          let inventory = prev.inventory;
-          let arcaneDust = prev.arcaneDust;
-          let selectedAct = prev.selectedAct;
-          let selectedStage = prev.selectedStage;
-          let towerFloor = prev.towerFloor;
-          let highestTowerFloor = prev.highestTowerFloor;
-          const trainingSlots = [...prev.trainingSlots];
-          let abyss = prev.abyss;
-          let deck = prev.deck;
-
-          if (droppedItem) {
-            const res = addDroppedItem(prev, droppedItem);
-            inventory = res.inventory;
-            arcaneDust = res.arcaneDust;
-          }
-
-          if (curCombat.mode === 'rankBoss') {
-            const promoted = Math.min(5, prev.rank + 1) as RankIndex;
-            rank = promoted;
-            const newTrainMax =
-              RANKS[promoted].trainSlots + (prev.prestige.upgrades.extraTrainSlot ?? 0);
-            while (trainingSlots.length < newTrainMax) trainingSlots.push(null);
-            // P0-4: 승급으로 늘어난 덱 칸을 해금 스킬로 자동 채움
-            deck = fillDeckWith(prev.deck, getMaxDeckSlots({ ...prev, rank: promoted }), rankDeckCandidates(prev));
-            tomeShards += 2;
-          } else if (curCombat.mode === 'tower') {
-            highestTowerFloor = Math.max(highestTowerFloor, curCombat.towerFloor);
-            towerFloor = curCombat.towerFloor + 1;
-            tomeShards += curCombat.towerFloor % 5 === 0 ? 3 : 1;
-          } else if (curCombat.mode === 'abyssElite') {
-            tomeShards += 2;
-            eggShards += 2;
-            abyss = {
-              ...prev.abyss,
-              lastResult: `정예 등불 사냥꾼 토벌! 금서 조각 +2, 알 조각 +2${
-                droppedItem ? `, [${droppedItem.name}] 획득!` : '!'
-              }`,
-            };
-          } else {
-            const isActBoss = curCombat.stageIndex === 4;
-            if (isActBoss) {
-              tomeShards += 2;
-              eggShards += 1;
-              if (!clearedActs.includes(curCombat.act)) {
-                clearedActs.push(curCombat.act);
-                if (curCombat.act < 6 && highestAct <= curCombat.act) {
-                  highestAct = curCombat.act + 1;
-                  highestStageInAct = 0;
-                }
-              }
-              if (prev.settings.autoAdvance && curCombat.act < 6) {
-                selectedAct = curCombat.act + 1;
-                selectedStage = 0;
-              }
-            } else {
-              tomeShards += extraTomeRoll;
-              eggShards += extraEggRoll;
-              if (curCombat.act === highestAct && curCombat.stageIndex >= highestStageInAct) {
-                highestStageInAct = Math.min(4, curCombat.stageIndex + 1);
-              }
-              if (prev.settings.autoAdvance && curCombat.stageIndex < 3) {
-                selectedStage = curCombat.stageIndex + 1;
-              } else if (autoBossNow) {
-                selectedStage = 4;
-              }
-            }
-          }
-
-          const isBossVictory =
-            curCombat.mode === 'rankBoss' ||
-            curCombat.mode === 'tower' ||
-            curCombat.mode === 'abyssElite' ||
-            curCombat.stageIndex === 4;
-
-          return {
-            ...prev,
-            level: lvRes.level,
-            exp: lvRes.exp,
-            rank,
-            stones: prev.stones + stoneGain,
-            tomeShards,
-            eggShards,
-            arcaneDust,
-            highestAct,
-            highestStageInAct,
-            clearedActs,
-            selectedAct,
-            selectedStage,
-            towerFloor,
-            highestTowerFloor,
-            inventory,
-            trainingSlots,
-            deck,
-            abyss,
-            dailyQuests: incrementDailyQuest(prev.dailyQuests, {
-              kills: 1,
-              ...(isBossVictory ? { boss: 1 } : {}),
-            }),
-            infirmary: consumeInfirmaryBattle(prev.infirmary),
-            totalKills: prev.totalKills + 1,
-          };
-        });
-
-        if (toastToShow) showToast(toastToShow);
-        if (clearStoryAct !== null) {
-          setStoryModal({ kind: 'act', act: clearStoryAct, phase: 'clear' });
-        } else if (promotedRankForModal !== null) {
-          setStoryModal({ kind: 'rankExam', rank: promotedRankForModal, stage: 'clear' });
-        } else if (
-          // P1-4: 일반 사냥 승리 시 확률로 건조한 블랙코미디 교내 이벤트 발생 (비차단 양피지 카드)
-          curCombat.mode === 'stage' &&
-          curCombat.stageIndex < 4 &&
-          !activeEventRef.current &&
-          !storyModalRef.current &&
-          !offlineOpenRef.current &&
-          Date.now() - lastEventAtRef.current >= ACADEMY_EVENT_COOLDOWN_MS &&
-          Math.random() < ACADEMY_EVENT_CHANCE
-        ) {
-          const ev = pickBlackComedyEvent(lastEventIdRef.current);
-          lastEventAtRef.current = Date.now();
-          lastEventIdRef.current = ev.id;
-          activeEventRef.current = ev;
-          setActiveEvent(ev);
-        }
-
-        nextCombatTimerRef.current = window.setTimeout(() => {
-          nextCombatTimerRef.current = null;
-          combatTransitionRef.current = false;
-          const freshState = stateRef.current;
-          const freshStats = statsRef.current;
-          setCombat(
-            createCombatRuntime(freshState, freshStats, nextMode, nextAct, nextStage, nextTower)
-          );
-          // P0-7: 막 클리어 직후의 다음 막 도입 스토리도 대기열로 (예전엔 모달 중복을 피하려고 아예 건너뜀)
-          if (
-            nextMode === 'stage' &&
-            (nextAct !== curCombat.act || nextStage !== curCombat.stageIndex)
-          ) {
-            maybeTriggerStageStory(nextAct, nextStage, freshState);
-          }
-        }, Math.min(480, Math.round(ms * 0.6)));
+        resolveCombatVictory(curCombat, curState, outcome.combat.starlightGauge, ms);
       } else if (outcome.result === 'defeat') {
         combatTransitionRef.current = true;
         const wasSpecial = curCombat.mode !== 'stage';
@@ -770,21 +819,23 @@ export default function App() {
           combatTransitionRef.current = false;
           const freshState = stateRef.current;
           const freshStats = statsRef.current;
-          setCombat(
-            createCombatRuntime(
-              freshState,
-              freshStats,
-              'stage',
-              freshState.selectedAct,
-              fallbackStage
-            )
+          const nextRuntime = createCombatRuntime(
+            freshState,
+            freshStats,
+            'stage',
+            freshState.selectedAct,
+            fallbackStage,
+            undefined,
+            0
           );
+          combatRef.current = nextRuntime;
+          setCombat(nextRuntime);
         }, Math.min(620, Math.round(ms * 0.75)));
       }
     }, ms);
 
     return () => clearInterval(id);
-  }, [state.created, state.settings.speed, rebirthPending, storyModal, showToast, maybeTriggerStageStory]);
+  }, [state.created, state.settings.speed, rebirthPending, storyModal, showToast, resolveCombatVictory]);
 
   // ================= 핸들러 =================
   const handleCharacterCreate = (name: string, gender: Gender, school: SchoolId) => {
@@ -811,7 +862,7 @@ export default function App() {
     setState(fresh);
     setRebirthPending(false);
     const freshStats = computePlayerStats(fresh);
-    startCombatNow(fresh, freshStats, 'stage', 1, 0);
+    startCombatNow(fresh, freshStats, 'stage', 1, 0, undefined, false);
     setTab('battle');
     setStoryModal({ kind: 'act', act: 1, phase: 'intro' });
     saveGameToStorage(fresh);
@@ -1581,6 +1632,7 @@ export default function App() {
                   onResolveEvent={handleResolveAcademyEvent}
                   onDismissEvent={handleDismissAcademyEvent}
                   onToggleBgm={handleToggleBgm}
+                  onTriggerStarlight={handleTriggerStarlight}
                 />
               )}
 

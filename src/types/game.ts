@@ -187,7 +187,7 @@ export interface CombatLogEntry {
   id: number;
   turn: number;
   text: string;
-  tone: 'player' | 'enemy' | 'familiar' | 'status' | 'system' | 'crit' | 'heal' | 'dark';
+  tone: 'player' | 'enemy' | 'familiar' | 'status' | 'system' | 'crit' | 'heal' | 'dark' | 'starlight';
 }
 
 export type CombatMode = 'stage' | 'rankBoss' | 'tower' | 'abyssElite';
@@ -221,6 +221,8 @@ export interface CombatRuntime {
   enemyStatuses: StatusEffect[];
   enemyTelegraph: boolean; // 다음 턴 강공격 예고
   familiarCounter: number;
+  starlightGauge: number; // 0..100 별빛 개입 공명 게이지
+  starlightFlash?: { id: number; perfect: boolean; label: string } | null;
   logs: CombatLogEntry[];
   lastVfx: SpellVfxEvent | null;
   victoryBanner?: string | null;

@@ -4,6 +4,15 @@ import { FAMILIARS } from '../data/familiars';
 import { getActiveInfirmaryEffect } from '../data/infirmary';
 import { RANK_EXAM_BOSSES } from '../data/schools';
 import { SKILL_MAP } from '../data/skills';
+import {
+  STARLIGHT_GAIN_CRIT,
+  STARLIGHT_GAIN_HIT,
+  STARLIGHT_GAIN_TURN,
+  STARLIGHT_MAX,
+  STARLIGHT_PERFECT_MULT,
+  STARLIGHT_PERFECT_REFUND,
+  STARLIGHT_SKILLS,
+} from '../data/starlight';
 import type {
   CombatLogEntry,
   CombatMode,
@@ -119,7 +128,8 @@ export function createCombatRuntime(
   mode: CombatMode,
   act = state.selectedAct,
   stageIndex = state.selectedStage,
-  towerFloor = state.towerFloor
+  towerFloor = state.towerFloor,
+  initialStarlight = 0
 ): CombatRuntime {
   const tuned = applyBossTuning(getMonsterForMode(state, mode, act, stageIndex, towerFloor), mode, act);
   // P0-6: 마석 보상 곡선 압축 (전투 화면 표시·실제 지급 모두 이 값 사용)
@@ -171,6 +181,8 @@ export function createCombatRuntime(
     enemyStatuses: [],
     enemyTelegraph: false,
     familiarCounter: 0,
+    starlightGauge: Math.max(0, Math.min(STARLIGHT_MAX, Math.round(initialStarlight))),
+    starlightFlash: null,
     logs: initialLogs,
     lastVfx: null,
     victoryBanner: null,
@@ -204,7 +216,7 @@ function decrementStatuses(list: StatusEffect[]): StatusEffect[] {
 export interface TurnOutcome {
   combat: CombatRuntime;
   result: 'ongoing' | 'victory' | 'defeat';
-  sfx: 'cast' | 'crit' | 'heal' | 'dark' | 'victory' | 'defeat' | 'hit';
+  sfx: 'cast' | 'crit' | 'heal' | 'dark' | 'victory' | 'defeat' | 'hit' | 'starlight' | 'starlightPerfect';
 }
 
 export function stepCombatTurn(
@@ -219,6 +231,8 @@ export function stepCombatTurn(
   let playerStatuses = [...prev.playerStatuses];
   let enemyHp = prev.enemyHp;
   let enemyStatuses = [...prev.enemyStatuses];
+  let starlightGauge = prev.starlightGauge ?? 0;
+  let landedCrit = false;
   const cooldowns: Record<string, number> = {};
   for (const [k, v] of Object.entries(prev.cooldowns)) {
     if (v > 1) cooldowns[k] = v - 1;
@@ -471,6 +485,7 @@ export function stepCombatTurn(
           }
         }
 
+        if (anyCrit) landedCrit = true;
         sfx = def.category === 'dark' ? 'dark' : anyCrit ? 'crit' : 'cast';
         lastVfx = {
           id: vfxIdCounter++,
@@ -494,6 +509,7 @@ export function stepCombatTurn(
     } else {
       // 기본 마탄 (마나 회복)
       const isCrit = Math.random() * 100 < stats.critRate;
+      if (isCrit) landedCrit = true;
       const raw = stats.magic * 0.85 * atkMult * enemyVuln * (isCrit ? stats.critDmg / 100 : 1);
       const dmg = Math.max(Math.round(raw * 0.25), Math.round(raw - prev.enemy.def * 0.45));
       enemyHp = Math.max(0, enemyHp - dmg);
@@ -517,6 +533,14 @@ export function stepCombatTurn(
       );
     }
   }
+
+  // P3-1: 별빛 공명 게이지 충전 (매 턴 +16, 빙결 시 +8, 치명타 시 +8)
+  starlightGauge = Math.min(
+    STARLIGHT_MAX,
+    starlightGauge +
+      (playerFrozen ? Math.floor(STARLIGHT_GAIN_TURN / 2) : STARLIGHT_GAIN_TURN) +
+      (landedCrit ? STARLIGHT_GAIN_CRIT : 0)
+  );
 
   // 3) 사역마 보조 행동
   let familiarCounter = prev.familiarCounter;
@@ -639,6 +663,7 @@ export function stepCombatTurn(
         enemyStatuses: [],
         enemyTelegraph: false,
         familiarCounter,
+        starlightGauge,
         logs: [...prev.logs, ...newLogs].slice(-26),
         lastVfx,
         victoryBanner: `${prev.enemy.name} 토벌 완료!`,
@@ -672,6 +697,8 @@ export function stepCombatTurn(
     }
 
     playerHp = Math.max(0, playerHp - dmgToHp);
+    // 적의 공격을 받아내면 공명 게이지 추가 충전
+    starlightGauge = Math.min(STARLIGHT_MAX, starlightGauge + STARLIGHT_GAIN_HIT);
 
     // 피해 반사 체크
     const reflect = getStatus(playerStatuses, 'reflect');
@@ -710,7 +737,7 @@ export function stepCombatTurn(
         nextLog(
           turn,
           isThreatBoss(prev.enemy, prev.mode)
-            ? `⚠ 경고: ${prev.enemy.name}이(가) [${prev.enemy.heavyName}]을(를) 준비합니다! 체력의 절반 가까이 날아갈 일격 — 보호막·빙결로 대비하세요!`
+            ? `⚠ 경고: ${prev.enemy.name}이(가) [${prev.enemy.heavyName}]을(를) 준비합니다! 체력의 절반 가까이 날아갈 일격 — 보호막·빙결·별빛 개입으로 대비하세요!`
             : `경고: ${prev.enemy.name}이(가) [${prev.enemy.heavyName}]을(를) 준비합니다!`,
           'status'
         )
@@ -744,6 +771,7 @@ export function stepCombatTurn(
         enemyStatuses: [],
         enemyTelegraph: false,
         familiarCounter,
+        starlightGauge,
         logs: [...prev.logs, ...newLogs].slice(-26),
         lastVfx,
         victoryBanner: `${prev.enemy.name} 토벌 완료!`,
@@ -772,6 +800,7 @@ export function stepCombatTurn(
         enemyStatuses,
         enemyTelegraph: false,
         familiarCounter,
+        starlightGauge: 0,
         logs: [...prev.logs, ...newLogs].slice(-26),
         lastVfx: {
           id: vfxIdCounter++,
@@ -801,8 +830,213 @@ export function stepCombatTurn(
       enemyStatuses,
       enemyTelegraph: nextTelegraph,
       familiarCounter,
+      starlightGauge,
       logs: [...prev.logs, ...newLogs].slice(-26),
       lastVfx,
+    },
+  };
+}
+
+export interface StarlightOutcome extends TurnOutcome {
+  wasPerfect: boolean;
+}
+
+/**
+ * P3-1: 별빛 개입 — 게이지 100% 도달 시 수동 발동하는 학파별 비오의.
+ * 적의 강공격 예고(enemyTelegraph) 타이밍에 맞춰 발동하면 '완벽 개입'으로
+ * 강공격을 파훼(차단)하고 피해·효과 1.45배 + 게이지 25% 환급!
+ */
+export function triggerStarlightIntervention(
+  prev: CombatRuntime,
+  state: GameState,
+  stats: ComputedStats
+): StarlightOutcome {
+  const def = STARLIGHT_SKILLS[state.school];
+  const turn = prev.turn;
+  const wasPerfect = prev.enemyTelegraph;
+  const perfectMult = wasPerfect ? STARLIGHT_PERFECT_MULT : 1;
+
+  let playerHp = Math.min(stats.maxHp, prev.playerHp);
+  let playerMp = Math.min(stats.maxMp, prev.playerMp);
+  let playerShield = prev.playerShield;
+  let playerStatuses = [...prev.playerStatuses];
+  let enemyHp = prev.enemyHp;
+  let enemyStatuses = [...prev.enemyStatuses];
+  const cooldowns: Record<string, number> = { ...prev.cooldowns };
+
+  const atkBuff = getStatus(playerStatuses, 'atkUp');
+  const atkMult = atkBuff ? 1 + atkBuff.value : 1;
+  const enemyVuln =
+    1 +
+    (getStatus(enemyStatuses, 'shock')?.value ?? 0) +
+    (getStatus(enemyStatuses, 'curse')?.value ?? 0);
+  const catMult = 1 + (stats.categoryBonus[state.school] ?? 0) / 100;
+  const hasBurn = Boolean(getStatus(enemyStatuses, 'burn'));
+
+  let totalDmg = 0;
+  let anyCrit = false;
+  for (let h = 0; h < def.hits; h++) {
+    const guaranteedCrit = state.school === 'flame' && hasBurn;
+    const isCrit = guaranteedCrit || Math.random() * 100 < stats.critRate + def.bonusCrit;
+    if (isCrit) anyCrit = true;
+    const critMult = isCrit ? stats.critDmg / 100 : 1;
+    const raw =
+      stats.magic *
+      (def.powerPct / 100) *
+      catMult *
+      atkMult *
+      enemyVuln *
+      perfectMult *
+      critMult *
+      (0.96 + Math.random() * 0.08);
+    const mitigated = Math.max(
+      Math.round(raw * 0.35),
+      Math.round(raw - prev.enemy.def * 0.35)
+    );
+    totalDmg += mitigated;
+  }
+
+  enemyHp = Math.max(0, enemyHp - totalDmg);
+
+  const extraNotes: string[] = [];
+  if (state.school === 'flame') {
+    enemyStatuses = addOrRefreshStatus(enemyStatuses, {
+      type: 'burn',
+      turns: wasPerfect ? 4 : 3,
+      value: wasPerfect ? 0.6 : 0.45,
+    });
+    playerStatuses = addOrRefreshStatus(playerStatuses, {
+      type: 'atkUp',
+      turns: 2,
+      value: 0.25,
+    });
+    extraNotes.push(wasPerfect ? '강화 화상·마력↑' : '화상·마력↑');
+  } else if (state.school === 'frost') {
+    enemyStatuses = addOrRefreshStatus(enemyStatuses, {
+      type: 'freeze',
+      turns: wasPerfect ? 2 : 1,
+      value: 0,
+    });
+    const hpHeal = Math.round(stats.maxHp * (wasPerfect ? 0.25 : 0.18));
+    const mpHeal = Math.round(stats.maxMp * (wasPerfect ? 0.5 : 0.35));
+    playerHp = Math.min(stats.maxHp, playerHp + hpHeal);
+    playerMp = Math.min(stats.maxMp, playerMp + mpHeal);
+    extraNotes.push(
+      `빙결 ${wasPerfect ? 2 : 1}턴 · HP +${hpHeal.toLocaleString()} · MP +${mpHeal}`
+    );
+  } else if (state.school === 'thunder') {
+    enemyStatuses = addOrRefreshStatus(enemyStatuses, {
+      type: 'shock',
+      turns: 3,
+      value: 0.3,
+    });
+    const cdCut = wasPerfect ? 2 : 1;
+    for (const k of Object.keys(cooldowns)) {
+      if (cooldowns[k] > cdCut) cooldowns[k] -= cdCut;
+      else delete cooldowns[k];
+    }
+    extraNotes.push(`감전 · 쿨타임 -${cdCut}턴`);
+  } else {
+    const shieldVal = Math.round(stats.magic * (wasPerfect ? 2.6 : 1.8));
+    playerShield = Math.max(playerShield, shieldVal);
+    playerStatuses = addOrRefreshStatus(playerStatuses, {
+      type: 'reflect',
+      turns: 2,
+      value: 0.45,
+    });
+    enemyStatuses = addOrRefreshStatus(enemyStatuses, {
+      type: 'curse',
+      turns: 3,
+      value: 0.25,
+    });
+    if (wasPerfect) {
+      const hpHeal = Math.round(stats.maxHp * 0.2);
+      playerHp = Math.min(stats.maxHp, playerHp + hpHeal);
+      extraNotes.push(`보호막 ${shieldVal.toLocaleString()} · 반사 · 저주 · HP +${hpHeal.toLocaleString()}`);
+    } else {
+      extraNotes.push(`보호막 ${shieldVal.toLocaleString()} · 반사 · 저주`);
+    }
+  }
+
+  const nextGauge = wasPerfect ? STARLIGHT_PERFECT_REFUND : 0;
+  const newLogs: CombatLogEntry[] = [];
+  if (wasPerfect) {
+    newLogs.push(
+      nextLog(
+        turn,
+        `✦ 완벽 개입! [${prev.enemy.heavyName ?? '강공격'}] 예고를 산산조각 파훼! (공명 +${STARLIGHT_PERFECT_REFUND}% 환급)`,
+        'starlight'
+      )
+    );
+  }
+  newLogs.push(
+    nextLog(
+      turn,
+      `✦ 별빛 개입 [${def.name}] → ${prev.enemy.name}에게 ${totalDmg.toLocaleString()} 피해!${
+        anyCrit ? ' (치명타)' : ''
+      } [${extraNotes.join(' · ')}]`,
+      'starlight'
+    )
+  );
+
+  const flashLabel = wasPerfect ? `✦ 완벽 개입 · ${def.name}` : `✦ ${def.name}`;
+  const vfx: CombatRuntime['lastVfx'] = {
+    id: vfxIdCounter++,
+    target: 'enemy',
+    category: state.school,
+    amountText: `${totalDmg.toLocaleString()}${anyCrit || wasPerfect ? '!' : ''}`,
+    isCrit: true,
+    label: wasPerfect ? `✦ 파훼 · ${def.name}` : `✦ ${def.name}`,
+  };
+  const starlightFlash = { id: vfxIdCounter++, perfect: wasPerfect, label: flashLabel };
+
+  if (enemyHp <= 0) {
+    newLogs.push(nextLog(turn, `${prev.enemy.name}을(를) 별빛의 일격으로 토벌했습니다!`, 'system'));
+    return {
+      result: 'victory',
+      sfx: wasPerfect ? 'starlightPerfect' : 'starlight',
+      wasPerfect,
+      combat: {
+        ...prev,
+        playerHp,
+        playerMaxHp: stats.maxHp,
+        playerMp,
+        playerMaxMp: stats.maxMp,
+        playerShield,
+        playerStatuses,
+        cooldowns,
+        enemyHp: 0,
+        enemyStatuses: [],
+        enemyTelegraph: false,
+        starlightGauge: nextGauge,
+        starlightFlash,
+        logs: [...prev.logs, ...newLogs].slice(-26),
+        lastVfx: vfx,
+        victoryBanner: `${prev.enemy.name} 토벌 완료!`,
+      },
+    };
+  }
+
+  return {
+    result: 'ongoing',
+    sfx: wasPerfect ? 'starlightPerfect' : 'starlight',
+    wasPerfect,
+    combat: {
+      ...prev,
+      playerHp,
+      playerMaxHp: stats.maxHp,
+      playerMp,
+      playerMaxMp: stats.maxMp,
+      playerShield,
+      playerStatuses,
+      cooldowns,
+      enemyHp,
+      enemyStatuses,
+      enemyTelegraph: false,
+      starlightGauge: nextGauge,
+      starlightFlash,
+      logs: [...prev.logs, ...newLogs].slice(-26),
+      lastVfx: vfx,
     },
   };
 }

@@ -14,7 +14,17 @@ function getCtx(): AudioContext | null {
 }
 
 export function playSfx(
-  kind: 'cast' | 'crit' | 'heal' | 'dark' | 'victory' | 'defeat' | 'click' | 'hit',
+  kind:
+    | 'cast'
+    | 'crit'
+    | 'heal'
+    | 'dark'
+    | 'victory'
+    | 'defeat'
+    | 'click'
+    | 'hit'
+    | 'starlight'
+    | 'starlightPerfect',
   enabled: boolean
 ): void {
   if (!enabled) return;
@@ -22,6 +32,24 @@ export function playSfx(
   if (!ctx) return;
 
   const now = ctx.currentTime;
+  if (kind === 'starlight' || kind === 'starlightPerfect') {
+    const notes = kind === 'starlightPerfect' ? [523.25, 659.25, 783.99, 1046.5] : [440, 554.37, 659.25];
+    notes.forEach((freq, idx) => {
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.type = idx === notes.length - 1 ? 'sine' : 'triangle';
+      o.frequency.setValueAtTime(freq, now + idx * 0.045);
+      g.gain.setValueAtTime(0.001, now + idx * 0.045);
+      g.gain.linearRampToValueAtTime(kind === 'starlightPerfect' ? 0.065 : 0.055, now + idx * 0.045 + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.045 + 0.36);
+      o.connect(g);
+      g.connect(ctx.destination);
+      o.start(now + idx * 0.045);
+      o.stop(now + idx * 0.045 + 0.38);
+    });
+    return;
+  }
+
   const osc = ctx.createOscillator();
   const gain = ctx.createGain();
   osc.connect(gain);

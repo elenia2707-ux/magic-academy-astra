@@ -7,6 +7,7 @@ import { FAMILIARS } from '../data/familiars';
 import { getActiveInfirmaryEffect } from '../data/infirmary';
 import { CATEGORY_META, getCharacterTitle, RANKS, SCHOOLS } from '../data/schools';
 import { SKILL_MAP } from '../data/skills';
+import { STARLIGHT_MAX, STARLIGHT_SKILLS } from '../data/starlight';
 import type { CombatRuntime, ComputedStats, GameState, StatusEffect, StatusType } from '../types/game';
 import { FamiliarPortrait, MonsterPortrait, NpcPortrait, PlayerPortrait } from './GothicArt';
 import { MonsterShowcaseModal } from './Modals';
@@ -31,6 +32,7 @@ interface Props {
   onResolveEvent: (choiceId: string) => void;
   onDismissEvent: () => void;
   onToggleBgm: () => void;
+  onTriggerStarlight: () => void;
 }
 
 const STATUS_LABEL: Record<StatusType, string> = {
@@ -73,6 +75,7 @@ export const BattleTab: React.FC<Props> = ({
   onResolveEvent,
   onDismissEvent,
   onToggleBgm,
+  onTriggerStarlight,
 }) => {
   const logRef = useRef<HTMLDivElement | null>(null);
   const [enemyModalOpen, setEnemyModalOpen] = useState(false);
@@ -129,6 +132,12 @@ export const BattleTab: React.FC<Props> = ({
 
   const activeDeck = state.deck.slice(0, stats.maxDeckSlots);
   const activeFam = state.activeFamiliar ? state.familiars[state.activeFamiliar] : undefined;
+  const starlightDef = STARLIGHT_SKILLS[state.school];
+  const starlightGauge = Math.max(0, Math.min(STARLIGHT_MAX, combat.starlightGauge ?? 0));
+  const starlightPct = Math.round((starlightGauge / STARLIGHT_MAX) * 100);
+  const starlightReady =
+    starlightGauge >= STARLIGHT_MAX && combat.enemyHp > 0 && combat.playerHp > 0;
+  const starlightPerfect = starlightReady && combat.enemyTelegraph;
 
   return (
     <div>
@@ -443,6 +452,65 @@ export const BattleTab: React.FC<Props> = ({
             );
           })}
         </div>
+
+        {/* P3-1: 별빛 개입 — 수동 발동 학파 궁극기 & 보스 예고 파훼 */}
+        <button
+          type="button"
+          className={`starlight-btn${starlightReady ? ' is-ready' : ''}${
+            starlightPerfect ? ' is-perfect' : ''
+          }`}
+          style={{ ['--sl-accent' as string]: starlightDef.accentColor } as React.CSSProperties}
+          disabled={!starlightReady}
+          onClick={onTriggerStarlight}
+          aria-label={
+            starlightPerfect
+              ? `별빛 개입 ${starlightDef.name} 지금 발동하여 강공격 예고 파훼`
+              : starlightReady
+                ? `별빛 개입 ${starlightDef.name} 즉시 발동`
+                : `별빛 개입 충전 중 ${starlightPct}%`
+          }
+        >
+          <span
+            className="starlight-fill"
+            aria-hidden="true"
+            style={{ width: `${starlightPct}%` }}
+          />
+          <span className="starlight-sigil" aria-hidden="true">
+            <svg viewBox="0 0 28 28" width="22" height="22">
+              <circle cx="14" cy="14" r="11.5" fill="none" stroke="currentColor" strokeWidth="1.2" opacity="0.55" />
+              <path
+                d="M14 3.5 L16.2 11.4 L24.5 14 L16.2 16.6 L14 24.5 L11.8 16.6 L3.5 14 L11.8 11.4 Z"
+                fill="currentColor"
+              />
+              <circle cx="14" cy="14" r="2.2" fill="#20141a" />
+            </svg>
+          </span>
+          <span className="starlight-meta">
+            <span className="starlight-title">
+              별빛 개입 · <strong>{starlightDef.name}</strong>
+            </span>
+            <span className="starlight-sub">
+              {starlightPerfect
+                ? `⚠ 강공격 예고 포착! ${starlightDef.perfectHint}`
+                : starlightReady
+                  ? `${starlightDef.shortDesc} · 탭하여 즉시 발동`
+                  : `${starlightDef.shortDesc} · 예고 시 파훼 보너스`}
+            </span>
+          </span>
+          <span className="starlight-cta">
+            {starlightPerfect ? '파훼!' : starlightReady ? '발동!' : `${starlightPct}%`}
+          </span>
+        </button>
+
+        {combat.starlightFlash && (
+          <div
+            key={combat.starlightFlash.id}
+            className={`starlight-flash-ribbon${combat.starlightFlash.perfect ? ' is-perfect' : ''}`}
+            aria-hidden="true"
+          >
+            {combat.starlightFlash.label}
+          </div>
+        )}
       </div>
 
       {/* P1-3: 양호실 야간 당직 마르타 짧은 대사 & 처방 버프/디버프 */}
