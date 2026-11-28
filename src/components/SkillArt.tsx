@@ -1,5 +1,6 @@
-import React from 'react';
-import type { MagicCategory, SpellVfxEvent } from '../types/game';
+import React, { useState } from 'react';
+import type { MagicCategory, SkillRuneBranch, SpellVfxEvent } from '../types/game';
+import { getSkillArtUrl } from '../data/art';
 
 const CAT_PALETTE: Record<
   MagicCategory,
@@ -344,37 +345,65 @@ export const SkillIcon: React.FC<{
   category: MagicCategory;
   size?: 'sm' | 'md' | 'lg';
   locked?: boolean;
-}> = ({ skillId, category, size = 'md', locked = false }) => {
+  rune?: SkillRuneBranch | null;
+  variant?: 'square' | 'coin';
+}> = ({
+  skillId,
+  category,
+  size = 'md',
+  locked = false,
+  rune = null,
+  variant = 'square',
+}) => {
+  const [imgFailed, setImgFailed] = useState(false);
   const pal = CAT_PALETTE[category];
   const px = size === 'sm' ? 24 : size === 'lg' ? 44 : 38;
   const gradId = `sg_${skillId}_${size}`;
+  const artUrl = getSkillArtUrl(skillId);
+  const showArt = Boolean(artUrl) && !imgFailed;
 
   return (
     <div
-      className={`skill-icon-box skill-icon-${size} ${locked ? 'locked' : ''}`}
+      className={`skill-icon-box skill-icon-${size} skill-icon-${variant} ${locked ? 'locked' : ''} ${rune ? 'has-rune' : ''} ${showArt ? 'is-watercolor' : ''}`}
       style={{ borderColor: pal.border }}
       aria-hidden="true"
     >
-      <svg width={px} height={px} viewBox="0 0 48 48" fill="none">
-        <defs>
-          <radialGradient id={gradId} cx="50%" cy="40%" r="65%">
-            <stop offset="0%" stopColor={pal.bg1} />
-            <stop offset="100%" stopColor={pal.bg2} />
-          </radialGradient>
-        </defs>
-        <rect x="1" y="1" width="46" height="46" rx="8" fill={`url(#${gradId})`} />
-        <rect
-          x="3.5"
-          y="3.5"
-          width="41"
-          height="41"
-          rx="6"
-          stroke={pal.border}
-          strokeWidth="0.9"
-          opacity="0.55"
+      {showArt ? (
+        <img
+          className="skill-icon-img"
+          src={artUrl!}
+          alt=""
+          loading="lazy"
+          decoding="async"
+          onError={() => setImgFailed(true)}
         />
-        {renderGlyph(skillId, pal.stroke, pal.glow)}
-      </svg>
+      ) : (
+        <svg width={px} height={px} viewBox="0 0 48 48" fill="none">
+          <defs>
+            <radialGradient id={gradId} cx="50%" cy="40%" r="65%">
+              <stop offset="0%" stopColor={pal.bg1} />
+              <stop offset="100%" stopColor={pal.bg2} />
+            </radialGradient>
+          </defs>
+          <rect x="1" y="1" width="46" height="46" rx="8" fill={`url(#${gradId})`} />
+          <rect
+            x="3.5"
+            y="3.5"
+            width="41"
+            height="41"
+            rx="6"
+            stroke={pal.border}
+            strokeWidth="0.9"
+            opacity="0.55"
+          />
+          {renderGlyph(skillId, pal.stroke, pal.glow)}
+        </svg>
+      )}
+      {rune && (
+        <span className="skill-rune-pip" title={`각성 룬 ${rune.toUpperCase()}`}>
+          {rune.toUpperCase()}
+        </span>
+      )}
     </div>
   );
 };

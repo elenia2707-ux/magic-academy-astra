@@ -463,3 +463,50 @@ export function getGearArt(slot: string, name?: string): string {
   const idx = name ? bases.findIndex((b) => name.endsWith(b)) : -1;
   return `./art/gear/${slot}_${idx >= 0 ? idx : 0}.webp`;
 }
+
+// ================= 스킬 아이콘 (P6-1) =================
+export const SKILL_ART: Record<string, string> = {
+  // 흑염 학파 (5)
+  flame_1: './art/skills/flame_1.webp',
+  flame_2: './art/skills/flame_2.webp',
+  flame_3: './art/skills/flame_3.webp',
+  flame_4: './art/skills/flame_4.webp',
+  flame_5: './art/skills/flame_5.webp',
+  // 영원한 서리 학파 (5)
+  frost_1: './art/skills/frost_1.webp',
+  frost_2: './art/skills/frost_2.webp',
+  frost_3: './art/skills/frost_3.webp',
+  frost_4: './art/skills/frost_4.webp',
+  frost_5: './art/skills/frost_5.webp',
+  // 뇌전 학파 (5)
+  thunder_1: './art/skills/thunder_1.webp',
+  thunder_2: './art/skills/thunder_2.webp',
+  thunder_3: './art/skills/thunder_3.webp',
+  thunder_4: './art/skills/thunder_4.webp',
+  thunder_5: './art/skills/thunder_5.webp',
+  // 침묵의 대지 학파 (5)
+  earth_1: './art/skills/earth_1.webp',
+  earth_2: './art/skills/earth_2.webp',
+  earth_3: './art/skills/earth_3.webp',
+  earth_4: './art/skills/earth_4.webp',
+  earth_5: './art/skills/earth_5.webp',
+  // 결계·정령학 (4)
+  ward_1: './art/skills/ward_1.webp',
+  ward_2: './art/skills/ward_2.webp',
+  ward_3: './art/skills/ward_3.webp',
+  ward_4: './art/skills/ward_4.webp',
+  // 성광·치유학 (4)
+  holy_1: './art/skills/holy_1.webp',
+  holy_2: './art/skills/holy_2.webp',
+  holy_3: './art/skills/holy_3.webp',
+  holy_4: './art/skills/holy_4.webp',
+  // 금제 흑마법 (4)
+  dark_1: './art/skills/dark_1.webp',
+  dark_2: './art/skills/dark_2.webp',
+  dark_3: './art/skills/dark_3.webp',
+  dark_4: './art/skills/dark_4.webp',
+};
+
+export function getSkillArtUrl(skillId: string): string | null {
+  return SKILL_ART[skillId] ?? null;
+}

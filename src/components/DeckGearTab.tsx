@@ -201,7 +201,12 @@ export const DeckGearTab: React.FC<Props> = ({
                     {def && learned ? (
                       <div className="list-actions">
                         <div style={{ display: 'flex', alignItems: 'center', gap: 9, minWidth: 0, flex: 1 }}>
-                          <SkillIcon skillId={def.id} category={def.category} size="md" />
+                          <SkillIcon
+                            skillId={def.id}
+                            category={def.category}
+                            size="md"
+                            rune={learned?.runeAwakened ? learned.rune : null}
+                          />
                           <div style={{ minWidth: 0 }}>
                             <div className="list-title">
                               <span className="tag">{idx + 1}</span>
@@ -270,7 +275,12 @@ export const DeckGearTab: React.FC<Props> = ({
                   <div key={sid} className="list-card">
                     <div className="list-actions">
                       <div style={{ display: 'flex', alignItems: 'center', gap: 9, minWidth: 0, flex: 1 }}>
-                        <SkillIcon skillId={def.id} category={def.category} size="md" />
+                        <SkillIcon
+                          skillId={def.id}
+                          category={def.category}
+                          size="md"
+                          rune={learned?.runeAwakened ? learned.rune : null}
+                        />
                         <div style={{ minWidth: 0, flex: 1 }}>
                           <div className="list-title">
                             <span>{def.name}</span>

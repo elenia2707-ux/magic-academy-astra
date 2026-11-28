@@ -260,6 +260,7 @@ export const SchoolTab: React.FC<Props> = ({
             category={skill.category}
             size="md"
             locked={rankLocked}
+            rune={learned?.runeAwakened ? learned.rune : null}
           />
           <div style={{ minWidth: 0, flex: 1 }}>
             <div className="list-top" style={{ marginBottom: 3 }}>

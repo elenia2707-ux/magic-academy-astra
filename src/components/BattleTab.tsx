@@ -578,13 +578,20 @@ export const BattleTab: React.FC<Props> = ({
           {Array.from({ length: stats.maxDeckSlots }).map((_, idx) => {
             const sid = activeDeck[idx];
             const def = sid ? SKILL_MAP[sid] : null;
+            const learned = sid ? state.skills[sid] : null;
             const cd = sid ? combat.cooldowns[sid] ?? 0 : 0;
             return (
               <div key={idx} className={`rot-chip ${cd > 0 ? 'on-cd' : ''}`}>
                 <div className="rot-idx">{idx + 1}순위</div>
                 {def && (
                   <div className="rot-icon-wrap">
-                    <SkillIcon skillId={def.id} category={def.category} size="sm" />
+                    <SkillIcon
+                      skillId={def.id}
+                      category={def.category}
+                      size="sm"
+                      variant="coin"
+                      rune={learned?.runeAwakened ? learned.rune : null}
+                    />
                   </div>
                 )}
                 <div
