@@ -23,7 +23,7 @@
 ## 1. 프로젝트 지도
 
 - **로컬 저장소**: `/home/antigravity/magic-academy-astra` (React 19 + TS + Vite + 순수 CSS + PWA)
-- **라이브**: https://elenia2707-ux.github.io/magic-academy-astra/ (**v16 배포 완료**, `sw.js` 캐시 `astra-academy-v16`)
+- **라이브**: https://elenia2707-ux.github.io/magic-academy-astra/ (**v17 배포 완료**, `sw.js` 캐시 `astra-academy-v17`)
 - **저장소**: https://github.com/elenia2707-ux/magic-academy-astra (`main` / `gh-pages` 모두 최신 푸시 완료)
 - **P0 완료 커밋 (`origin/main` 반영됨)**:
   - P0-1 `d6dc7e1` → P0-7 `03165d3` (자동 보스 · 보스/몹 밸런스 · 시작 3스킬 · 장비 정리 · 재화/막 램프 · 스토리 템포)
