@@ -4,9 +4,11 @@ import { ACTS } from '../data/acts';
 import { getActBgArt, getMonsterArt } from '../data/art';
 import type { AcademyEventDef } from '../data/blackComedyEvents';
 import { getBossGimmick, GRIMOIRE_SEALS, isGimmickCountered } from '../data/bossGimmicks';
+import { getEscortProfile, getEscortStageMult } from '../data/escortStories';
 import { FAMILIARS } from '../data/familiars';
 import { isFamiliarSynergyActive } from '../data/familiarSynergy';
 import { getActiveInfirmaryEffect } from '../data/infirmary';
+import { PROFESSORS } from '../data/professors';
 import { getRebirthVow } from '../data/rebirthVows';
 import { CATEGORY_META, getCharacterTitle, RANKS, SCHOOLS } from '../data/schools';
 import { SKILL_MAP } from '../data/skills';
@@ -37,6 +39,7 @@ interface Props {
   onToggleBgm: () => void;
   onTriggerStarlight: () => void;
   onOpenGrimoireSeal?: () => void;
+  onClearEscort?: () => void;
 }
 
 const STATUS_LABEL: Record<StatusType, string> = {
@@ -90,6 +93,7 @@ export const BattleTab: React.FC<Props> = ({
   onToggleBgm,
   onTriggerStarlight,
   onOpenGrimoireSeal,
+  onClearEscort,
 }) => {
   const logRef = useRef<HTMLDivElement | null>(null);
   const [enemyModalOpen, setEnemyModalOpen] = useState(false);
@@ -163,6 +167,10 @@ export const BattleTab: React.FC<Props> = ({
     Boolean(state.activeFamiliar) &&
     combat.lastFamiliarAction?.familiarId === state.activeFamiliar &&
     combat.turn > 0;
+  const activeEscortId = state.activeEscort ?? null;
+  const activeEscortProf = activeEscortId ? PROFESSORS[activeEscortId] : null;
+  const activeEscortProfile = activeEscortId ? getEscortProfile(activeEscortId) : null;
+  const activeEscortMult = activeEscortId ? getEscortStageMult(state, activeEscortId) : 1;
   const starlightDef = STARLIGHT_SKILLS[state.school];
   const starlightGauge = Math.max(0, Math.min(STARLIGHT_MAX, combat.starlightGauge ?? 0));
   const starlightPct = Math.round((starlightGauge / STARLIGHT_MAX) * 100);
@@ -278,6 +286,32 @@ export const BattleTab: React.FC<Props> = ({
           </span>
           <span className="story-pending-cta">바로 읽기 ›</span>
         </button>
+      )}
+
+      {/* P4-3: 교수 동행 활성 배너 */}
+      {activeEscortId && activeEscortProf && activeEscortProfile && (
+        <div className="escort-battle-strip">
+          <span className="escort-battle-avatar">
+            <NpcPortrait id={activeEscortId} variant="avatar" alt={activeEscortProf.name} />
+          </span>
+          <div className="escort-battle-info">
+            <div className="escort-battle-name">
+              <span>동행 · {activeEscortProf.name}</span>
+              {activeEscortMult > 1 && (
+                <span className="escort-battle-mult">×{activeEscortMult.toFixed(2)}</span>
+              )}
+            </div>
+            <div className="escort-battle-aura">{activeEscortProfile.auraSummary}</div>
+          </div>
+          <button
+            type="button"
+            className="escort-clear-btn"
+            onClick={() => onClearEscort?.()}
+            title={`${activeEscortProf.name} 동행 해제`}
+          >
+            해제
+          </button>
+        </div>
       )}
 
       {/* 고딕 수채화 카드 전투 무대 */}
@@ -648,6 +682,29 @@ export const BattleTab: React.FC<Props> = ({
             {combat.lastFamiliarAction.synergyTriggered && (
               <span className="familiar-cutin-syn">✦ 공명</span>
             )}
+          </div>
+        )}
+
+        {combat.lastEscortAction && (
+          <div
+            key={combat.lastEscortAction.id}
+            className="escort-cutin-strip"
+            aria-hidden="true"
+          >
+            <span className="escort-cutin-avatar">
+              <NpcPortrait
+                id={combat.lastEscortAction.professorId}
+                variant="avatar"
+                alt={combat.lastEscortAction.professorName}
+              />
+            </span>
+            <span className="escort-cutin-body">
+              <span className="escort-cutin-name">
+                {combat.lastEscortAction.professorName} · {combat.lastEscortAction.actionLabel}
+              </span>
+              <span className="escort-cutin-effect">{combat.lastEscortAction.effectText}</span>
+            </span>
+            <span className="escort-cutin-tag">✦ 동행</span>
           </div>
         )}
       </div>

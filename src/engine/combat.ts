@@ -6,9 +6,15 @@ import {
 } from '../data/bossGimmicks';
 import { effectiveStoneReward } from '../data/economy';
 import { ACTS, createAbyssEliteMonster, createTowerMonster } from '../data/acts';
+import {
+  getEscortBonuses,
+  getEscortProfile,
+  getEscortStageMult,
+} from '../data/escortStories';
 import { FAMILIARS } from '../data/familiars';
 import { getFamiliarSynergy, isFamiliarSynergyActive } from '../data/familiarSynergy';
 import { getActiveInfirmaryEffect } from '../data/infirmary';
+import { PROFESSORS } from '../data/professors';
 import { getNgPlusBaselineScaling, getRebirthVow, type RebirthVowDef } from '../data/rebirthVows';
 import { RANK_EXAM_BOSSES } from '../data/schools';
 import { applyRuneToSkill } from '../data/runes';
@@ -27,6 +33,7 @@ import type {
   CombatMode,
   CombatRuntime,
   ComputedStats,
+  EscortActionEvent,
   FamiliarActionEvent,
   GameState,
   MonsterDef,
@@ -243,6 +250,21 @@ export function createCombatRuntime(
     }
   }
 
+  const escortBonus = getEscortBonuses(state);
+  const openingShield =
+    escortBonus.openingShieldPct > 0
+      ? Math.round(stats.maxHp * (escortBonus.openingShieldPct / 100))
+      : 0;
+  if (state.activeEscort && openingShield > 0) {
+    initialLogs.push(
+      nextLog(
+        0,
+        `[동행 · ${PROFESSORS[state.activeEscort].name}] 개전 보호막 +${openingShield.toLocaleString()}!`,
+        'system'
+      )
+    );
+  }
+
   return {
     mode,
     act,
@@ -253,7 +275,7 @@ export function createCombatRuntime(
     playerMaxHp: stats.maxHp,
     playerMp: stats.maxMp,
     playerMaxMp: stats.maxMp,
-    playerShield: 0,
+    playerShield: openingShield,
     playerStatuses: [],
     cooldowns: {},
     enemy,
@@ -265,6 +287,7 @@ export function createCombatRuntime(
     starlightGauge: Math.max(0, Math.min(STARLIGHT_MAX, Math.round(initialStarlight))),
     starlightFlash: null,
     lastFamiliarAction: null,
+    lastEscortAction: null,
     enemyShield: 0,
     bossGimmickTriggered: false,
     gimmickSuppressedTurns: 0,
@@ -311,6 +334,7 @@ export function stepCombatTurn(
 ): TurnOutcome {
   const turn = prev.turn + 1;
   const vow = getRebirthVow(state.prestige.activeVow);
+  const escortBonus = getEscortBonuses(state);
   const gimmickDef = getBossGimmick(prev.enemy.gimmick);
   const countered = isGimmickCountered(prev.enemy.gimmick, state.grimoireSeal);
   const ravenSynActive =
@@ -319,6 +343,10 @@ export function stepCombatTurn(
     prev.enemy.isBoss &&
     isFamiliarSynergyActive('raven', state.school);
   const ravenBossDmgMult = ravenSynActive ? 1.08 : 1;
+  const escortBossDmgMult =
+    prev.enemy.isBoss && escortBonus.bossDamagePct > 0
+      ? 1 + escortBonus.bossDamagePct / 100
+      : 1;
   const sealBossDmgMult =
     (prev.enemy.isBoss
       ? 1 + getSealBossDamageBonusPct(Boolean(state.equipped.grimoire), countered) / 100
@@ -352,6 +380,7 @@ export function stepCombatTurn(
   const newLogs: CombatLogEntry[] = [];
   let lastVfx = prev.lastVfx;
   let lastFamiliarAction: FamiliarActionEvent | null = prev.lastFamiliarAction ?? null;
+  let lastEscortAction: EscortActionEvent | null = null;
   let sfx: TurnOutcome['sfx'] = 'cast';
 
   // 1) 플레이어 턴 시작 상태이상(재생 / 화상·독)
@@ -566,6 +595,7 @@ export function stepCombatTurn(
             burnMult *
             enemyVuln *
             sealBossDmgMult *
+            escortBossDmgMult *
             critMult *
             (0.94 + Math.random() * 0.12);
           const mitigated = Math.max(
@@ -661,6 +691,7 @@ export function stepCombatTurn(
         atkMult *
         enemyVuln *
         sealBossDmgMult *
+        escortBossDmgMult *
         (isCrit ? stats.critDmg / 100 : 1);
       const dmg = Math.max(Math.round(raw * 0.25), Math.round(raw - prev.enemy.def * 0.45));
       const hitRes = applyDamageToEnemy(dmg, enemyHp, enemyShield);
@@ -689,13 +720,14 @@ export function stepCombatTurn(
     }
   }
 
-  // P3-1: 별빛 공명 게이지 충전 (매 턴 +16, 빙결 시 +8, 치명타 시 +8) × 서약/서표 배율
+  // P3-1: 별빛 공명 게이지 충전 (매 턴 +16, 빙결 시 +8, 치명타 시 +8) × 서약/서표/동행 배율
   const turnStarGain =
     (playerFrozen ? Math.floor(STARLIGHT_GAIN_TURN / 2) : STARLIGHT_GAIN_TURN) +
     (landedCrit ? STARLIGHT_GAIN_CRIT : 0);
   starlightGauge = Math.min(
     STARLIGHT_MAX,
-    starlightGauge + Math.round(turnStarGain * vow.starlightGainMult * dawnSealStarlightMult)
+    starlightGauge +
+      Math.round(turnStarGain * vow.starlightGainMult * dawnSealStarlightMult * escortBonus.starlightGainMult)
   );
 
   // 3) 사역마 보조 행동
@@ -863,6 +895,114 @@ export function stepCombatTurn(
     }
   }
 
+  // 3.5) P4-3: 동행 교수 전술 지원 행동
+  if (state.activeEscort && enemyHp > 0 && playerHp > 0) {
+    const escortProfile = getEscortProfile(state.activeEscort);
+    const prof = PROFESSORS[state.activeEscort];
+    if (escortProfile && prof && turn > 0 && turn % escortProfile.intervalTurns === 0) {
+      const mult = getEscortStageMult(state, state.activeEscort);
+      let effectText = '';
+
+      if (state.activeEscort === 'lucia') {
+        const sh = Math.round(stats.maxHp * 0.08 * mult);
+        const healAmt = Math.max(1, Math.round(stats.maxHp * 0.05 * mult * vow.healMult));
+        playerShield += sh;
+        playerHp = Math.min(stats.maxHp, playerHp + healAmt);
+        effectText = `보호막 +${sh.toLocaleString()} · HP +${healAmt.toLocaleString()}`;
+      } else if (state.activeEscort === 'karen') {
+        const dmg = Math.max(1, Math.round(stats.magic * 0.85 * mult));
+        const hitRes = applyDamageToEnemy(dmg, enemyHp, enemyShield);
+        enemyHp = hitRes.enemyHp;
+        enemyShield = hitRes.enemyShield;
+        enemyStatuses = addOrRefreshStatus(enemyStatuses, {
+          type: 'burn',
+          turns: 2,
+          value: 0.32,
+        });
+        effectText = `${dmg.toLocaleString()} 피해 · 화상`;
+      } else if (state.activeEscort === 'sebastian') {
+        const dmg = Math.max(1, Math.round(stats.magic * 0.75 * mult));
+        const hitRes = applyDamageToEnemy(dmg, enemyHp, enemyShield);
+        enemyHp = hitRes.enemyHp;
+        enemyShield = hitRes.enemyShield;
+        const mpGain = Math.round(14 * mult);
+        playerMp = Math.min(stats.maxMp, playerMp + mpGain);
+        effectText = `${dmg.toLocaleString()} 피해 · MP +${mpGain}`;
+      } else if (state.activeEscort === 'volta') {
+        const dmg = Math.max(1, Math.round(stats.magic * 0.85 * mult));
+        const hitRes = applyDamageToEnemy(dmg, enemyHp, enemyShield);
+        enemyHp = hitRes.enemyHp;
+        enemyShield = hitRes.enemyShield;
+        enemyStatuses = addOrRefreshStatus(enemyStatuses, {
+          type: 'shock',
+          turns: 2,
+          value: 0.22,
+        });
+        effectText = `${dmg.toLocaleString()} 피해 · 감전`;
+      } else if (state.activeEscort === 'morden') {
+        const sh = Math.round(stats.maxHp * 0.11 * mult);
+        playerShield += sh;
+        playerStatuses = addOrRefreshStatus(playerStatuses, {
+          type: 'reflect',
+          turns: 2,
+          value: 0.3,
+        });
+        effectText = `보호막 +${sh.toLocaleString()} · 반사`;
+      } else if (state.activeEscort === 'irene') {
+        const beforeCount = playerStatuses.length;
+        playerStatuses = playerStatuses.filter(
+          (s) =>
+            s.type !== 'burn' &&
+            s.type !== 'poison' &&
+            s.type !== 'curse' &&
+            s.type !== 'freeze' &&
+            s.type !== 'shock'
+        );
+        const cleansed = beforeCount > playerStatuses.length;
+        const sh = Math.round(stats.maxHp * 0.1 * mult);
+        playerShield += sh;
+        effectText = `${cleansed ? '정화 · ' : ''}보호막 +${sh.toLocaleString()}`;
+      } else if (state.activeEscort === 'seraphina') {
+        const healAmt = Math.max(1, Math.round(stats.maxHp * 0.1 * mult * vow.healMult));
+        playerHp = Math.min(stats.maxHp, playerHp + healAmt);
+        effectText = `HP +${healAmt.toLocaleString()}`;
+      } else if (state.activeEscort === 'martha') {
+        const dmg = Math.max(1, Math.round(stats.magic * 0.8 * mult));
+        const hitRes = applyDamageToEnemy(dmg, enemyHp, enemyShield);
+        enemyHp = hitRes.enemyHp;
+        enemyShield = hitRes.enemyShield;
+        enemyStatuses = addOrRefreshStatus(enemyStatuses, {
+          type: 'curse',
+          turns: 2,
+          value: 0.2,
+        });
+        effectText = `${dmg.toLocaleString()} 피해 · 저주`;
+      } else if (state.activeEscort === 'bernard') {
+        const dmg = Math.max(1, Math.round(stats.magic * 0.9 * mult));
+        const hitRes = applyDamageToEnemy(dmg, enemyHp, enemyShield);
+        enemyHp = hitRes.enemyHp;
+        enemyShield = hitRes.enemyShield;
+        starlightGauge = Math.min(STARLIGHT_MAX, starlightGauge + 6);
+        effectText = `${dmg.toLocaleString()} 피해 · 별빛 +6%`;
+      }
+
+      lastEscortAction = {
+        id: vfxIdCounter++,
+        professorId: state.activeEscort,
+        professorName: prof.name,
+        actionLabel: escortProfile.supportName,
+        effectText,
+      };
+      newLogs.push(
+        nextLog(
+          turn,
+          `[동행 · ${prof.name}] ${escortProfile.supportName}! ${effectText}`,
+          'starlight'
+        )
+      );
+    }
+  }
+
   // 4) 적 도트 피해 정산 (화상/독)
   if (enemyHp > 0) {
     for (const dotType of ['burn', 'poison'] as StatusType[]) {
@@ -909,6 +1049,7 @@ export function stepCombatTurn(
         familiarCounter,
         starlightGauge,
         lastFamiliarAction,
+        lastEscortAction,
         logs: [...prev.logs, ...newLogs].slice(-26),
         lastVfx,
         victoryBanner: `${prev.enemy.name} 토벌 완료!`,
@@ -945,7 +1086,13 @@ export function stepCombatTurn(
     // 적의 공격을 받아내면 공명 게이지 추가 충전
     starlightGauge = Math.min(
       STARLIGHT_MAX,
-      starlightGauge + Math.round(STARLIGHT_GAIN_HIT * vow.starlightGainMult * dawnSealStarlightMult)
+      starlightGauge +
+        Math.round(
+          STARLIGHT_GAIN_HIT *
+            vow.starlightGainMult *
+            dawnSealStarlightMult *
+            escortBonus.starlightGainMult
+        )
     );
 
     // 피해 반사 체크
@@ -1219,6 +1366,7 @@ export function stepCombatTurn(
         familiarCounter,
         starlightGauge,
         lastFamiliarAction,
+        lastEscortAction,
         logs: [...prev.logs, ...newLogs].slice(-26),
         lastVfx,
         victoryBanner: `${prev.enemy.name} 토벌 완료!`,
@@ -1253,6 +1401,7 @@ export function stepCombatTurn(
         familiarCounter,
         starlightGauge: 0,
         lastFamiliarAction,
+        lastEscortAction,
         logs: [...prev.logs, ...newLogs].slice(-26),
         lastVfx: {
           id: vfxIdCounter++,
@@ -1288,6 +1437,7 @@ export function stepCombatTurn(
       familiarCounter,
       starlightGauge,
       lastFamiliarAction,
+      lastEscortAction,
       logs: [...prev.logs, ...newLogs].slice(-26),
       lastVfx,
     },
@@ -1313,16 +1463,23 @@ export function triggerStarlightIntervention(
   const wasPerfect = prev.enemyTelegraph;
   const perfectMult = wasPerfect ? STARLIGHT_PERFECT_MULT : 1;
   const vow = getRebirthVow(state.prestige.activeVow);
+  const escortBonus = getEscortBonuses(state);
   const countered = isGimmickCountered(prev.enemy.gimmick, state.grimoireSeal);
   const ravenSynActive =
     state.activeFamiliar === 'raven' &&
     Boolean(state.familiars.raven) &&
     prev.enemy.isBoss &&
     isFamiliarSynergyActive('raven', state.school);
+  const escortBossDmgMult =
+    prev.enemy.isBoss && escortBonus.bossDamagePct > 0
+      ? 1 + escortBonus.bossDamagePct / 100
+      : 1;
   const sealBossDmgMult =
     (prev.enemy.isBoss
       ? 1 + getSealBossDamageBonusPct(Boolean(state.equipped.grimoire), countered) / 100
-      : 1) * (ravenSynActive ? 1.08 : 1);
+      : 1) *
+    (ravenSynActive ? 1.08 : 1) *
+    escortBossDmgMult;
 
   let playerHp = Math.min(stats.maxHp, prev.playerHp);
   let playerMp = Math.min(stats.maxMp, prev.playerMp);
@@ -1496,6 +1653,7 @@ export function triggerStarlightIntervention(
         enemyTelegraph: false,
         starlightGauge: nextGauge,
         starlightFlash,
+        lastEscortAction: null,
         logs: [...prev.logs, ...newLogs].slice(-26),
         lastVfx: vfx,
         victoryBanner: `${prev.enemy.name} 토벌 완료!`,
@@ -1523,6 +1681,7 @@ export function triggerStarlightIntervention(
       enemyTelegraph: false,
       starlightGauge: nextGauge,
       starlightFlash,
+      lastEscortAction: null,
       logs: [...prev.logs, ...newLogs].slice(-26),
       lastVfx: vfx,
     },

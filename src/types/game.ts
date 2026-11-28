@@ -233,6 +233,14 @@ export interface FamiliarActionEvent {
   synergyTriggered: boolean;
 }
 
+export interface EscortActionEvent {
+  id: number;
+  professorId: ProfessorId;
+  professorName: string;
+  actionLabel: string;
+  effectText: string;
+}
+
 export interface CombatRuntime {
   mode: CombatMode;
   act: number;
@@ -255,6 +263,7 @@ export interface CombatRuntime {
   starlightGauge: number; // 0..100 별빛 개입 공명 게이지
   starlightFlash?: { id: number; perfect: boolean; label: string } | null;
   lastFamiliarAction?: FamiliarActionEvent | null; // P4-1 사역마 전투 컷인 연출
+  lastEscortAction?: EscortActionEvent | null; // P4-3 동행 교수 전투 지원 컷인
   enemyShield?: number; // P3-3 보스 기믹 외피/흑갑 보호막
   bossGimmickTriggered?: boolean; // P3-3 체력 임계 1회 기믹 발동 여부
   gimmickSuppressedTurns?: number; // P3-3 별빛 완벽 개입으로 기믹 억제 턴
@@ -434,6 +443,10 @@ export interface GameState {
   grimoireSeal?: GrimoireSealId | null;
   /** P4-2: 아스트라 기록실 (몬스터·보스 도감 & 업적·칭호, 회귀 시 유지) */
   archive?: ArchiveState;
+  /** P4-3: 현재 현장 동행 중인 교수 ID (null이면 단독 출격, 회귀 시 유지) */
+  activeEscort?: ProfessorId | null;
+  /** P4-3: 최초 열람 완료한 막별 외전 미니 스토리 ID 목록 (회귀 시 유지) */
+  viewedSideStories?: string[];
   lastSavedAt: number;
   totalKills: number;
 }

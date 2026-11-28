@@ -5562,7 +5562,507 @@ select,
   white-space: nowrap;
 }
 
+/* ===== P4-3: 교수 동행 & 막별 외전 스토리 ===== */
+.faculty-card.is-escort {
+  border-color: rgba(232, 194, 114, 0.72);
+  box-shadow:
+    inset 0 0 0 1px rgba(244, 214, 142, 0.25),
+    0 2px 8px rgba(0, 0, 0, 0.45);
+}
 
+.faculty-escort-badge {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  line-height: 1;
+  color: #2b1808;
+  background: linear-gradient(180deg, #f6de9c 0%, #c89440 100%);
+  border: 1px solid #4a2d10;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 250, 232, 0.75),
+    0 1px 4px rgba(0, 0, 0, 0.65);
+}
 
+.escort-panel-box {
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(196, 158, 96, 0.36);
+  background: linear-gradient(180deg, rgba(44, 22, 30, 0.92) 0%, rgba(25, 13, 18, 0.96) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 234, 196, 0.1),
+    0 2px 6px rgba(0, 0, 0, 0.38);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
 
+.escort-panel-box.is-active {
+  border-color: #d8ae60;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(236, 200, 120, 0.16) 0%, transparent 70%),
+    linear-gradient(180deg, rgba(64, 34, 28, 0.94) 0%, rgba(32, 16, 18, 0.98) 100%);
+  box-shadow:
+    inset 0 0 0 1px rgba(246, 218, 152, 0.25),
+    0 2px 8px rgba(0, 0, 0, 0.45);
+}
 
+.escort-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  min-width: 0;
+}
+
+.escort-panel-title {
+  font-family: var(--font-round);
+  font-size: 12px;
+  color: #f4dba0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.escort-panel-scale {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 999px;
+  color: #f8e4b4;
+  background: rgba(154, 108, 42, 0.38);
+  border: 1px solid rgba(226, 186, 108, 0.48);
+  white-space: nowrap;
+}
+
+.escort-panel-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 11px;
+  line-height: 1.38;
+  color: #dcd0be;
+}
+
+.escort-panel-line {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  min-width: 0;
+}
+
+.escort-panel-tag {
+  flex-shrink: 0;
+  font-size: 9.5px;
+  font-weight: 800;
+  padding: 0 5px;
+  border-radius: 4px;
+  color: #e6c680;
+  background: rgba(184, 146, 90, 0.16);
+  border: 1px solid rgba(184, 146, 90, 0.34);
+}
+
+.escort-select-btn {
+  width: 100%;
+  justify-content: center;
+  margin-top: 2px;
+}
+
+/* 전투 탭 교수 동행 활성 배너 (양피지) */
+.escort-battle-strip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  padding: 6px 9px;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #ead9b5 0%, #dbc59a 100%);
+  color: #2e1d12;
+  border: 1.5px solid #8f6b3a;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 250, 234, 0.65),
+    0 2px 6px rgba(0, 0, 0, 0.4);
+  min-width: 0;
+  overflow: hidden;
+}
+
+.escort-battle-avatar {
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 1.5px solid #5c3c1e;
+  background: #231419;
+  box-shadow: 0 1px 3px rgba(34, 18, 8, 0.45);
+}
+
+.escort-battle-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 18%;
+}
+
+.escort-battle-info {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.escort-battle-name {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-round);
+  font-size: 12px;
+  line-height: 1.2;
+  color: #2e1d12;
+  min-width: 0;
+}
+
+.escort-battle-mult {
+  font-family: 'Noto Sans KR', sans-serif;
+  font-size: 9.5px;
+  font-weight: 800;
+  padding: 0 5px;
+  border-radius: 999px;
+  color: #fae6b8;
+  background: #6c3820;
+  border: 1px solid #3f1d0e;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.escort-battle-aura {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: #53361e;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.escort-clear-btn {
+  flex: 0 0 auto;
+  padding: 4px 8px;
+  border-radius: 7px;
+  border: 1px solid #6b4722;
+  background: linear-gradient(180deg, rgba(255, 248, 228, 0.72) 0%, rgba(206, 182, 138, 0.56) 100%);
+  color: #3d2412;
+  font-family: var(--font-round);
+  font-size: 11px;
+  line-height: 1.1;
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow: inset 0 1px 0 rgba(255, 252, 240, 0.7), 0 1px 0 rgba(58, 36, 16, 0.32);
+}
+
+.escort-clear-btn:hover {
+  filter: brightness(1.05);
+}
+
+.escort-clear-btn:active {
+  transform: translateY(1px);
+}
+
+/* 아레나 비차단 교수 동행 지원 컷인 (사역마 컷인 top:42px 아래에 배치) */
+.arena-card > .escort-cutin-strip {
+  position: absolute;
+  top: 84px;
+  left: 10px;
+  right: 10px;
+  z-index: 7;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 9px;
+  border-radius: 999px;
+  border: 1.5px solid rgba(226, 186, 108, 0.78);
+  background: linear-gradient(180deg, rgba(64, 22, 34, 0.95) 0%, rgba(30, 12, 20, 0.97) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 232, 188, 0.2),
+    0 3px 10px rgba(0, 0, 0, 0.62);
+  pointer-events: none;
+  animation: escortCutinPop 1.45s ease forwards;
+}
+
+.escort-cutin-avatar {
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 1.5px solid #e6c47e;
+  background: #1b0e14;
+}
+
+.escort-cutin-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 18%;
+}
+
+.escort-cutin-body {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+
+.escort-cutin-name {
+  font-size: 11px;
+  font-weight: 700;
+  color: #f8e2a6;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.escort-cutin-effect {
+  font-size: 10px;
+  color: #e6d6c0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.escort-cutin-tag {
+  flex: 0 0 auto;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #ecd086 0%, #b48234 100%);
+  color: #241208;
+  font-size: 9.5px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+@keyframes escortCutinPop {
+  0% {
+    opacity: 0;
+    transform: translateY(6px) scale(0.95);
+  }
+  14% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  78% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0.12;
+    transform: translateY(-4px) scale(0.98);
+  }
+}
+
+/* 스토리 모달 막별 외전 탭 & 양피지 보상 바 */
+.story-side-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+  margin-top: 5px;
+}
+
+.story-side-btn {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 7px;
+  border-radius: 7px;
+  border: 1px solid rgba(184, 146, 90, 0.32);
+  background: linear-gradient(180deg, rgba(44, 22, 30, 0.72) 0%, rgba(24, 13, 18, 0.85) 100%);
+  color: #d6c5b2;
+  font-size: 10.5px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.14s ease, background 0.14s ease;
+}
+
+.story-side-btn.is-unread {
+  border-color: rgba(232, 192, 108, 0.72);
+  background: linear-gradient(180deg, rgba(78, 46, 26, 0.78) 0%, rgba(42, 24, 18, 0.9) 100%);
+  color: #f6e0aa;
+}
+
+.story-side-btn.is-viewed {
+  border-color: rgba(154, 178, 142, 0.34);
+  color: #c8d2bc;
+}
+
+.story-side-btn.active {
+  border-color: var(--border-gold);
+  background: rgba(200, 164, 93, 0.22);
+  color: var(--gold-bright);
+  box-shadow: inset 0 0 0 1px rgba(244, 214, 142, 0.25);
+}
+
+.story-side-btn:disabled {
+  opacity: 0.44;
+  cursor: not-allowed;
+}
+
+.story-side-status {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+}
+
+.story-side-unread-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #fff3c2 0%, #e6b850 65%, #9e6b1c 100%);
+  box-shadow: 0 0 5px rgba(240, 198, 100, 0.85);
+}
+
+.story-side-check {
+  color: #9dd4a4;
+  font-weight: 800;
+}
+
+.story-side-label {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.side-story-reward-bar {
+  margin-top: 8px;
+  padding: 6px 9px;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #ead9b5 0%, #dbc59a 100%);
+  color: #2e1d12;
+  border: 1px solid #8f6b3a;
+  box-shadow: inset 0 1px 0 rgba(255, 250, 234, 0.65);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.side-story-reward-text {
+  font-size: 11px;
+  font-weight: 700;
+  color: #3a2313;
+  line-height: 1.35;
+}
+
+.side-story-reward-badge {
+  flex-shrink: 0;
+  font-family: var(--font-round);
+  font-size: 10px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  color: #f6e7c4;
+  background: #5c3a1d;
+  border: 1px solid #3c220c;
+  white-space: nowrap;
+}
+
+.side-story-reward-badge.is-fresh {
+  color: #2a1608;
+  background: linear-gradient(180deg, #f6dc96 0%, #c99640 100%);
+  border-color: #6b4614;
+}
+
+/* 교장실 메인 에피소드 카드 막별 외전 2열 칩 */
+.act-side-story-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+  margin-top: 7px;
+  padding-top: 7px;
+  border-top: 1px solid rgba(184, 146, 90, 0.16);
+}
+
+.act-side-chip {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 7px;
+  border-radius: 7px;
+  border: 1px solid rgba(184, 146, 90, 0.28);
+  background: linear-gradient(180deg, #24141a 0%, #190d12 100%);
+  color: #cfc0ae;
+  font-size: 10.5px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.14s ease, filter 0.14s ease;
+}
+
+.act-side-chip:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+.act-side-chip.is-unread {
+  border-color: rgba(232, 192, 108, 0.72);
+  background: linear-gradient(180deg, rgba(84, 52, 24, 0.75) 0%, rgba(44, 24, 16, 0.9) 100%);
+  color: #f8e2ab;
+  box-shadow: inset 0 1px 0 rgba(255, 238, 190, 0.18);
+}
+
+.act-side-chip.is-viewed {
+  border-color: rgba(144, 186, 152, 0.36);
+  background: linear-gradient(180deg, rgba(28, 36, 30, 0.76) 0%, rgba(18, 22, 20, 0.9) 100%);
+  color: #c8ddc8;
+}
+
+.act-side-chip:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  background: rgba(18, 11, 14, 0.65);
+  color: #8c7e74;
+}
+
+.act-side-icon {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+}
+
+.act-side-chip.is-viewed .act-side-icon {
+  color: #93d49f;
+  font-weight: 800;
+}
+
+.act-side-unread-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #fff2be 0%, #e8ba52 65%, #9c6a1a 100%);
+  box-shadow: 0 0 5px rgba(240, 198, 100, 0.85);
+}
+
+.act-side-label {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

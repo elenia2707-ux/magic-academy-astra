@@ -52,6 +52,12 @@ import {
   rollRarity,
 } from './data/equipment';
 import {
+  getEscortEventForProfessor,
+  getSideStoryById,
+  isSideStoryUnlocked,
+  isSideStoryViewed,
+} from './data/escortStories';
+import {
   FAMILIARS,
   getFamiliarEvoCost,
   getFamiliarUpgradeCost,
@@ -738,7 +744,7 @@ export default function App() {
       } else if (promotedRankForModal !== null) {
         setStoryModal({ kind: 'rankExam', rank: promotedRankForModal, stage: 'clear' });
       } else if (
-        // P1-4: 일반 사냥 승리 시 확률로 건조한 블랙코미디 교내 이벤트 발생 (비차단 양피지 카드)
+        // P1-4 & P4-3: 일반 사냥 승리 시 확률로 블랙코미디/동행 교수 교내 이벤트 발생 (비차단 양피지 카드)
         curCombat.mode === 'stage' &&
         curCombat.stageIndex < 4 &&
         !activeEventRef.current &&
@@ -747,7 +753,10 @@ export default function App() {
         Date.now() - lastEventAtRef.current >= ACADEMY_EVENT_COOLDOWN_MS &&
         Math.random() < ACADEMY_EVENT_CHANCE
       ) {
-        const ev = pickBlackComedyEvent(lastEventIdRef.current);
+        const ev =
+          curState.activeEscort && Math.random() < 0.45
+            ? getEscortEventForProfessor(curState.activeEscort)
+            : pickBlackComedyEvent(lastEventIdRef.current);
         lastEventAtRef.current = Date.now();
         lastEventIdRef.current = ev.id;
         activeEventRef.current = ev;
@@ -910,7 +919,9 @@ export default function App() {
       rebirthPending ? state.dailyQuests : undefined,
       rebirthPending ? ensureSanctum(state.sanctum) : undefined,
       rebirthPending ? ensureAffinity(state.affinity) : undefined,
-      rebirthPending ? ensureArchive(state.archive) : undefined
+      rebirthPending ? ensureArchive(state.archive) : undefined,
+      rebirthPending ? (state.activeEscort ?? null) : null,
+      rebirthPending ? (state.viewedSideStories ?? []) : []
     );
     storyQueueRef.current = [];
     syncStoryQueueCount();
@@ -1177,13 +1188,17 @@ export default function App() {
     showToast(`✦ 루시아의 개근 보너스 수령! ${formatRewardSummary(reward)}`);
   };
 
-  // P1-4: 블랙코미디 교내 이벤트 선택지 처리 & 닫기
+  // P1-4 & P4-3: 블랙코미디 · 동행 교수 교내 이벤트 선택지 처리 & 닫기
   const handleResolveAcademyEvent = (choiceId: string) => {
     const ev = activeEventRef.current;
     if (!ev) return;
     const choice = ev.choices.find((c) => c.id === choiceId);
     if (!choice) return;
     const reward = resolveEventReward(choice.rewardKind, state);
+    const affinityBonus =
+      'affinityBonus' in ev && typeof ev.affinityBonus === 'number' && ev.affinityBonus > 0
+        ? ev.affinityBonus
+        : 0;
     playSfx('heal', state.settings.sfxEnabled);
     activeEventRef.current = null;
     setActiveEvent(null);
@@ -1192,6 +1207,25 @@ export default function App() {
       const lvRes = r.exp
         ? applyExpAndLevelUp(prev.level, prev.exp, r.exp)
         : { level: prev.level, exp: prev.exp };
+      let nextAffinity = prev.affinity;
+      if (affinityBonus > 0) {
+        const prevAff = ensureAffinity(prev.affinity);
+        const curPts = prevAff.points[ev.professorId] ?? 0;
+        const updatedPts = Math.min(AFFINITY_MAX_POINTS, curPts + affinityBonus);
+        const affDef = PROFESSOR_AFFINITY[ev.professorId];
+        const claimed = [...prevAff.claimedEvents];
+        if (affDef) {
+          for (const milestone of affDef.events) {
+            if (updatedPts >= milestone.threshold && !claimed.includes(milestone.eventKey)) {
+              claimed.push(milestone.eventKey);
+            }
+          }
+        }
+        nextAffinity = {
+          points: { ...prevAff.points, [ev.professorId]: updatedPts },
+          claimedEvents: claimed,
+        };
+      }
       return {
         ...prev,
         level: lvRes.level,
@@ -1200,15 +1234,84 @@ export default function App() {
         arcaneDust: prev.arcaneDust + (r.arcaneDust ?? 0),
         tomeShards: prev.tomeShards + (r.tomeShards ?? 0),
         eggShards: prev.eggShards + (r.eggShards ?? 0),
+        affinity: nextAffinity,
       };
     });
-    showToast(`${choice.resultText} (${formatEventReward(reward)})`);
+    const affTail =
+      affinityBonus > 0
+        ? ` · ${PROFESSORS[ev.professorId].name} 친밀도 +${affinityBonus}`
+        : '';
+    showToast(`${choice.resultText} (${formatEventReward(reward)}${affTail})`);
   };
 
   const handleDismissAcademyEvent = () => {
     playSfx('click', state.settings.sfxEnabled);
     activeEventRef.current = null;
     setActiveEvent(null);
+  };
+
+  // P4-3: 교수 현장 동행 선택/해제 및 막별 외전(미니 스토리) 열람 보상
+  const handleSelectEscort = (profId: ProfessorId | null) => {
+    const nextEscort: ProfessorId | null =
+      profId !== null && state.activeEscort === profId ? null : profId;
+    playSfx(nextEscort ? 'heal' : 'click', state.settings.sfxEnabled);
+    setState((prev) => {
+      const next: GameState = { ...prev, activeEscort: nextEscort };
+      saveGameToStorage(next);
+      return next;
+    });
+    if (nextEscort) {
+      showToast(`✦ ${PROFESSORS[nextEscort].name} 교수와 현장 동행을 시작합니다.`);
+    } else {
+      showToast('동행 교수를 해제했습니다.');
+    }
+  };
+
+  const handleMarkSideStoryViewed = useCallback(
+    (sideStoryId: string) => {
+      const curState = stateRef.current;
+      const def = getSideStoryById(sideStoryId);
+      if (!def || !isSideStoryUnlocked(curState, def) || isSideStoryViewed(curState, sideStoryId)) {
+        return;
+      }
+      playSfx('victory', curState.settings.sfxEnabled);
+      setState((prev) => {
+        if (!isSideStoryUnlocked(prev, def) || isSideStoryViewed(prev, sideStoryId)) return prev;
+        const prevViewed = prev.viewedSideStories ?? [];
+        const prevAff = ensureAffinity(prev.affinity);
+        const curPts = prevAff.points[def.leadProfessor] ?? 0;
+        const updatedPts = Math.min(AFFINITY_MAX_POINTS, curPts + def.rewardAffinity);
+        const affDef = PROFESSOR_AFFINITY[def.leadProfessor];
+        const claimed = [...prevAff.claimedEvents];
+        if (affDef) {
+          for (const milestone of affDef.events) {
+            if (updatedPts >= milestone.threshold && !claimed.includes(milestone.eventKey)) {
+              claimed.push(milestone.eventKey);
+            }
+          }
+        }
+        const next: GameState = {
+          ...prev,
+          stones: prev.stones + def.rewardStones,
+          viewedSideStories: [...prevViewed, sideStoryId],
+          affinity: {
+            points: { ...prevAff.points, [def.leadProfessor]: updatedPts },
+            claimedEvents: claimed,
+          },
+        };
+        saveGameToStorage(next);
+        return next;
+      });
+      showToast(
+        `📜 외전 [${def.title}] 최초 열람! 마석 +${def.rewardStones.toLocaleString()} · ${PROFESSORS[def.leadProfessor].name} 친밀도 +${def.rewardAffinity}`
+      );
+    },
+    [showToast]
+  );
+
+  const handleOpenSideStory = (act: number, sideId: string) => {
+    playSfx('click', state.settings.sfxEnabled);
+    setStoryModal({ kind: 'act', act, phase: 'intro', archiveMode: true, initialSideId: sideId });
   };
 
   const handleEquipItem = (uid: string) => {
@@ -1945,6 +2048,7 @@ export default function App() {
                     setGearJump((n) => n + 1);
                     setTab('deck');
                   }}
+                  onClearEscort={() => handleSelectEscort(null)}
                 />
               )}
 
@@ -1959,10 +2063,12 @@ export default function App() {
                   onUpgradeSkillWithStones={handleUpgradeSkillWithStones}
                   onAwakenOrSwitchRune={handleAwakenOrSwitchRune}
                   onGiftProfessor={handleGiftProfessor}
+                  onSelectEscort={handleSelectEscort}
                   onChallengeRankExam={handleChallengeRankExam}
                   onOpenStory={(act, archiveMode) =>
                     setStoryModal({ kind: 'act', act, phase: 'intro', archiveMode })
                   }
+                  onOpenSideStory={handleOpenSideStory}
                   onSelectAct={(act) => {
                     handleChangeStage(act, 0);
                     setTab('battle');
@@ -2129,6 +2235,7 @@ export default function App() {
               <StoryModal
                 state={state}
                 story={storyModal}
+                onMarkSideStoryViewed={handleMarkSideStoryViewed}
                 onClose={() => {
                   lastStoryClosedRef.current = Date.now();
                   storyModalRef.current = null;

@@ -1,6 +1,7 @@
 import { ensureArchive } from '../data/archive';
 import { GRIMOIRE_SEALS } from '../data/bossGimmicks';
 import { ensureDailyQuestsCurrent } from '../data/dailyQuests';
+import { PROFESSORS } from '../data/professors';
 import { REBIRTH_VOWS } from '../data/rebirthVows';
 import { ensureSanctum } from '../data/sanctum';
 import type {
@@ -9,6 +10,7 @@ import type {
   GrimoireSealId,
   LearnedSkill,
   ProfessorAffinityState,
+  ProfessorId,
   RebirthVowId,
   SkillRuneBranch,
 } from '../types/game';
@@ -108,6 +110,18 @@ function normalizeRebirthVow(raw?: unknown): RebirthVowId {
   return 'none';
 }
 
+function normalizeActiveEscort(raw?: unknown): ProfessorId | null {
+  if (typeof raw === 'string' && Object.prototype.hasOwnProperty.call(PROFESSORS, raw)) {
+    return raw as ProfessorId;
+  }
+  return null;
+}
+
+function normalizeViewedSideStories(raw?: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.filter((id): id is string => typeof id === 'string');
+}
+
 function hydrateState(parsed: Partial<GameState>): GameState | null {
   if (!parsed || typeof parsed !== 'object' || !parsed.created) return null;
   const fallback = createEmptyUncreatedState();
@@ -154,6 +168,8 @@ function hydrateState(parsed: Partial<GameState>): GameState | null {
     sanctum: ensureSanctum(parsed.sanctum),
     archive: ensureArchive(parsed.archive),
     grimoireSeal: normalizeGrimoireSeal(parsed.grimoireSeal),
+    activeEscort: normalizeActiveEscort(parsed.activeEscort),
+    viewedSideStories: normalizeViewedSideStories(parsed.viewedSideStories),
     ...(normalizedAffinity ? { affinity: normalizedAffinity } : {}),
   });
 }

@@ -2,6 +2,7 @@ import { createDefaultAffinity, ensureAffinity, getAffinityBonuses } from '../da
 import { createDefaultArchive, ensureArchive, getArchiveBonuses } from '../data/archive';
 import { createFreshDailyQuests, ensureDailyQuestsCurrent } from '../data/dailyQuests';
 import { getEnhanceMultiplier, generateEquipment } from '../data/equipment';
+import { getEscortBonuses } from '../data/escortStories';
 import { FAMILIARS } from '../data/familiars';
 import { getActiveFamiliarSynergy } from '../data/familiarSynergy';
 import { getActiveInfirmaryEffect } from '../data/infirmary';
@@ -20,6 +21,7 @@ import type {
   PrestigeState,
   PrestigeUpgradeId,
   ProfessorAffinityState,
+  ProfessorId,
   SchoolId,
 } from '../types/game';
 
@@ -139,7 +141,9 @@ export function createNewGameState(
   existingDailyQuests?: DailyQuestState,
   existingSanctum?: ArcaneSanctumState,
   existingAffinity?: ProfessorAffinityState,
-  existingArchive?: ArchiveState
+  existingArchive?: ArchiveState,
+  existingEscort?: ProfessorId | null,
+  existingViewedSideStories?: string[]
 ): GameState {
   const prestige = existingPrestige ?? createDefaultPrestige();
   const startWealthLv = prestige.upgrades.startingWealth ?? 0;
@@ -217,11 +221,13 @@ export function createNewGameState(
     dailyQuests: existingDailyQuests
       ? ensureDailyQuestsCurrent(existingDailyQuests)
       : createFreshDailyQuests(),
-    // 제련소 각인·교수 인연·기록실은 영구 유지
+    // 제련소 각인·교수 인연·기록실·동행·외전은 영구 유지
     sanctum: existingSanctum ? ensureSanctum(existingSanctum) : createDefaultSanctum(),
     affinity: existingAffinity ? ensureAffinity(existingAffinity) : createDefaultAffinity(),
     archive: existingArchive ? ensureArchive(existingArchive) : createDefaultArchive(),
     grimoireSeal: null,
+    activeEscort: existingEscort ?? null,
+    viewedSideStories: existingViewedSideStories ? [...existingViewedSideStories] : [],
     lastSavedAt: Date.now(),
     totalKills: 0,
   };
@@ -309,17 +315,26 @@ export function computePlayerStats(state: GameState): ComputedStats {
     }
   }
 
-  // 학파 + 계급 + 별의 성좌(환생) + P1-3 양호실 처방 + P1-7 심연 비전 각인 + P3-5 교수 인연 배율 + P3-4 성좌 서약 + P4-2 기록실
+  // 학파 + 계급 + 별의 성좌(환생) + P1-3 양호실 처방 + P1-7 심연 비전 각인 + P3-5 교수 인연 배율 + P3-4 성좌 서약 + P4-2 기록실 + P4-3 교수 동행
   const starPowerMult = 1 + (up.starPower ?? 0) * 0.18;
   const starVitMult = 1 + (up.starVitality ?? 0) * 0.18;
   const infEffect = getActiveInfirmaryEffect(state);
   const sanctumBonus = getSanctumBonuses(state);
   const affinityBonus = getAffinityBonuses(state);
   const archiveBonus = getArchiveBonuses(state);
+  const escortBonus = getEscortBonuses(state);
   const vow = getRebirthVow(state.prestige.activeVow);
-  critRate += sanctumBonus.critRateBonus + affinityBonus.critRate + archiveBonus.critRate;
-  critDmg += sanctumBonus.critDmgBonus + vow.critDmgBonus + archiveBonus.critDmg;
-  mpRegen += affinityBonus.mpRegen + archiveBonus.mpRegen;
+  if (escortBonus.categoryBonus) {
+    categoryBonus[escortBonus.categoryBonus.category] += escortBonus.categoryBonus.pct;
+  }
+  critRate +=
+    sanctumBonus.critRateBonus +
+    affinityBonus.critRate +
+    archiveBonus.critRate +
+    escortBonus.critRate;
+  critDmg +=
+    sanctumBonus.critDmgBonus + vow.critDmgBonus + archiveBonus.critDmg + escortBonus.critDmg;
+  mpRegen += affinityBonus.mpRegen + archiveBonus.mpRegen + escortBonus.mpRegen;
 
   const magic = Math.round(
     (baseMagic + eqMagic) *
@@ -330,6 +345,7 @@ export function computePlayerStats(state: GameState): ComputedStats {
       sanctumBonus.magicMult *
       (1 + affinityBonus.magicPct / 100) *
       (1 + archiveBonus.magicPct / 100) *
+      (1 + escortBonus.magicPct / 100) *
       (infEffect?.magicMult ?? 1) *
       vow.magicMult
   );
@@ -342,6 +358,7 @@ export function computePlayerStats(state: GameState): ComputedStats {
       sanctumBonus.hpMult *
       (1 + affinityBonus.hpPct / 100) *
       (1 + archiveBonus.hpPct / 100) *
+      (1 + escortBonus.hpPct / 100) *
       (infEffect?.hpMult ?? 1)
   );
   const maxMp = Math.round((baseMp + eqMp) * (state.school === 'frost' ? 1.18 : 1) * vow.maxMpMult);
@@ -354,6 +371,7 @@ export function computePlayerStats(state: GameState): ComputedStats {
       sanctumBonus.defMult *
       (1 + affinityBonus.defPct / 100) *
       (1 + archiveBonus.defPct / 100) *
+      (1 + escortBonus.defPct / 100) *
       (infEffect?.defMult ?? 1)
   );
 
@@ -364,7 +382,7 @@ export function computePlayerStats(state: GameState): ComputedStats {
     (1 + (up.trainAccel ?? 0) * 0.25) *
     (1 + affinityBonus.trainSpeedPct / 100) *
     vow.trainSpeedMult;
-  const darkDamageMult = 1 + (up.darkMastery ?? 0) * 0.15;
+  const darkDamageMult = 1 + (up.darkMastery ?? 0) * 0.15 + escortBonus.darkDamagePct / 100;
 
   return {
     maxHp,
@@ -388,6 +406,8 @@ export function getRewardMultiplier(state: GameState): number {
   const aff = getAffinityBonuses(state);
   const affRewardAvg = (aff.expPct + aff.stonePct) / 200;
   const archiveBonus = getArchiveBonuses(state);
+  const escortBonus = getEscortBonuses(state);
+  const escortRewardAvg = (escortBonus.expPct + escortBonus.stonePct) / 200;
   const vow = getRebirthVow(state.prestige.activeVow);
   const ngScale = getNgPlusBaselineScaling(state.prestige.rebirthCount);
   return (
@@ -395,6 +415,7 @@ export function getRewardMultiplier(state: GameState): number {
     wealthLv * 0.15 +
     affRewardAvg +
     archiveBonus.rewardPct / 100 +
+    escortRewardAvg +
     vow.rewardMultBonus +
     (ngScale.rewardMult - 1)
   );

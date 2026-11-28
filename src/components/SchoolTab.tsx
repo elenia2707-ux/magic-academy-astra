@@ -22,6 +22,13 @@ import {
   isDailyQuestClaimable,
 } from '../data/dailyQuests';
 import {
+  getEscortProfile,
+  getEscortStageMult,
+  getSideStoriesForAct,
+  isSideStoryUnlocked,
+  isSideStoryViewed,
+} from '../data/escortStories';
+import {
   getProfessorGreeting,
   getSchoolProfessorId,
   PROFESSOR_ORDER,
@@ -55,8 +62,10 @@ interface Props {
   onUpgradeSkillWithStones: (skillId: string) => void;
   onAwakenOrSwitchRune: (skillId: string, branch: SkillRuneBranch) => void;
   onGiftProfessor: (profId: ProfessorId) => void;
+  onSelectEscort: (profId: ProfessorId | null) => void;
   onChallengeRankExam: () => void;
   onOpenStory: (act: number, archiveMode?: boolean) => void;
+  onOpenSideStory: (act: number, sideId: string) => void;
   onSelectAct: (act: number) => void;
   onClaimDailyQuest: (id: DailyQuestId) => void;
   onClaimDailyBonus: () => void;
@@ -78,8 +87,10 @@ export const SchoolTab: React.FC<Props> = ({
   onUpgradeSkillWithStones,
   onAwakenOrSwitchRune,
   onGiftProfessor,
+  onSelectEscort,
   onChallengeRankExam,
   onOpenStory,
+  onOpenSideStory,
   onSelectAct,
   onClaimDailyQuest,
   onClaimDailyBonus,
@@ -693,15 +704,21 @@ export const SchoolTab: React.FC<Props> = ({
                 const pts = affState.points[pid] ?? 0;
                 const stage = getAffinityStage(pts);
                 const isSelected = selectedAffinityProf === pid;
+                const isEscort = state.activeEscort === pid;
                 return (
                   <button
                     key={pid}
                     type="button"
-                    className={`faculty-card ${isMine ? 'mine' : ''}${isSelected ? ' is-selected' : ''}`}
+                    className={`faculty-card ${isMine ? 'mine' : ''}${isSelected ? ' is-selected' : ''}${isEscort ? ' is-escort' : ''}`}
                     onClick={() => setSelectedAffinityProf(pid)}
                   >
                     <div className="faculty-portrait-box">
                       <NpcPortrait id={pid} variant="card" alt={prof.name} />
+                      {isEscort && (
+                        <span className="faculty-escort-badge" title="현재 동행 중">
+                          ✦
+                        </span>
+                      )}
                       {(isMine || isHomeroom) && (
                         <span className="faculty-badge">{isHomeroom ? '담임' : '내 학파'}</span>
                       )}
@@ -726,6 +743,9 @@ export const SchoolTab: React.FC<Props> = ({
               const isMaxAff = pts >= AFFINITY_MAX_POINTS;
               const canGift =
                 !isMaxAff && state.stones >= cost.stones && state.arcaneDust >= cost.dust;
+              const escortProf = getEscortProfile(selectedAffinityProf);
+              const escortMult = getEscortStageMult(state, selectedAffinityProf);
+              const isCurrentEscort = state.activeEscort === selectedAffinityProf;
               return (
                 <div className="affinity-section">
                   <div className="affinity-card">
@@ -776,6 +796,36 @@ export const SchoolTab: React.FC<Props> = ({
                         : `${affDef.favoriteGiftName} 선물 (+${AFFINITY_GIFT_POINTS}) · ◆${cost.stones.toLocaleString()} · 가루 ${cost.dust}`}
                     </button>
 
+                    <div className={`escort-panel-box${isCurrentEscort ? ' is-active' : ''}`}>
+                      <div className="escort-panel-head">
+                        <span className="escort-panel-title">
+                          동행 지원 · {escortProf.supportName}
+                        </span>
+                        <span className="escort-panel-scale">
+                          인연 {stage}단계 ×{escortMult.toFixed(2)}
+                        </span>
+                      </div>
+                      <div className="escort-panel-meta">
+                        <div className="escort-panel-line">
+                          <span className="escort-panel-tag">오라</span>
+                          <span>{escortProf.auraSummary}</span>
+                        </div>
+                        <div className="escort-panel-line">
+                          <span className="escort-panel-tag">지원</span>
+                          <span>{escortProf.supportSummary}</span>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        className={`btn btn-sm escort-select-btn${isCurrentEscort ? ' btn-gold' : ''}`}
+                        onClick={() =>
+                          onSelectEscort(isCurrentEscort ? null : selectedAffinityProf)
+                        }
+                      >
+                        {isCurrentEscort ? '✦ 동행 중 (해제)' : '동행 요청'}
+                      </button>
+                    </div>
+
                     <div className="affinity-milestones">
                       {affDef.events.map((ev) => {
                         const unlocked =
@@ -820,6 +870,7 @@ export const SchoolTab: React.FC<Props> = ({
                 const locked = act.act > state.highestAct;
                 const cleared = state.clearedActs.includes(act.act);
                 const boss = act.stages[4];
+                const sideStories = getSideStoriesForAct(act.act);
                 return (
                   <div key={act.act} className="list-card">
                     <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 7 }}>
@@ -890,6 +941,39 @@ export const SchoolTab: React.FC<Props> = ({
                           </>
                         )}
                       </div>
+                    </div>
+                    <div className="act-side-story-row">
+                      {sideStories.map((s) => {
+                        const sideUnlocked = isSideStoryUnlocked(state, s);
+                        const sideViewed = isSideStoryViewed(state, s.id);
+                        const sideUnread = sideUnlocked && !sideViewed;
+                        const numeral = s.order === 1 ? '①' : '②';
+                        return (
+                          <button
+                            key={s.id}
+                            type="button"
+                            disabled={!sideUnlocked}
+                            className={`act-side-chip${sideUnread ? ' is-unread' : ''}${
+                              sideViewed ? ' is-viewed' : ''
+                            }`}
+                            onClick={() => onOpenSideStory(act.act, s.id)}
+                            title={sideUnlocked ? `외전 ${numeral} · ${s.title}` : s.unlockHint}
+                          >
+                            <span className="act-side-icon" aria-hidden="true">
+                              {!sideUnlocked ? (
+                                '🔒'
+                              ) : sideUnread ? (
+                                <span className="act-side-unread-dot" />
+                              ) : (
+                                '✓'
+                              )}
+                            </span>
+                            <span className="act-side-label">
+                              외전 {numeral} · {s.title}
+                            </span>
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                 );

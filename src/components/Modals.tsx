@@ -4,6 +4,11 @@ import { ACTS } from '../data/acts';
 import { getEquippedTitleDef } from '../data/archive';
 import { hasAwakenedHeroArt } from '../data/art';
 import {
+  getSideStoriesForAct,
+  isSideStoryUnlocked,
+  isSideStoryViewed,
+} from '../data/escortStories';
+import {
   DARK_MAGIC_UNLOCK_LINES,
   getProfessorGreeting,
   getSchoolProfessorId,
@@ -25,7 +30,7 @@ import type {
 import { AstraCrestSvg, MonsterPortrait, NpcPortrait, PlayerPortrait } from './GothicArt';
 
 export type StoryModalPayload =
-  | { kind: 'act'; act: number; phase: StoryPhase; archiveMode?: boolean }
+  | { kind: 'act'; act: number; phase: StoryPhase; archiveMode?: boolean; initialSideId?: string }
   | { kind: 'darkUnlock' }
   | { kind: 'rankExam'; rank: number; stage: 'start' | 'clear' };
 
@@ -159,15 +164,41 @@ export const StoryModal: React.FC<{
   state: GameState;
   story: StoryModalPayload;
   onClose: () => void;
-}> = ({ state, story, onClose }) => {
+  onMarkSideStoryViewed?: (sideStoryId: string) => void;
+}> = ({ state, story, onClose, onMarkSideStoryViewed }) => {
   const initialPhase: StoryPhase = story.kind === 'act' ? story.phase : 'intro';
   const [activePhase, setActivePhase] = useState<StoryPhase>(initialPhase);
+  const [activeSideId, setActiveSideId] = useState<string | null>(
+    story.kind === 'act' ? (story.initialSideId ?? null) : null
+  );
+  const [justClaimedSideIds, setJustClaimedSideIds] = useState<string[]>([]);
 
   useEffect(() => {
     if (story.kind === 'act') {
       setActivePhase(story.phase);
+      setActiveSideId(story.initialSideId ?? null);
+    } else {
+      setActiveSideId(null);
     }
+    setJustClaimedSideIds([]);
   }, [story]);
+
+  const actNumber = story.kind === 'act' ? story.act : 0;
+  const sideStories = story.kind === 'act' ? getSideStoriesForAct(story.act) : [];
+  const activeSideDef =
+    story.kind === 'act' && activeSideId
+      ? sideStories.find((s) => s.id === activeSideId) ?? null
+      : null;
+
+  useEffect(() => {
+    if (story.kind !== 'act' || !activeSideId || !onMarkSideStoryViewed) return;
+    const match = getSideStoriesForAct(actNumber).find((s) => s.id === activeSideId);
+    if (!match) return;
+    if (isSideStoryUnlocked(state, match) && !isSideStoryViewed(state, match.id)) {
+      setJustClaimedSideIds((prev) => (prev.includes(match.id) ? prev : [...prev, match.id]));
+      onMarkSideStoryViewed(match.id);
+    }
+  }, [story.kind, actNumber, activeSideId, state, onMarkSideStoryViewed]);
 
   let subtitle = '';
   let title = '';
@@ -176,30 +207,37 @@ export const StoryModal: React.FC<{
 
   if (story.kind === 'act') {
     const actDef = ACTS[Math.max(0, Math.min(ACTS.length - 1, story.act - 1))];
-    subtitle = `${actDef.location} · ${actDef.subtitle}`;
-    const phaseSuffix: Record<StoryPhase, string> = {
-      intro: '',
-      mid: ' · 중반 사건',
-      boss: ' · 보스 조우',
-      clear: ' · 완결',
-    };
-    title = `${actDef.title}${phaseSuffix[activePhase]}`;
-    lines =
-      activePhase === 'intro'
-        ? actDef.introLines
-        : activePhase === 'mid'
-          ? actDef.midLines
-          : activePhase === 'boss'
-            ? actDef.bossLines
-            : actDef.clearLines;
-    buttonText =
-      story.archiveMode
-        ? '기록 닫기'
-        : activePhase === 'intro'
-          ? '임무 출격하기'
-          : activePhase === 'boss'
-            ? '보스전 돌입!'
-            : '계속 진행하기';
+    if (activeSideDef) {
+      subtitle = activeSideDef.subtitle;
+      title = `외전 ${activeSideDef.order} · ${activeSideDef.title}`;
+      lines = activeSideDef.lines;
+      buttonText = story.archiveMode ? '기록 닫기' : '계속 진행하기';
+    } else {
+      subtitle = `${actDef.location} · ${actDef.subtitle}`;
+      const phaseSuffix: Record<StoryPhase, string> = {
+        intro: '',
+        mid: ' · 중반 사건',
+        boss: ' · 보스 조우',
+        clear: ' · 완결',
+      };
+      title = `${actDef.title}${phaseSuffix[activePhase]}`;
+      lines =
+        activePhase === 'intro'
+          ? actDef.introLines
+          : activePhase === 'mid'
+            ? actDef.midLines
+            : activePhase === 'boss'
+              ? actDef.bossLines
+              : actDef.clearLines;
+      buttonText =
+        story.archiveMode
+          ? '기록 닫기'
+          : activePhase === 'intro'
+            ? '임무 출격하기'
+            : activePhase === 'boss'
+              ? '보스전 돌입!'
+              : '계속 진행하기';
+    }
   } else if (story.kind === 'darkUnlock') {
     subtitle = '금서 도서관 · 금기의 개방';
     title = '흑마법 최초 해독';
@@ -221,28 +259,88 @@ export const StoryModal: React.FC<{
         <h3 className="modal-title">{title}</h3>
 
         {story.kind === 'act' && (
-          <div className="story-phase-tabs">
-            {PHASE_LABELS.map((item) => {
-              const unlocked = isActPhaseUnlocked(state, story.act, item.id);
-              const active = activePhase === item.id;
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  disabled={!unlocked}
-                  className={`story-phase-btn ${active ? 'active' : ''}`}
-                  onClick={() => setActivePhase(item.id)}
-                >
-                  {unlocked ? item.label : `${item.label} 🔒`}
-                </button>
-              );
-            })}
+          <>
+            <div className="story-phase-tabs">
+              {PHASE_LABELS.map((item) => {
+                const unlocked = isActPhaseUnlocked(state, story.act, item.id);
+                const active = activeSideId === null && activePhase === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    disabled={!unlocked}
+                    className={`story-phase-btn ${active ? 'active' : ''}`}
+                    onClick={() => {
+                      setActivePhase(item.id);
+                      setActiveSideId(null);
+                    }}
+                  >
+                    {unlocked ? item.label : `${item.label} 🔒`}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="story-side-tabs">
+              {sideStories.map((s) => {
+                const unlocked = isSideStoryUnlocked(state, s);
+                const viewed = isSideStoryViewed(state, s.id);
+                const unread = unlocked && !viewed;
+                const isActive = activeSideId === s.id;
+                const numeral = s.order === 1 ? '①' : '②';
+                return (
+                  <button
+                    key={s.id}
+                    type="button"
+                    disabled={!unlocked}
+                    className={`story-side-btn${isActive ? ' active' : ''}${
+                      unread ? ' is-unread' : ''
+                    }${viewed ? ' is-viewed' : ''}`}
+                    onClick={() => setActiveSideId(s.id)}
+                    title={unlocked ? `외전 ${numeral}: ${s.title}` : s.unlockHint}
+                  >
+                    <span className="story-side-status" aria-hidden="true">
+                      {!unlocked ? (
+                        '🔒'
+                      ) : unread ? (
+                        <span className="story-side-unread-dot" />
+                      ) : (
+                        <span className="story-side-check">✓</span>
+                      )}
+                    </span>
+                    <span className="story-side-label">
+                      외전 {numeral}: {s.title}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </>
+        )}
+
+        {activeSideDef && (
+          <div className="side-story-reward-bar">
+            <span className="side-story-reward-text">
+              최초 열람 보상: 마석 +{activeSideDef.rewardStones.toLocaleString()} ·{' '}
+              {PROFESSORS[activeSideDef.leadProfessor].name} 친밀도 +{activeSideDef.rewardAffinity}
+            </span>
+            <span
+              className={`side-story-reward-badge${
+                justClaimedSideIds.includes(activeSideDef.id) ? ' is-fresh' : ''
+              }`}
+            >
+              {justClaimedSideIds.includes(activeSideDef.id)
+                ? '획득!'
+                : isSideStoryViewed(state, activeSideDef.id)
+                  ? '수령 완료'
+                  : '획득!'}
+            </span>
           </div>
         )}
 
         <div style={{ margin: '10px 0 12px' }}>
           {lines.map((line, idx) => (
-            <DialogueRow key={`${activePhase}_${idx}`} line={line} state={state} />
+            <DialogueRow key={`${activeSideId ?? activePhase}_${idx}`} line={line} state={state} />
           ))}
         </div>
 
