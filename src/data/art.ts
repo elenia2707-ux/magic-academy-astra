@@ -441,6 +441,8 @@ export const ACT_BG_ART: Partial<Record<number, string>> = {
   2: './art/backgrounds/act_2.webp',
   3: './art/backgrounds/act_3.webp',
   4: './art/backgrounds/act_4.webp',
+  5: './art/backgrounds/act_5.webp',
+  6: './art/backgrounds/act_6.webp',
 };
 
 export function getActBgArt(act: number): string | undefined {

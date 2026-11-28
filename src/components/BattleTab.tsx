@@ -92,7 +92,11 @@ export const BattleTab: React.FC<Props> = ({
       ? getActBgArt(combat.act)
       : combat.mode === 'rankBoss'
         ? getActBgArt(2)
-        : undefined;
+        : combat.mode === 'tower'
+          ? getActBgArt(6)
+          : combat.mode === 'abyssElite'
+            ? getActBgArt(5)
+            : undefined;
   const hpPct = Math.max(0, Math.min(100, (combat.playerHp / Math.max(1, combat.playerMaxHp)) * 100));
   const enemyHpPct = Math.max(0, Math.min(100, (combat.enemyHp / Math.max(1, combat.enemyMaxHp)) * 100));
   const activeInfirmary = getActiveInfirmaryEffect(state);
