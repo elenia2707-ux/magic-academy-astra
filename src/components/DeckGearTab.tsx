@@ -12,6 +12,20 @@ import { CATEGORY_META } from '../data/schools';
 import { SKILL_MAP } from '../data/skills';
 import type { ComputedStats, EquipmentItem, EquipSlot, GameState, Rarity } from '../types/game';
 import { SkillIcon } from './SkillArt';
+import { getGearArt } from '../data/art';
+
+function GearIcon({ item, slot, size = 44 }: { item: EquipmentItem | null; slot: EquipSlot; size?: number }) {
+  const color = item ? RARITY_META[item.rarity].color : '#4a3a3a';
+  return (
+    <div
+      className={`gear-icon${item ? '' : ' gear-icon--empty'}${item && item.rarity === 'mythic' ? ' gear-icon--mythic' : ''}`}
+      style={{ width: size, height: size, borderColor: color, ['--gear-rarity' as string]: color } as React.CSSProperties}
+    >
+      <img src={getGearArt(slot, item?.name)} alt="" loading="lazy" draggable={false} />
+      {item && item.enhance > 0 && <span className="gear-icon-enh">+{item.enhance}</span>}
+    </div>
+  );
+}
 
 interface Props {
   state: GameState;
@@ -282,15 +296,19 @@ export const DeckGearTab: React.FC<Props> = ({
                     </div>
                     {item ? (
                       <>
-                        <div
-                          style={{
-                            fontWeight: 700,
-                            fontSize: 12,
-                            color: RARITY_META[item.rarity].color,
-                            marginBottom: 4,
-                          }}
-                        >
-                          {item.name} {item.enhance > 0 ? `+${item.enhance}` : ''}
+                        <div style={{ display: 'flex', gap: 7, alignItems: 'center', marginBottom: 5 }}>
+                          <GearIcon item={item} slot={slot} size={40} />
+                          <div
+                            style={{
+                              fontWeight: 700,
+                              fontSize: 12,
+                              lineHeight: 1.3,
+                              color: RARITY_META[item.rarity].color,
+                              minWidth: 0,
+                            }}
+                          >
+                            {item.name} {item.enhance > 0 ? `+${item.enhance}` : ''}
+                          </div>
                         </div>
                         <div style={{ fontSize: 10.5, color: '#c5bdb0', minHeight: 30, marginBottom: 6 }}>
                           {renderStatSummary(item)}
@@ -320,7 +338,8 @@ export const DeckGearTab: React.FC<Props> = ({
                         </div>
                       </>
                     ) : (
-                      <div style={{ fontSize: 11.5, color: '#6f6a62', padding: '14px 0' }}>
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '8px 0', fontSize: 11.5, color: '#6f6a62' }}>
+                        <GearIcon item={null} slot={slot} size={40} />
                         장착된 마도구 없음
                       </div>
                     )}
@@ -386,24 +405,29 @@ export const DeckGearTab: React.FC<Props> = ({
                     getItemScoreFor(item, state.school) - (cur ? getItemScoreFor(cur, state.school) : 0);
                   return (
                     <div key={item.uid} className="list-card">
-                      <div className="list-top">
-                        <span
-                          className="list-title"
-                          style={{ color: RARITY_META[item.rarity].color }}
-                        >
-                          [{SLOT_LABELS[item.slot]}] {item.name}
-                        </span>
-                        <span
-                          style={{
-                            fontSize: 11,
-                            fontWeight: 700,
-                            color: diff > 0 ? '#8ad0a2' : diff < 0 ? '#df8285' : '#9a9386',
-                          }}
-                        >
-                          {diff > 0 ? `▲ +${diff}` : diff < 0 ? `▼ ${diff}` : '동일'}
-                        </span>
+                      <div style={{ display: 'flex', gap: 9, alignItems: 'flex-start' }}>
+                        <GearIcon item={item} slot={item.slot} size={46} />
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div className="list-top">
+                            <span
+                              className="list-title"
+                              style={{ color: RARITY_META[item.rarity].color }}
+                            >
+                              [{SLOT_LABELS[item.slot]}] {item.name}
+                            </span>
+                            <span
+                              style={{
+                                fontSize: 11,
+                                fontWeight: 700,
+                                color: diff > 0 ? '#8ad0a2' : diff < 0 ? '#df8285' : '#9a9386',
+                              }}
+                            >
+                              {diff > 0 ? `▲ +${diff}` : diff < 0 ? `▼ ${diff}` : '동일'}
+                            </span>
+                          </div>
+                          <div className="list-desc">{renderStatSummary(item)}</div>
+                        </div>
                       </div>
-                      <div className="list-desc">{renderStatSummary(item)}</div>
                       <div className="list-actions">
                         <span style={{ fontSize: 11, color: '#8b8479' }}>
                           {RARITY_META[item.rarity].name} · 티어 {item.tier}

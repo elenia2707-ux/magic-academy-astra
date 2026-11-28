@@ -448,3 +448,18 @@ export const ACT_BG_ART: Partial<Record<number, string>> = {
 export function getActBgArt(act: number): string | undefined {
   return ACT_BG_ART[act];
 }
+
+// ================= 마도구 아이콘 (P2-5) =================
+// equipment.ts BASE_NAMES 순서와 1:1 대응 (slot_0 ~ slot_3)
+const GEAR_BASES: Record<string, string[]> = {
+  staff: ['흑단 지팡이', '수정 지팡이', '별빛 홀', '해골 지팡이'],
+  robe: ['마법사 망토', '칠흑 로브', '성좌 외투', '결계 수의'],
+  grimoire: ['양피지 마도서', '금서 사본', '별자리 서적', '비술 그리모어'],
+  relic: ['은빛 인장 반지', '검은 수정 펜던트', '모래시계 부적', '심연의 브로치'],
+};
+
+export function getGearArt(slot: string, name?: string): string {
+  const bases = GEAR_BASES[slot] ?? [];
+  const idx = name ? bases.findIndex((b) => name.endsWith(b)) : -1;
+  return `./art/gear/${slot}_${idx >= 0 ? idx : 0}.webp`;
+}
