@@ -8,9 +8,17 @@ import {
   RARITY_META,
   SLOT_LABELS,
 } from '../data/equipment';
+import { GRIMOIRE_SEAL_ORDER, GRIMOIRE_SEALS } from '../data/bossGimmicks';
 import { CATEGORY_META } from '../data/schools';
 import { SKILL_MAP } from '../data/skills';
-import type { ComputedStats, EquipmentItem, EquipSlot, GameState, Rarity } from '../types/game';
+import type {
+  ComputedStats,
+  EquipmentItem,
+  EquipSlot,
+  GameState,
+  GrimoireSealId,
+  Rarity,
+} from '../types/game';
 import { SkillIcon } from './SkillArt';
 import { getGearArt } from '../data/art';
 
@@ -39,6 +47,10 @@ interface Props {
   onDismantleBulk: (below: Rarity) => void;
   onSetAutoDismantle: (below: Rarity | 'none') => void;
   onBuyShopBox: (kind: 'gear' | 'tome' | 'egg' | 'dustGear') => void;
+  onSelectGrimoireSeal?: (seal: GrimoireSealId | null) => void;
+  onClaimLoanerGrimoire?: () => void;
+  initialSub?: 'deck' | 'gear' | 'shop';
+  externalGearJump?: number;
 }
 
 const SLOTS: EquipSlot[] = ['staff', 'robe', 'grimoire', 'relic'];
@@ -55,8 +67,31 @@ export const DeckGearTab: React.FC<Props> = ({
   onDismantleBulk,
   onSetAutoDismantle,
   onBuyShopBox,
+  onSelectGrimoireSeal,
+  onClaimLoanerGrimoire,
+  initialSub,
+  externalGearJump,
 }) => {
-  const [sub, setSub] = useState<'deck' | 'gear' | 'shop'>('deck');
+  const [sub, setSub] = useState<'deck' | 'gear' | 'shop'>(
+    () => initialSub ?? ((externalGearJump ?? 0) > 0 ? 'gear' : 'deck')
+  );
+  const [seenJump, setSeenJump] = useState<number>(externalGearJump ?? 0);
+  const [seenInitialSub, setSeenInitialSub] = useState<'deck' | 'gear' | 'shop' | undefined>(
+    initialSub
+  );
+
+  if ((externalGearJump ?? 0) !== seenJump) {
+    const nextJump = externalGearJump ?? 0;
+    setSeenJump(nextJump);
+    if (nextJump > 0) {
+      setSub('gear');
+    }
+  }
+
+  if (initialSub !== undefined && initialSub !== seenInitialSub) {
+    setSeenInitialSub(initialSub);
+    setSub(initialSub);
+  }
 
   const unlockedSkillIds = Object.values(state.skills)
     .filter((s) => s.unlocked)
@@ -347,6 +382,63 @@ export const DeckGearTab: React.FC<Props> = ({
                 );
               })}
             </div>
+          </div>
+
+          <div className="panel grimoire-seal-panel">
+            <div className="panel-title-row grimoire-seal-header">
+              <h2 className="panel-title">📖 전술 마도서 인장 (보스 기믹 파훼)</h2>
+              <span
+                className={`grimoire-seal-subbadge ${
+                  state.equipped.grimoire ? 'is-equipped' : 'is-empty'
+                }`}
+              >
+                {state.equipped.grimoire
+                  ? '마도서 장착 시 보스 추가 피해 2배 (+22%)'
+                  : '마도서 미장착 (+12%)'}
+              </span>
+            </div>
+
+            {!state.equipped.grimoire && onClaimLoanerGrimoire && (
+              <button
+                type="button"
+                className="btn btn-sm btn-gold loaner-grimoire-btn"
+                onClick={onClaimLoanerGrimoire}
+              >
+                📖 교실 비치용 수습 마도서 무료 대여
+              </button>
+            )}
+
+            <div className="grimoire-seal-grid">
+              {GRIMOIRE_SEAL_ORDER.map((sealId) => {
+                const seal = GRIMOIRE_SEALS[sealId];
+                const isActive = state.grimoireSeal === seal.id;
+                const isRecommended = seal.targetAct === state.selectedAct;
+                return (
+                  <button
+                    key={seal.id}
+                    type="button"
+                    className={`grimoire-seal-btn${isActive ? ' is-active' : ''}${
+                      isRecommended ? ' is-recommended' : ''
+                    }`}
+                    onClick={() => onSelectGrimoireSeal?.(isActive ? null : seal.id)}
+                    aria-pressed={isActive}
+                  >
+                    <div className="grimoire-seal-top">
+                      <span className="grimoire-seal-act-badge">제 {seal.targetAct}막 대응</span>
+                      <span className="grimoire-seal-name">{seal.name}</span>
+                    </div>
+                    <div className="grimoire-seal-desc">{seal.shortDesc}</div>
+                  </button>
+                );
+              })}
+            </div>
+
+            {state.grimoireSeal && GRIMOIRE_SEALS[state.grimoireSeal] && (
+              <div className="grimoire-seal-active-note">
+                ✦ 현재 조율: <strong>{GRIMOIRE_SEALS[state.grimoireSeal].name}</strong> —{' '}
+                {GRIMOIRE_SEALS[state.grimoireSeal].passiveDesc}
+              </div>
+            )}
           </div>
 
           <div className="panel">

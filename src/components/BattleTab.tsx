@@ -3,8 +3,10 @@ import { BookOpen, ChevronLeft, ChevronRight, FastForward, FlaskConical, Music, 
 import { ACTS } from '../data/acts';
 import { getActBgArt, getMonsterArt } from '../data/art';
 import type { AcademyEventDef } from '../data/blackComedyEvents';
+import { getBossGimmick, GRIMOIRE_SEALS, isGimmickCountered } from '../data/bossGimmicks';
 import { FAMILIARS } from '../data/familiars';
 import { getActiveInfirmaryEffect } from '../data/infirmary';
+import { getRebirthVow } from '../data/rebirthVows';
 import { CATEGORY_META, getCharacterTitle, RANKS, SCHOOLS } from '../data/schools';
 import { SKILL_MAP } from '../data/skills';
 import { STARLIGHT_MAX, STARLIGHT_SKILLS } from '../data/starlight';
@@ -33,6 +35,7 @@ interface Props {
   onDismissEvent: () => void;
   onToggleBgm: () => void;
   onTriggerStarlight: () => void;
+  onOpenGrimoireSeal?: () => void;
 }
 
 const STATUS_LABEL: Record<StatusType, string> = {
@@ -85,6 +88,7 @@ export const BattleTab: React.FC<Props> = ({
   onDismissEvent,
   onToggleBgm,
   onTriggerStarlight,
+  onOpenGrimoireSeal,
 }) => {
   const logRef = useRef<HTMLDivElement | null>(null);
   const [enemyModalOpen, setEnemyModalOpen] = useState(false);
@@ -111,8 +115,18 @@ export const BattleTab: React.FC<Props> = ({
             : undefined;
   const hpPct = Math.max(0, Math.min(100, (combat.playerHp / Math.max(1, combat.playerMaxHp)) * 100));
   const enemyHpPct = Math.max(0, Math.min(100, (combat.enemyHp / Math.max(1, combat.enemyMaxHp)) * 100));
+  const enemyShield = combat.enemyShield ?? 0;
   const activeInfirmary = getActiveInfirmaryEffect(state);
   const infirmary = state.infirmary;
+  const activeVow =
+    state.prestige.activeVow && state.prestige.activeVow !== 'none'
+      ? getRebirthVow(state.prestige.activeVow)
+      : null;
+  const gimmickDef = combat.enemy.gimmick ? getBossGimmick(combat.enemy.gimmick) : null;
+  const countered = combat.enemy.gimmick
+    ? isGimmickCountered(combat.enemy.gimmick, state.grimoireSeal)
+    : false;
+  const suppressed = (combat.gimmickSuppressedTurns ?? 0) > 0;
 
   const canGoPrev = state.selectedAct > 1 || state.selectedStage > 0;
   const maxStageForAct =
@@ -267,9 +281,19 @@ export const BattleTab: React.FC<Props> = ({
             style={{ backgroundImage: `url(${actBgUrl})` }}
           />
         )}
-        <div className="arena-banner">
-          <span>
-            턴 {combat.turn} · {RANKS[state.rank].name} {SCHOOLS[state.school].shortName}
+        <div className="arena-banner" style={{ flexWrap: 'wrap', gap: '4px 6px' }}>
+          <span
+            className="arena-banner-left"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}
+          >
+            <span>
+              턴 {combat.turn} · {RANKS[state.rank].name} {SCHOOLS[state.school].shortName}
+            </span>
+            {activeVow && (
+              <span className="active-vow-pill" title={activeVow.blessingDesc}>
+                {activeVow.name}
+              </span>
+            )}
           </span>
           {combat.enemyTelegraph ? (
             <span className="telegraph-pill">
@@ -412,6 +436,23 @@ export const BattleTab: React.FC<Props> = ({
               </div>
             </div>
 
+            {enemyShield > 0 && (
+              <div className="meter-wrap enemy-shield-meter">
+                <div className="meter-top">
+                  <span>결계</span>
+                  <span>{enemyShield.toLocaleString()}</span>
+                </div>
+                <div className="meter-track">
+                  <div
+                    className="meter-fill shield"
+                    style={{
+                      width: `${Math.min(100, (enemyShield / Math.max(1, combat.enemyMaxHp)) * 100)}%`,
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+
             <div className="meter-wrap" style={{ marginTop: 4 }}>
               <div className="meter-top">
                 <span>공격 / 방어</span>
@@ -438,6 +479,45 @@ export const BattleTab: React.FC<Props> = ({
             </span>
           </div>
         )}
+
+        {/* P3-3: 막 보스 고유 기믹 & 전술 마도서 인장 파훼 배너 */}
+        {gimmickDef && (() => {
+          const counterSeal = GRIMOIRE_SEALS[gimmickDef.counterSealId];
+          const gimmickDesc = suppressed
+            ? '별빛 파훼로 기믹 일시 봉쇄 중!'
+            : countered
+              ? gimmickDef.counterEffectDesc
+              : gimmickDef.shortDesc;
+          return (
+            <div
+              className={`boss-gimmick-bar${countered ? ' is-countered' : ''}${
+                suppressed ? ' is-suppressed' : ''
+              }`}
+            >
+              <div className="boss-gimmick-info">
+                <div className="boss-gimmick-title">⚔ 보스 기믹: {gimmickDef.name}</div>
+                <div className="boss-gimmick-desc">{gimmickDesc}</div>
+                {!countered && counterSeal && (
+                  <div className="boss-gimmick-hint">대응 인장: {counterSeal.name}</div>
+                )}
+              </div>
+              <div className="boss-gimmick-action">
+                {countered ? (
+                  <span className="gimmick-status-badge is-ok">✦ 인장 파훼 중</span>
+                ) : onOpenGrimoireSeal ? (
+                  <button
+                    type="button"
+                    className="gimmick-counter-cta"
+                    onClick={onOpenGrimoireSeal}
+                    title={counterSeal ? `${counterSeal.name} 대응 설정` : '인장 대응 설정'}
+                  >
+                    인장 대응 ›
+                  </button>
+                ) : null}
+              </div>
+            </div>
+          );
+        })()}
 
         {/* 현재 심플 로테이션 스킬 덱 상태 */}
         <div className="rotation-strip">

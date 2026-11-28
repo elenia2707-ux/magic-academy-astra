@@ -92,6 +92,8 @@ import {
   getSkillUpgradeCost,
   rankDeckCandidates,
 } from './engine/stats';
+import { GRIMOIRE_SEALS } from './data/bossGimmicks';
+import { getRebirthVow } from './data/rebirthVows';
 import type {
   AbyssChoice,
   ArcaneImprintId,
@@ -104,12 +106,14 @@ import type {
   FamiliarId,
   GameState,
   Gender,
+  GrimoireSealId,
   MagicCategory,
   OfflineSummary,
   PrestigeUpgradeId,
   ProfessorId,
   RankIndex,
   Rarity,
+  RebirthVowId,
   SchoolId,
   SkillRuneBranch,
 } from './types/game';
@@ -136,6 +140,7 @@ export default function App() {
   const [heroModalOpen, setHeroModalOpen] = useState(false);
   const [rebirthPending, setRebirthPending] = useState(false);
   const [tab, setTab] = useState<TabId>('battle');
+  const [gearJump, setGearJump] = useState(0);
   const [toast, setToast] = useState<string | null>(null);
   const [activeEvent, setActiveEvent] = useState<AcademyEventDef | null>(null);
 
@@ -574,17 +579,22 @@ export default function App() {
         }
       }
 
+      const vowLuck = getRebirthVow(curState.prestige.activeVow).luckBonus;
       const droppedItem: EquipmentItem | null =
         curCombat.mode === 'tower'
-          ? generateEquipment(6, undefined, rollRarity(6, 20))
+          ? generateEquipment(6, undefined, rollRarity(6, 20 + vowLuck))
           : curCombat.mode === 'abyssElite'
-            ? generateEquipment(curState.highestAct, undefined, rollRarity(curState.highestAct, 25))
+            ? generateEquipment(curState.highestAct, undefined, rollRarity(curState.highestAct, 25 + vowLuck))
             : curCombat.mode === 'stage' &&
                 Math.random() < (curCombat.stageIndex === 4 ? 1.0 : 0.24)
               ? generateEquipment(
                   curCombat.act,
                   undefined,
-                  curCombat.stageIndex === 4 ? rollRarity(curCombat.act, 24) : undefined
+                  curCombat.stageIndex === 4
+                    ? rollRarity(curCombat.act, 24 + vowLuck)
+                    : vowLuck > 0
+                      ? rollRarity(curCombat.act, vowLuck)
+                      : undefined
                 )
               : null;
       const extraTomeRoll =
@@ -854,14 +864,20 @@ export default function App() {
   }, [state.created, state.settings.speed, rebirthPending, storyModal, showToast, resolveCombatVictory]);
 
   // ================= 핸들러 =================
-  const handleCharacterCreate = (name: string, gender: Gender, school: SchoolId) => {
+  const handleCharacterCreate = (
+    name: string,
+    gender: Gender,
+    school: SchoolId,
+    vow?: RebirthVowId
+  ) => {
+    const earnedRemnants = rebirthPending ? calculateRebirthReward(state) : 0;
     const nextPrestige = rebirthPending
       ? {
           ...state.prestige,
           rebirthCount: state.prestige.rebirthCount + 1,
-          starRemnants: state.prestige.starRemnants + calculateRebirthReward(state),
-          totalRemnantsEarned:
-            state.prestige.totalRemnantsEarned + calculateRebirthReward(state),
+          starRemnants: state.prestige.starRemnants + earnedRemnants,
+          totalRemnantsEarned: state.prestige.totalRemnantsEarned + earnedRemnants,
+          activeVow: vow ?? 'none',
         }
       : undefined;
 
@@ -1244,6 +1260,39 @@ export default function App() {
       };
     });
     showToast('속성 옵션 재련 완료!');
+  };
+
+  // P3-3: 전술 마도서 인장 선택 (무료 즉시 전환 + 즉시 저장)
+  const handleSelectGrimoireSeal = (seal: GrimoireSealId | null) => {
+    playSfx('click', state.settings.sfxEnabled);
+    setState((prev) => {
+      const next: GameState = { ...prev, grimoireSeal: seal };
+      saveGameToStorage(next);
+      return next;
+    });
+    if (seal) {
+      showToast(`📖 [${GRIMOIRE_SEALS[seal].name}] 인장 조율 완료!`);
+    } else {
+      showToast('전술 마도서 인장을 해제했습니다.');
+    }
+  };
+
+  // P3-3: 마도서 슬롯이 비어있을 때 교실 비치용 수습 마도서 무료 대여
+  const handleClaimLoanerGrimoire = () => {
+    if (state.equipped.grimoire) return;
+    playSfx('heal', state.settings.sfxEnabled);
+    const loaner = generateEquipment(Math.max(1, Math.min(3, state.selectedAct)), 'grimoire', 'common');
+    loaner.name = '아스트라 비치용 전술 마도서';
+    setState((prev) => {
+      if (prev.equipped.grimoire) return prev;
+      const next: GameState = {
+        ...prev,
+        equipped: { ...prev.equipped, grimoire: loaner },
+      };
+      saveGameToStorage(next);
+      return next;
+    });
+    showToast('📖 [아스트라 비치용 전술 마도서] 장착! 인장 보스 추가 피해가 2배로 증폭됩니다.');
   };
 
   const handleDismantleItem = (uid: string) => {
@@ -1751,6 +1800,11 @@ export default function App() {
                   onDismissEvent={handleDismissAcademyEvent}
                   onToggleBgm={handleToggleBgm}
                   onTriggerStarlight={handleTriggerStarlight}
+                  onOpenGrimoireSeal={() => {
+                    playSfx('click', state.settings.sfxEnabled);
+                    setGearJump((n) => n + 1);
+                    setTab('deck');
+                  }}
                 />
               )}
 
@@ -1798,6 +1852,9 @@ export default function App() {
                     }))
                   }
                   onBuyShopBox={handleBuyShopBox}
+                  onSelectGrimoireSeal={handleSelectGrimoireSeal}
+                  onClaimLoanerGrimoire={handleClaimLoanerGrimoire}
+                  externalGearJump={gearJump}
                 />
               )}
 
@@ -1886,7 +1943,10 @@ export default function App() {
               <button
                 type="button"
                 className={`nav-btn ${tab === 'deck' ? 'active' : ''}`}
-                onClick={() => setTab('deck')}
+                onClick={() => {
+                  setGearJump(0);
+                  setTab('deck');
+                }}
               >
                 <i className="nav-gem gem-sapphire">
                   <Shield size={20} strokeWidth={2.2} />

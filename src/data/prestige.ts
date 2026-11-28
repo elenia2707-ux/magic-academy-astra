@@ -1,4 +1,5 @@
 import type { GameState, PrestigeUpgradeId } from '../types/game';
+import { getRebirthVow } from './rebirthVows';
 
 export interface PrestigeUpgradeDef {
   id: PrestigeUpgradeId;
@@ -92,7 +93,10 @@ export function calculateRebirthReward(state: GameState): number {
   const fromRank = state.rank * 3;
   const fromLevel = Math.floor(state.level / 4);
   const fromTower = state.highestTowerFloor * 2;
-  return Math.max(0, fromActs + fromRank + fromLevel + fromTower);
+  const base = Math.max(0, fromActs + fromRank + fromLevel + fromTower);
+  if (base <= 0) return 0;
+  const vow = getRebirthVow(state.prestige.activeVow);
+  return Math.round(base * (1 + vow.remnantBonusPct / 100));
 }
 
 export function getPrestigeUpgradeCost(def: PrestigeUpgradeDef, currentLevel: number): number {

@@ -20,6 +20,7 @@ import {
   getPrestigeUpgradeCost,
   PRESTIGE_UPGRADES,
 } from '../data/prestige';
+import { getRebirthVow, REBIRTH_VOW_ORDER, REBIRTH_VOWS } from '../data/rebirthVows';
 import {
   ARCANE_IMPRINTS,
   ARCANE_TRANSMUTES,
@@ -468,92 +469,126 @@ export const AbyssTab: React.FC<Props> = ({
       })()}
 
       {/* 3. 선택형 환생: 시간 회귀 & 별의 성좌 */}
-      {sub === 'rebirth' && (
-        <>
-          <div className="panel">
-            <div className="panel-title-row">
-              <h2 className="panel-title">
-                <RotateCcw size={14} style={{ verticalAlign: -2, marginRight: 5 }} />
-                시간 회귀 (선택형 환생)
-              </h2>
-              <span className="panel-sub" style={{ color: '#e3c481' }}>
-                별의 잔재: {state.prestige.starRemnants}
-              </span>
-            </div>
-            <div style={{ fontSize: 12, color: '#c5bdb0', marginBottom: 10, lineHeight: 1.55 }}>
-              환생은 <strong>원할 때만</strong> 선택할 수 있습니다. 회귀 시 레벨·계급·장비가
-              초기화되는 대신 <strong>별의 잔재</strong>를 영구 획득하고,{' '}
-              <strong>새로운 출신 학파와 성별</strong>로 다시 입학할 수 있습니다.{' '}
-              <span style={{ color: '#d8b878' }}>
-                별의 성좌 각인과 <strong>심연 비전 제련소 각인</strong>은 회귀 후에도 그대로 유지됩니다.
-              </span>
-            </div>
-            <div className="stat-grid" style={{ marginBottom: 10 }}>
-              <div className="stat-box">
-                <span>누적 회귀</span>
-                <strong>{state.prestige.rebirthCount}회</strong>
+      {sub === 'rebirth' && (() => {
+        const curVow = getRebirthVow(state.prestige.activeVow ?? 'none');
+        const specialVows = REBIRTH_VOW_ORDER.filter((id) => id !== 'none').map(
+          (id) => REBIRTH_VOWS[id]
+        );
+        return (
+          <>
+            <div className="panel">
+              <div className="panel-title-row">
+                <h2 className="panel-title">
+                  <RotateCcw size={14} style={{ verticalAlign: -2, marginRight: 5 }} />
+                  시간 회귀 (선택형 환생)
+                </h2>
+                <span className="panel-sub" style={{ color: '#e3c481' }}>
+                  별의 잔재: {state.prestige.starRemnants}
+                </span>
               </div>
-              <div className="stat-box">
-                <span>지금 회귀 보상</span>
-                <strong style={{ color: '#e3c481' }}>+{rebirthReward} 잔재</strong>
+              <div style={{ fontSize: 12, color: '#c5bdb0', marginBottom: 10, lineHeight: 1.55 }}>
+                환생은 <strong>원할 때만</strong> 선택할 수 있습니다. 회귀 시 레벨·계급·장비가
+                초기화되는 대신 <strong>별의 잔재</strong>를 영구 획득하고,{' '}
+                <strong>새로운 출신 학파와 성별</strong>로 다시 입학할 수 있습니다.{' '}
+                <span style={{ color: '#d8b878' }}>
+                  별의 성좌 각인과 <strong>심연 비전 제련소 각인</strong>은 회귀 후에도 그대로 유지됩니다.
+                </span>
               </div>
-            </div>
-            <button
-              type="button"
-              className="btn btn-gold btn-block"
-              disabled={!canRebirth}
-              onClick={onStartRebirthFlow}
-            >
-              {canRebirth
-                ? `시간 회귀 실행 (+${rebirthReward} 별의 잔재 획득)`
-                : '4막 클리어 또는 5계급(심연 마도사)부터 회귀 가능'}
-            </button>
-          </div>
+              <div className="stat-grid" style={{ marginBottom: 10 }}>
+                <div className="stat-box">
+                  <span>누적 회귀</span>
+                  <strong>{state.prestige.rebirthCount}회</strong>
+                </div>
+                <div className="stat-box">
+                  <span>지금 회귀 보상</span>
+                  <strong style={{ color: '#e3c481' }}>+{rebirthReward} 잔재</strong>
+                </div>
+              </div>
 
-          <div className="panel">
-            <div className="panel-title-row">
-              <h2 className="panel-title">별의 성좌 (영구 업그레이드)</h2>
-              <span className="panel-sub">모든 회차에 영구 유지</span>
+              {/* P3-4: 현재 회차 성좌 서약 상태 & 차기 회귀 서약 미리보기 */}
+              <div className="rebirth-vow-summary">
+                <div className="rebirth-vow-current">
+                  <span className="rebirth-vow-current-label">
+                    현재 회차 서약: <strong>{curVow.name}</strong>
+                  </span>
+                  {curVow.remnantBonusPct > 0 && (
+                    <span className="rebirth-vow-bonus-tag">
+                      회귀 잔재 보너스 +{curVow.remnantBonusPct}% 적용 중!
+                    </span>
+                  )}
+                </div>
+                <div className="rebirth-vow-note">
+                  회귀 입학 시 4종의 [성좌 서약(축복·대가)] 중 하나를 선택해 회차 규칙을 바꿀 수 있습니다.
+                </div>
+                <div className="rebirth-vow-preview-list">
+                  {specialVows.map((vow) => (
+                    <div key={vow.id} className="rebirth-vow-preview-chip" title={vow.blessingDesc}>
+                      <span className="rebirth-vow-preview-name">{vow.name}</span>
+                      <span className="rebirth-vow-preview-badge">
+                        +{vow.remnantBonusPct}% 잔재
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <button
+                type="button"
+                className="btn btn-gold btn-block"
+                disabled={!canRebirth}
+                onClick={onStartRebirthFlow}
+              >
+                {canRebirth
+                  ? `시간 회귀 실행 (+${rebirthReward} 별의 잔재 획득)`
+                  : '4막 클리어 또는 5계급(심연 마도사)부터 회귀 가능'}
+              </button>
             </div>
-            <div className="item-list">
-              {PRESTIGE_UPGRADES.map((up) => {
-                const lv = state.prestige.upgrades[up.id] ?? 0;
-                const isMax = lv >= up.maxLevel;
-                const cost = getPrestigeUpgradeCost(up, lv);
-                return (
-                  <div key={up.id} className="list-card">
-                    <div className="list-top">
-                      <span className="list-title">
-                        {up.name}
-                        <span className="tag">
-                          Lv.{lv}/{up.maxLevel}
+
+            <div className="panel">
+              <div className="panel-title-row">
+                <h2 className="panel-title">별의 성좌 (영구 업그레이드)</h2>
+                <span className="panel-sub">모든 회차에 영구 유지</span>
+              </div>
+              <div className="item-list">
+                {PRESTIGE_UPGRADES.map((up) => {
+                  const lv = state.prestige.upgrades[up.id] ?? 0;
+                  const isMax = lv >= up.maxLevel;
+                  const cost = getPrestigeUpgradeCost(up, lv);
+                  return (
+                    <div key={up.id} className="list-card">
+                      <div className="list-top">
+                        <span className="list-title">
+                          {up.name}
+                          <span className="tag">
+                            Lv.{lv}/{up.maxLevel}
+                          </span>
                         </span>
-                      </span>
-                      <span style={{ fontSize: 11, color: '#e3c481' }}>{up.effectText(lv)}</span>
+                        <span style={{ fontSize: 11, color: '#e3c481' }}>{up.effectText(lv)}</span>
+                      </div>
+                      <div className="list-desc">{up.description}</div>
+                      <div className="list-actions">
+                        <span style={{ fontSize: 11, color: '#8b8479' }}>
+                          {isMax ? '최대 강화 완료' : `비용: 별의 잔재 ${cost}`}
+                        </span>
+                        {!isMax && (
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-gold"
+                            disabled={state.prestige.starRemnants < cost}
+                            onClick={() => onBuyPrestigeUpgrade(up.id)}
+                          >
+                            각인하기
+                          </button>
+                        )}
+                      </div>
                     </div>
-                    <div className="list-desc">{up.description}</div>
-                    <div className="list-actions">
-                      <span style={{ fontSize: 11, color: '#8b8479' }}>
-                        {isMax ? '최대 강화 완료' : `비용: 별의 잔재 ${cost}`}
-                      </span>
-                      {!isMax && (
-                        <button
-                          type="button"
-                          className="btn btn-sm btn-gold"
-                          disabled={state.prestige.starRemnants < cost}
-                          onClick={() => onBuyPrestigeUpgrade(up.id)}
-                        >
-                          각인하기
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        </>
-      )}
+          </>
+        );
+      })()}
 
       {/* 4. 기록 · 스탯 · 세이브 백업 */}
       {sub === 'system' && (

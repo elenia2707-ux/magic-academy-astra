@@ -1,10 +1,14 @@
+import { GRIMOIRE_SEALS } from '../data/bossGimmicks';
 import { ensureDailyQuestsCurrent } from '../data/dailyQuests';
+import { REBIRTH_VOWS } from '../data/rebirthVows';
 import { ensureSanctum } from '../data/sanctum';
 import type {
   GameSettings,
   GameState,
+  GrimoireSealId,
   LearnedSkill,
   ProfessorAffinityState,
+  RebirthVowId,
   SkillRuneBranch,
 } from '../types/game';
 import { createDefaultPrestige, createEmptyUncreatedState, ensureStarterKit, SAVE_VERSION } from './stats';
@@ -89,6 +93,20 @@ function normalizeAffinity(
   return { points, claimedEvents };
 }
 
+function normalizeGrimoireSeal(raw?: unknown): GrimoireSealId | null {
+  if (typeof raw === 'string' && Object.prototype.hasOwnProperty.call(GRIMOIRE_SEALS, raw)) {
+    return raw as GrimoireSealId;
+  }
+  return null;
+}
+
+function normalizeRebirthVow(raw?: unknown): RebirthVowId {
+  if (typeof raw === 'string' && Object.prototype.hasOwnProperty.call(REBIRTH_VOWS, raw)) {
+    return raw as RebirthVowId;
+  }
+  return 'none';
+}
+
 function hydrateState(parsed: Partial<GameState>): GameState | null {
   if (!parsed || typeof parsed !== 'object' || !parsed.created) return null;
   const fallback = createEmptyUncreatedState();
@@ -107,6 +125,7 @@ function hydrateState(parsed: Partial<GameState>): GameState | null {
         ...createDefaultPrestige().upgrades,
         ...(parsed.prestige?.upgrades ?? {}),
       },
+      activeVow: normalizeRebirthVow(parsed.prestige?.activeVow),
     },
     abyss: {
       ...fallback.abyss,
@@ -132,6 +151,7 @@ function hydrateState(parsed: Partial<GameState>): GameState | null {
     }, parsed.settings?.gearDefaultsV2 === true),
     dailyQuests: ensureDailyQuestsCurrent(parsed.dailyQuests),
     sanctum: ensureSanctum(parsed.sanctum),
+    grimoireSeal: normalizeGrimoireSeal(parsed.grimoireSeal),
     ...(normalizedAffinity ? { affinity: normalizedAffinity } : {}),
   });
 }

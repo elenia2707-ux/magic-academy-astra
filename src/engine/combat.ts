@@ -1,7 +1,14 @@
+import {
+  getBossGimmick,
+  getSealBossDamageBonusPct,
+  GRIMOIRE_SEALS,
+  isGimmickCountered,
+} from '../data/bossGimmicks';
 import { effectiveStoneReward } from '../data/economy';
 import { ACTS, createAbyssEliteMonster, createTowerMonster } from '../data/acts';
 import { FAMILIARS } from '../data/familiars';
 import { getActiveInfirmaryEffect } from '../data/infirmary';
+import { getNgPlusBaselineScaling, getRebirthVow, type RebirthVowDef } from '../data/rebirthVows';
 import { RANK_EXAM_BOSSES } from '../data/schools';
 import { applyRuneToSkill } from '../data/runes';
 import { SKILL_MAP } from '../data/skills';
@@ -31,6 +38,31 @@ let vfxIdCounter = 1;
 
 function nextLog(turn: number, text: string, tone: CombatLogEntry['tone']): CombatLogEntry {
   return { id: logIdCounter++, turn, text, tone };
+}
+
+function getEffectiveMpCost(baseMpCost: number, vow: RebirthVowDef): number {
+  if (vow.mpCostMult === 1) return baseMpCost;
+  return Math.max(0, Math.round(baseMpCost * vow.mpCostMult));
+}
+
+function getEffectiveCooldown(baseCooldown: number, vow: RebirthVowDef): number {
+  if (baseCooldown >= 2 && vow.cooldownCut > 0) {
+    return Math.max(1, baseCooldown - vow.cooldownCut);
+  }
+  return baseCooldown;
+}
+
+function applyDamageToEnemy(
+  dmg: number,
+  enemyHp: number,
+  enemyShield: number
+): { enemyHp: number; enemyShield: number; shieldAbsorbed: number; hpDmg: number } {
+  const safeDmg = Math.max(0, dmg);
+  const shieldAbsorbed = Math.min(enemyShield, safeDmg);
+  const nextShield = enemyShield - shieldAbsorbed;
+  const hpDmg = safeDmg - shieldAbsorbed;
+  const nextHp = Math.max(0, enemyHp - hpDmg);
+  return { enemyHp: nextHp, enemyShield: nextShield, shieldAbsorbed, hpDmg };
 }
 
 export function getMonsterForMode(
@@ -103,23 +135,37 @@ export function getActRamp(act: number): { hp: number; atk: number; exp: number 
 }
 
 /** 원본 데이터는 그대로 두고 전투 런타임용 사본에만 배율 적용 */
-function applyBossTuning(enemy: MonsterDef, mode: CombatMode, act: number): MonsterDef {
+function applyBossTuning(
+  enemy: MonsterDef,
+  mode: CombatMode,
+  act: number,
+  vow: RebirthVowDef,
+  ngScale: { enemyHpMult: number; enemyAtkMult: number; rewardMult: number }
+): MonsterDef {
   const ramp = mode === 'stage' ? getActRamp(act) : { hp: 1, atk: 1, exp: 1 };
+  let base = enemy;
   if (mode === 'stage' && !enemy.isBoss) {
-    return {
+    base = {
       ...enemy,
       hp: Math.round(enemy.hp * MOB_TUNING.hpMult * ramp.hp),
       atk: Math.round(enemy.atk * MOB_TUNING.atkMult * ramp.atk),
       expReward: Math.round(enemy.expReward * ramp.exp),
     };
+  } else if (isThreatBoss(enemy, mode)) {
+    const isRank = mode === 'rankBoss';
+    base = {
+      ...enemy,
+      hp: Math.round(enemy.hp * (isRank ? BOSS_TUNING.rankHpMult : BOSS_TUNING.hpMult) * ramp.hp),
+      atk: Math.round(enemy.atk * (isRank ? BOSS_TUNING.rankAtkMult : BOSS_TUNING.atkMult) * ramp.atk),
+      expReward: Math.round(enemy.expReward * ramp.exp),
+    };
   }
-  if (!isThreatBoss(enemy, mode)) return enemy;
-  const isRank = mode === 'rankBoss';
+
   return {
-    ...enemy,
-    hp: Math.round(enemy.hp * (isRank ? BOSS_TUNING.rankHpMult : BOSS_TUNING.hpMult) * ramp.hp),
-    atk: Math.round(enemy.atk * (isRank ? BOSS_TUNING.rankAtkMult : BOSS_TUNING.atkMult) * ramp.atk),
-    expReward: Math.round(enemy.expReward * ramp.exp),
+    ...base,
+    hp: Math.max(1, Math.round(base.hp * ngScale.enemyHpMult * vow.enemyHpMult)),
+    atk: Math.max(1, Math.round(base.atk * ngScale.enemyAtkMult * vow.enemyAtkMult)),
+    def: Math.max(0, Math.round(base.def * vow.enemyDefMult)),
   };
 }
 
@@ -132,7 +178,15 @@ export function createCombatRuntime(
   towerFloor = state.towerFloor,
   initialStarlight = 0
 ): CombatRuntime {
-  const tuned = applyBossTuning(getMonsterForMode(state, mode, act, stageIndex, towerFloor), mode, act);
+  const vow = getRebirthVow(state.prestige.activeVow);
+  const ngScale = getNgPlusBaselineScaling(state.prestige.rebirthCount);
+  const tuned = applyBossTuning(
+    getMonsterForMode(state, mode, act, stageIndex, towerFloor),
+    mode,
+    act,
+    vow,
+    ngScale
+  );
   // P0-6: 마석 보상 곡선 압축 (전투 화면 표시·실제 지급 모두 이 값 사용)
   const enemy = { ...tuned, stoneReward: effectiveStoneReward(tuned.stoneReward) };
   const introMsg =
@@ -163,6 +217,30 @@ export function createCombatRuntime(
     initialLogs.push(nextLog(0, `${enemy.name}: “${bossQuote}”`, 'dark'));
   }
 
+  const gimmickDef = getBossGimmick(enemy.gimmick);
+  if (gimmickDef) {
+    const countered = isGimmickCountered(enemy.gimmick, state.grimoireSeal);
+    const activeSealDef = state.grimoireSeal ? GRIMOIRE_SEALS[state.grimoireSeal] : null;
+    const counterSealDef = GRIMOIRE_SEALS[gimmickDef.counterSealId];
+    if (countered && activeSealDef) {
+      initialLogs.push(
+        nextLog(
+          0,
+          `📖 보스 기믹 [${gimmickDef.name}] 감지! 장착 서표 [${activeSealDef.name}]이(가) 공명하여 파훼 준비 완료!`,
+          'starlight'
+        )
+      );
+    } else {
+      initialLogs.push(
+        nextLog(
+          0,
+          `⚠ 보스 기믹 [${gimmickDef.name}]: ${gimmickDef.shortDesc} (권장 서표: ${counterSealDef.name})`,
+          'status'
+        )
+      );
+    }
+  }
+
   return {
     mode,
     act,
@@ -184,6 +262,9 @@ export function createCombatRuntime(
     familiarCounter: 0,
     starlightGauge: Math.max(0, Math.min(STARLIGHT_MAX, Math.round(initialStarlight))),
     starlightFlash: null,
+    enemyShield: 0,
+    bossGimmickTriggered: false,
+    gimmickSuppressedTurns: 0,
     logs: initialLogs,
     lastVfx: null,
     victoryBanner: null,
@@ -226,11 +307,30 @@ export function stepCombatTurn(
   stats: ComputedStats
 ): TurnOutcome {
   const turn = prev.turn + 1;
+  const vow = getRebirthVow(state.prestige.activeVow);
+  const gimmickDef = getBossGimmick(prev.enemy.gimmick);
+  const countered = isGimmickCountered(prev.enemy.gimmick, state.grimoireSeal);
+  const sealBossDmgMult = prev.enemy.isBoss
+    ? 1 + getSealBossDamageBonusPct(Boolean(state.equipped.grimoire), countered) / 100
+    : 1;
+  const wardSealBonusMp =
+    countered && prev.enemy.gimmick === 'silence_ink' && state.grimoireSeal === 'seal_ward'
+      ? 6
+      : 0;
+  const dawnSealStarlightMult =
+    countered && prev.enemy.gimmick === 'eclipse_doom' && state.grimoireSeal === 'seal_dawn'
+      ? 1.35
+      : 1;
+
   let playerHp = Math.min(stats.maxHp, prev.playerHp);
-  let playerMp = Math.min(stats.maxMp, prev.playerMp + stats.mpRegen);
+  let playerMp = Math.min(stats.maxMp, prev.playerMp + stats.mpRegen + wardSealBonusMp);
   let playerShield = prev.playerShield;
   let playerStatuses = [...prev.playerStatuses];
   let enemyHp = prev.enemyHp;
+  let enemyShield = prev.enemyShield ?? 0;
+  let bossGimmickTriggered = prev.bossGimmickTriggered ?? false;
+  let gimmickSuppressedTurns = prev.gimmickSuppressedTurns ?? 0;
+  let enemyAtkNow = prev.enemy.atk;
   let enemyStatuses = [...prev.enemyStatuses];
   let starlightGauge = prev.starlightGauge ?? 0;
   let landedCrit = false;
@@ -246,7 +346,7 @@ export function stepCombatTurn(
   // 1) 플레이어 턴 시작 상태이상(재생 / 화상·독)
   const regen = getStatus(playerStatuses, 'regen');
   if (regen && playerHp < stats.maxHp) {
-    const healAmt = Math.round(stats.maxHp * regen.value);
+    const healAmt = Math.max(1, Math.round(stats.maxHp * regen.value * vow.healMult));
     playerHp = Math.min(stats.maxHp, playerHp + healAmt);
     newLogs.push(nextLog(turn, `여신의 재생으로 체력 +${healAmt.toLocaleString()} 회복.`, 'heal'));
   }
@@ -254,7 +354,7 @@ export function stepCombatTurn(
   for (const dotType of ['burn', 'poison'] as StatusType[]) {
     const dot = getStatus(playerStatuses, dotType);
     if (dot) {
-      const dotDmg = Math.max(1, Math.round(prev.enemy.atk * dot.value));
+      const dotDmg = Math.max(1, Math.round(enemyAtkNow * dot.value));
       playerHp = Math.max(1, playerHp - dotDmg);
       newLogs.push(
         nextLog(
@@ -282,7 +382,8 @@ export function stepCombatTurn(
         if (!baseDef || !learned?.unlocked) continue;
         const { effective: def, runeDef } = applyRuneToSkill(baseDef, learned.rune);
         if (!def.isShield) continue;
-        if ((cooldowns[sid] ?? 0) > 0 || playerMp < def.mpCost) continue;
+        const mpCost = getEffectiveMpCost(def.mpCost, vow);
+        if ((cooldowns[sid] ?? 0) > 0 || playerMp < mpCost) continue;
         chosenSkillId = sid;
         const tag = runeDef ? `${def.name}·${runeDef.name}` : def.name;
         newLogs.push(nextLog(turn, `강공격에 대비해 [${tag}]을(를) 먼저 펼칩니다!`, 'status'));
@@ -295,7 +396,8 @@ export function stepCombatTurn(
       if (!baseDef || !learned?.unlocked) continue;
       const { effective: def } = applyRuneToSkill(baseDef, learned.rune);
       if ((cooldowns[sid] ?? 0) > 0) continue;
-      if (playerMp < def.mpCost) continue;
+      const mpCost = getEffectiveMpCost(def.mpCost, vow);
+      if (playerMp < mpCost) continue;
       // P0-4: 순수 방어 스킬(보호막 버프)은 보호막이 이미 남아 있으면 아껴둔다 (강공격 예고 대비)
       if (def.isShield && def.isBuff && playerShield > 0) continue;
       // 회복 스킬은 체력이 92% 이상이고 정화 필요 없으면 자연스럽게 스킵해 낭비 방지
@@ -324,18 +426,23 @@ export function stepCombatTurn(
       const lvMult = getSkillPowerMultiplier(learned.level);
       const catMult = 1 + (stats.categoryBonus[def.category] ?? 0) / 100;
       const darkMult = def.category === 'dark' ? stats.darkDamageMult : 1;
+      const mpCost = getEffectiveMpCost(def.mpCost, vow);
+      const effCooldown = getEffectiveCooldown(def.cooldown, vow);
 
-      playerMp -= def.mpCost;
+      playerMp -= mpCost;
       if (def.hpCostPct) {
         const sac = Math.max(1, Math.round(playerHp * (def.hpCostPct / 100)));
         playerHp = Math.max(1, playerHp - sac);
       }
-      if (def.cooldown > 0) {
-        cooldowns[def.id] = def.cooldown;
+      if (effCooldown > 0) {
+        cooldowns[def.id] = effCooldown;
       }
 
       if (def.isHeal) {
-        const healVal = Math.round(stats.magic * (def.powerPct / 100) * lvMult * catMult);
+        const healVal = Math.max(
+          1,
+          Math.round(stats.magic * (def.powerPct / 100) * lvMult * catMult * vow.healMult)
+        );
         playerHp = Math.min(stats.maxHp, playerHp + healVal);
         if (def.isCleanse) {
           playerStatuses = playerStatuses.filter(
@@ -447,6 +554,7 @@ export function stepCombatTurn(
             atkMult *
             burnMult *
             enemyVuln *
+            sealBossDmgMult *
             critMult *
             (0.94 + Math.random() * 0.12);
           const mitigated = Math.max(
@@ -456,12 +564,14 @@ export function stepCombatTurn(
           totalDmg += mitigated;
         }
 
-        enemyHp = Math.max(0, enemyHp - totalDmg);
+        const hitRes = applyDamageToEnemy(totalDmg, enemyHp, enemyShield);
+        enemyHp = hitRes.enemyHp;
+        enemyShield = hitRes.enemyShield;
 
         // 흡혈
         let drainText = '';
         if (def.lifestealPct) {
-          const drain = Math.round(totalDmg * (def.lifestealPct / 100));
+          const drain = Math.round(totalDmg * (def.lifestealPct / 100) * vow.healMult);
           playerHp = Math.min(stats.maxHp, playerHp + drain);
           drainText = ` (흡혈 +${drain.toLocaleString()})`;
         }
@@ -518,12 +628,14 @@ export function stepCombatTurn(
           label: skillTag,
         };
         const statusTail = statusNotes.length > 0 ? ` [${statusNotes.join('·')}]` : '';
+        const shieldTail =
+          hitRes.shieldAbsorbed > 0 ? ` (결계 -${hitRes.shieldAbsorbed.toLocaleString()})` : '';
         newLogs.push(
           nextLog(
             turn,
             `[${skillTag}] → ${prev.enemy.name}에게 ${totalDmg.toLocaleString()} 피해!${
               anyCrit ? ' (치명타)' : ''
-            }${drainText}${statusTail}`,
+            }${shieldTail}${drainText}${statusTail}`,
             def.category === 'dark' ? 'dark' : anyCrit ? 'crit' : 'player'
           )
         );
@@ -532,9 +644,17 @@ export function stepCombatTurn(
       // 기본 마탄 (마나 회복)
       const isCrit = Math.random() * 100 < stats.critRate;
       if (isCrit) landedCrit = true;
-      const raw = stats.magic * 0.85 * atkMult * enemyVuln * (isCrit ? stats.critDmg / 100 : 1);
+      const raw =
+        stats.magic *
+        0.85 *
+        atkMult *
+        enemyVuln *
+        sealBossDmgMult *
+        (isCrit ? stats.critDmg / 100 : 1);
       const dmg = Math.max(Math.round(raw * 0.25), Math.round(raw - prev.enemy.def * 0.45));
-      enemyHp = Math.max(0, enemyHp - dmg);
+      const hitRes = applyDamageToEnemy(dmg, enemyHp, enemyShield);
+      enemyHp = hitRes.enemyHp;
+      enemyShield = hitRes.enemyShield;
       const mpGain = Math.round(10 + stats.mpRegen * 0.5);
       playerMp = Math.min(stats.maxMp, playerMp + mpGain);
       sfx = isCrit ? 'crit' : 'cast';
@@ -546,22 +666,25 @@ export function stepCombatTurn(
         isCrit,
         label: '마력탄',
       };
+      const shieldTail =
+        hitRes.shieldAbsorbed > 0 ? ` (결계 -${hitRes.shieldAbsorbed.toLocaleString()})` : '';
       newLogs.push(
         nextLog(
           turn,
-          `[마력탄]으로 ${dmg.toLocaleString()} 피해 (마나 +${mpGain}).`,
+          `[마력탄]으로 ${dmg.toLocaleString()} 피해${shieldTail} (마나 +${mpGain}).`,
           'player'
         )
       );
     }
   }
 
-  // P3-1: 별빛 공명 게이지 충전 (매 턴 +16, 빙결 시 +8, 치명타 시 +8)
+  // P3-1: 별빛 공명 게이지 충전 (매 턴 +16, 빙결 시 +8, 치명타 시 +8) × 서약/서표 배율
+  const turnStarGain =
+    (playerFrozen ? Math.floor(STARLIGHT_GAIN_TURN / 2) : STARLIGHT_GAIN_TURN) +
+    (landedCrit ? STARLIGHT_GAIN_CRIT : 0);
   starlightGauge = Math.min(
     STARLIGHT_MAX,
-    starlightGauge +
-      (playerFrozen ? Math.floor(STARLIGHT_GAIN_TURN / 2) : STARLIGHT_GAIN_TURN) +
-      (landedCrit ? STARLIGHT_GAIN_CRIT : 0)
+    starlightGauge + Math.round(turnStarGain * vow.starlightGainMult * dawnSealStarlightMult)
   );
 
   // 3) 사역마 보조 행동
@@ -576,8 +699,10 @@ export function stepCombatTurn(
         const famName = famDef.evolvedNames[ownedFam.evolution];
         const famScale = 1 + (ownedFam.level - 1) * 0.08 + ownedFam.evolution * 0.45;
         if (famDef.id === 'raven') {
-          const dmg = Math.max(1, Math.round(stats.magic * 0.72 * famScale));
-          enemyHp = Math.max(0, enemyHp - dmg);
+          const dmg = Math.max(1, Math.round(stats.magic * 0.72 * famScale * sealBossDmgMult));
+          const hitRes = applyDamageToEnemy(dmg, enemyHp, enemyShield);
+          enemyHp = hitRes.enemyHp;
+          enemyShield = hitRes.enemyShield;
           enemyStatuses = addOrRefreshStatus(enemyStatuses, {
             type: 'curse',
             turns: 2,
@@ -593,7 +718,7 @@ export function stepCombatTurn(
             nextLog(turn, `사역마 [${famName}]이(가) ${sh.toLocaleString()} 뼈 보호막 전개!`, 'familiar')
           );
         } else if (famDef.id === 'wisp') {
-          const hpH = Math.round(stats.maxHp * (0.08 + ownedFam.evolution * 0.03));
+          const hpH = Math.max(1, Math.round(stats.maxHp * (0.08 + ownedFam.evolution * 0.03) * vow.healMult));
           const mpH = Math.round(18 * famScale);
           playerHp = Math.min(stats.maxHp, playerHp + hpH);
           playerMp = Math.min(stats.maxMp, playerMp + mpH);
@@ -602,8 +727,13 @@ export function stepCombatTurn(
           );
         } else if (famDef.id === 'wolf') {
           const crit = Math.random() < 0.45;
-          const dmg = Math.max(1, Math.round(stats.magic * 0.98 * famScale * (crit ? 1.65 : 1)));
-          enemyHp = Math.max(0, enemyHp - dmg);
+          const dmg = Math.max(
+            1,
+            Math.round(stats.magic * 0.98 * famScale * (crit ? 1.65 : 1) * sealBossDmgMult)
+          );
+          const hitRes = applyDamageToEnemy(dmg, enemyHp, enemyShield);
+          enemyHp = hitRes.enemyHp;
+          enemyShield = hitRes.enemyShield;
           newLogs.push(
             nextLog(
               turn,
@@ -612,8 +742,10 @@ export function stepCombatTurn(
             )
           );
         } else if (famDef.id === 'owl') {
-          const dmg = Math.max(1, Math.round(stats.magic * 0.78 * famScale));
-          enemyHp = Math.max(0, enemyHp - dmg);
+          const dmg = Math.max(1, Math.round(stats.magic * 0.78 * famScale * sealBossDmgMult));
+          const hitRes = applyDamageToEnemy(dmg, enemyHp, enemyShield);
+          enemyHp = hitRes.enemyHp;
+          enemyShield = hitRes.enemyShield;
           const froze = Math.random() < 0.35 + ownedFam.evolution * 0.1;
           if (froze) {
             enemyStatuses = addOrRefreshStatus(enemyStatuses, { type: 'freeze', turns: 1, value: 0 });
@@ -626,9 +758,11 @@ export function stepCombatTurn(
             )
           );
         } else if (famDef.id === 'bat') {
-          const dmg = Math.max(1, Math.round(stats.magic * 0.84 * famScale));
-          const heal = Math.round(dmg * 0.45);
-          enemyHp = Math.max(0, enemyHp - dmg);
+          const dmg = Math.max(1, Math.round(stats.magic * 0.84 * famScale * sealBossDmgMult));
+          const heal = Math.round(dmg * 0.45 * vow.healMult);
+          const hitRes = applyDamageToEnemy(dmg, enemyHp, enemyShield);
+          enemyHp = hitRes.enemyHp;
+          enemyShield = hitRes.enemyShield;
           playerHp = Math.min(stats.maxHp, playerHp + heal);
           enemyStatuses = addOrRefreshStatus(enemyStatuses, {
             type: 'burn',
@@ -653,7 +787,9 @@ export function stepCombatTurn(
       const dot = getStatus(enemyStatuses, dotType);
       if (dot) {
         const dotDmg = Math.max(1, Math.round(stats.magic * dot.value));
-        enemyHp = Math.max(0, enemyHp - dotDmg);
+        const hitRes = applyDamageToEnemy(dotDmg, enemyHp, enemyShield);
+        enemyHp = hitRes.enemyHp;
+        enemyShield = hitRes.enemyShield;
         newLogs.push(
           nextLog(
             turn,
@@ -674,6 +810,7 @@ export function stepCombatTurn(
       combat: {
         ...prev,
         turn,
+        enemy: enemyAtkNow !== prev.enemy.atk ? { ...prev.enemy, atk: enemyAtkNow } : prev.enemy,
         playerHp,
         playerMaxHp: stats.maxHp,
         playerMp,
@@ -682,6 +819,9 @@ export function stepCombatTurn(
         playerStatuses: decrementStatuses(playerStatuses),
         cooldowns,
         enemyHp: 0,
+        enemyShield: 0,
+        bossGimmickTriggered,
+        gimmickSuppressedTurns,
         enemyStatuses: [],
         enemyTelegraph: false,
         familiarCounter,
@@ -702,7 +842,7 @@ export function stepCombatTurn(
   } else {
     const isHeavy = prev.enemyTelegraph && prev.enemy.heavyMult;
     const mult = isHeavy ? prev.enemy.heavyMult! : 1;
-    const rawAtk = prev.enemy.atk * mult * (0.92 + Math.random() * 0.16);
+    const rawAtk = enemyAtkNow * mult * (0.92 + Math.random() * 0.16);
     let afterDef = Math.max(Math.round(rawAtk * 0.22), Math.round(rawAtk - stats.def * 0.55));
     // P0-2: 보스 강공격은 방어력과 무관하게 최대 HP의 일정 비율 이상을 깎는다 (보호막·빙결로 대응)
     if (isHeavy && isThreatBoss(prev.enemy, prev.mode)) {
@@ -720,13 +860,18 @@ export function stepCombatTurn(
 
     playerHp = Math.max(0, playerHp - dmgToHp);
     // 적의 공격을 받아내면 공명 게이지 추가 충전
-    starlightGauge = Math.min(STARLIGHT_MAX, starlightGauge + STARLIGHT_GAIN_HIT);
+    starlightGauge = Math.min(
+      STARLIGHT_MAX,
+      starlightGauge + Math.round(STARLIGHT_GAIN_HIT * vow.starlightGainMult * dawnSealStarlightMult)
+    );
 
     // 피해 반사 체크
     const reflect = getStatus(playerStatuses, 'reflect');
     if (reflect && afterDef > 0) {
       const refDmg = Math.max(1, Math.round(afterDef * reflect.value));
-      enemyHp = Math.max(0, enemyHp - refDmg);
+      const refRes = applyDamageToEnemy(refDmg, enemyHp, enemyShield);
+      enemyHp = refRes.enemyHp;
+      enemyShield = refRes.enemyShield;
       newLogs.push(
         nextLog(turn, `결계 반사! ${prev.enemy.name}에게 ${refDmg.toLocaleString()} 피해 반사!`, 'player')
       );
@@ -752,6 +897,195 @@ export function stepCombatTurn(
       });
     }
 
+    // P3-3: 보스 고유 기믹 발동 (별빛 완벽 개입 억제 중이면 발동 차단)
+    if (enemyHp > 0 && playerHp > 0 && gimmickDef) {
+      if (gimmickSuppressedTurns > 0) {
+        gimmickSuppressedTurns = Math.max(0, gimmickSuppressedTurns - 1);
+        newLogs.push(
+          nextLog(
+            turn,
+            `✦ 별빛 봉쇄로 [${gimmickDef.name}] 발동이 억제되었습니다! (남은 ${gimmickSuppressedTurns}턴)`,
+            'starlight'
+          )
+        );
+      } else {
+        const activeSealDef = state.grimoireSeal ? GRIMOIRE_SEALS[state.grimoireSeal] : null;
+        const sealTag = activeSealDef ? `📖 [${activeSealDef.name}] 발동!` : '';
+
+        if (gimmickDef.id === 'crystal_shell' && turn % 4 === 0) {
+          if (countered) {
+            newLogs.push(
+              nextLog(
+                turn,
+                `${sealTag} 붉은 수정 외피가 형성되려던 순간 산산이 분쇄되었습니다!`,
+                'starlight'
+              )
+            );
+          } else {
+            const shellAmt = Math.max(1, Math.round(prev.enemyMaxHp * 0.04));
+            enemyShield += shellAmt;
+            newLogs.push(
+              nextLog(
+                turn,
+                `◆ [${gimmickDef.name}] 발동! ${prev.enemy.name}이(가) 수정 갑각(+${shellAmt.toLocaleString()} 보호막)을 전개합니다.`,
+                'status'
+              )
+            );
+          }
+        } else if (gimmickDef.id === 'silence_ink' && turn % 3 === 0) {
+          if (countered) {
+            newLogs.push(
+              nextLog(
+                turn,
+                `${sealTag} 침묵의 금서 잉크를 정화해 마나 흡수와 공격력 강화를 차단했습니다!`,
+                'starlight'
+              )
+            );
+          } else {
+            const mpDrain = Math.round(stats.maxMp * 0.18);
+            playerMp = Math.max(0, playerMp - mpDrain);
+            enemyAtkNow = Math.round(enemyAtkNow * 1.06);
+            newLogs.push(
+              nextLog(
+                turn,
+                `◆ [${gimmickDef.name}] 발동! 마나 -${mpDrain} 흡수 & 보스 공격력 +6% 강화!`,
+                'enemy'
+              )
+            );
+          }
+        } else if (gimmickDef.id === 'blood_thorns' && turn % 2 === 0) {
+          if (countered) {
+            newLogs.push(
+              nextLog(
+                turn,
+                `${sealTag} 혈월의 가시 재생을 소작하여 봉쇄했습니다!`,
+                'starlight'
+              )
+            );
+          } else {
+            const bossHeal = Math.max(1, Math.round(prev.enemyMaxHp * 0.035));
+            enemyHp = Math.min(prev.enemyMaxHp, enemyHp + bossHeal);
+            const thornDmg = Math.max(1, Math.round(stats.maxHp * 0.05));
+            let thornToHp = thornDmg;
+            if (playerShield > 0) {
+              const abs = Math.min(playerShield, thornToHp);
+              playerShield -= abs;
+              thornToHp -= abs;
+            }
+            playerHp = Math.max(0, playerHp - thornToHp);
+            newLogs.push(
+              nextLog(
+                turn,
+                `◆ [${gimmickDef.name}] 발동! 보스 체력 +${bossHeal.toLocaleString()} 재생 & 가시 피해 -${thornToHp.toLocaleString()}!`,
+                'enemy'
+              )
+            );
+          }
+        } else if (gimmickDef.id === 'unyielding_oath' && !bossGimmickTriggered && enemyHp <= prev.enemyMaxHp * 0.5) {
+          bossGimmickTriggered = true;
+          if (countered) {
+            const weakShield = Math.max(1, Math.round(prev.enemyMaxHp * 0.05));
+            enemyShield += weakShield;
+            newLogs.push(
+              nextLog(
+                turn,
+                `${sealTag} 불사의 흑갑 서약을 관통하여 결계를 ${weakShield.toLocaleString()}(5%)로 약화시켰습니다!`,
+                'starlight'
+              )
+            );
+          } else {
+            const shieldAmt = Math.max(1, Math.round(prev.enemyMaxHp * 0.18));
+            enemyShield += shieldAmt;
+            newLogs.push(
+              nextLog(
+                turn,
+                `◆ [${gimmickDef.name}] 발동! 체력 50% 이하 격앙 — 흑갑 결계(+${shieldAmt.toLocaleString()} 보호막) 전개!`,
+                'status'
+              )
+            );
+          }
+        } else if (gimmickDef.id === 'abyss_siphon' && turn % 3 === 0) {
+          if (countered) {
+            const reducedDrain = Math.floor(playerShield * 0.15);
+            playerShield = Math.max(0, playerShield - reducedDrain);
+            newLogs.push(
+              nextLog(
+                turn,
+                `${sealTag} 성좌 고정으로 스킬 쿨타임 지연을 차단하고 보호막 침식을 15%로 경감했습니다!`,
+                'starlight'
+              )
+            );
+          } else {
+            const shieldDrain = Math.floor(playerShield * 0.45);
+            playerShield = Math.max(0, playerShield - shieldDrain);
+            const activeDeck = state.deck.slice(0, stats.maxDeckSlots);
+            for (const sid of activeDeck) {
+              const sDef = SKILL_MAP[sid];
+              if (!sDef || !state.skills[sid]?.unlocked) continue;
+              if (sDef.cooldown > 0 || (cooldowns[sid] ?? 0) > 0) {
+                cooldowns[sid] = (cooldowns[sid] ?? 0) + 1;
+              }
+            }
+            newLogs.push(
+              nextLog(
+                turn,
+                `◆ [${gimmickDef.name}] 발동! 보호막 ${shieldDrain.toLocaleString()} 흡수 & 모든 스킬 쿨타임 +1턴 지연!`,
+                'enemy'
+              )
+            );
+          }
+        } else if (gimmickDef.id === 'eclipse_doom') {
+          if (!bossGimmickTriggered && enemyHp <= prev.enemyMaxHp * 0.45) {
+            bossGimmickTriggered = true;
+            if (countered) {
+              const weakShield = Math.max(1, Math.round(prev.enemyMaxHp * 0.05));
+              enemyShield += weakShield;
+              newLogs.push(
+                nextLog(
+                  turn,
+                  `${sealTag} 여명의 빛이 흑식 결계를 가르며 보호막을 ${weakShield.toLocaleString()}(5%)로 약화시켰습니다!`,
+                  'starlight'
+                )
+              );
+            } else {
+              const shieldAmt = Math.max(1, Math.round(prev.enemyMaxHp * 0.16));
+              enemyShield += shieldAmt;
+              newLogs.push(
+                nextLog(
+                  turn,
+                  `◆ [${gimmickDef.name}] 발동! 체력 45% 이하 — 흑식 결계(+${shieldAmt.toLocaleString()} 보호막) 전개!`,
+                  'dark'
+                )
+              );
+            }
+          }
+          if (turn % 3 === 0 && playerHp > 0) {
+            if (countered) {
+              const weakWave = Math.max(1, Math.round(stats.maxHp * 0.02));
+              playerHp = Math.max(0, playerHp - weakWave);
+              newLogs.push(
+                nextLog(
+                  turn,
+                  `${sealTag} 흑식의 암흑 파동을 반감시켜 관통 피해가 -${weakWave.toLocaleString()}(2%)로 감소했습니다!`,
+                  'starlight'
+                )
+              );
+            } else {
+              const waveDmg = Math.max(1, Math.round(stats.maxHp * 0.07));
+              playerHp = Math.max(0, playerHp - waveDmg);
+              newLogs.push(
+                nextLog(
+                  turn,
+                  `◆ [${gimmickDef.name}] 암흑 파동! 보호막을 뚫고 -${waveDmg.toLocaleString()} 관통 피해!`,
+                  'dark'
+                )
+              );
+            }
+          }
+        }
+      }
+    }
+
     // 다음 턴 강공격 예고
     if (prev.enemy.heavyInterval && (turn + 1) % prev.enemy.heavyInterval === 0) {
       nextTelegraph = true;
@@ -773,6 +1107,9 @@ export function stepCombatTurn(
     playerShield = Math.floor(playerShield * 0.7);
   }
 
+  const nextEnemy =
+    enemyAtkNow !== prev.enemy.atk ? { ...prev.enemy, atk: enemyAtkNow } : prev.enemy;
+
   // 반사로 적이 쓰러진 경우
   if (enemyHp <= 0) {
     newLogs.push(nextLog(turn, `${prev.enemy.name}이(가) 반사 피해로 무너졌습니다!`, 'system'));
@@ -782,6 +1119,7 @@ export function stepCombatTurn(
       combat: {
         ...prev,
         turn,
+        enemy: nextEnemy,
         playerHp: Math.max(1, playerHp),
         playerMaxHp: stats.maxHp,
         playerMp,
@@ -790,6 +1128,9 @@ export function stepCombatTurn(
         playerStatuses,
         cooldowns,
         enemyHp: 0,
+        enemyShield: 0,
+        bossGimmickTriggered,
+        gimmickSuppressedTurns,
         enemyStatuses: [],
         enemyTelegraph: false,
         familiarCounter,
@@ -811,6 +1152,7 @@ export function stepCombatTurn(
       combat: {
         ...prev,
         turn,
+        enemy: nextEnemy,
         playerHp: 0,
         playerMaxHp: stats.maxHp,
         playerMp,
@@ -819,6 +1161,9 @@ export function stepCombatTurn(
         playerStatuses: [],
         cooldowns,
         enemyHp,
+        enemyShield,
+        bossGimmickTriggered,
+        gimmickSuppressedTurns,
         enemyStatuses,
         enemyTelegraph: false,
         familiarCounter,
@@ -841,6 +1186,7 @@ export function stepCombatTurn(
     combat: {
       ...prev,
       turn,
+      enemy: nextEnemy,
       playerHp,
       playerMaxHp: stats.maxHp,
       playerMp,
@@ -849,6 +1195,9 @@ export function stepCombatTurn(
       playerStatuses,
       cooldowns,
       enemyHp,
+      enemyShield,
+      bossGimmickTriggered,
+      gimmickSuppressedTurns,
       enemyStatuses,
       enemyTelegraph: nextTelegraph,
       familiarCounter,
@@ -877,12 +1226,19 @@ export function triggerStarlightIntervention(
   const turn = prev.turn;
   const wasPerfect = prev.enemyTelegraph;
   const perfectMult = wasPerfect ? STARLIGHT_PERFECT_MULT : 1;
+  const vow = getRebirthVow(state.prestige.activeVow);
+  const countered = isGimmickCountered(prev.enemy.gimmick, state.grimoireSeal);
+  const sealBossDmgMult = prev.enemy.isBoss
+    ? 1 + getSealBossDamageBonusPct(Boolean(state.equipped.grimoire), countered) / 100
+    : 1;
 
   let playerHp = Math.min(stats.maxHp, prev.playerHp);
   let playerMp = Math.min(stats.maxMp, prev.playerMp);
   let playerShield = prev.playerShield;
   let playerStatuses = [...prev.playerStatuses];
   let enemyHp = prev.enemyHp;
+  let enemyShield = prev.enemyShield ?? 0;
+  let gimmickSuppressedTurns = prev.gimmickSuppressedTurns ?? 0;
   let enemyStatuses = [...prev.enemyStatuses];
   const cooldowns: Record<string, number> = { ...prev.cooldowns };
 
@@ -908,6 +1264,7 @@ export function triggerStarlightIntervention(
       catMult *
       atkMult *
       enemyVuln *
+      sealBossDmgMult *
       perfectMult *
       critMult *
       (0.96 + Math.random() * 0.08);
@@ -918,7 +1275,15 @@ export function triggerStarlightIntervention(
     totalDmg += mitigated;
   }
 
-  enemyHp = Math.max(0, enemyHp - totalDmg);
+  const shatteredShield = wasPerfect && prev.enemy.gimmick ? enemyShield : 0;
+  if (wasPerfect && prev.enemy.gimmick) {
+    enemyShield = 0;
+    gimmickSuppressedTurns = 2;
+  }
+
+  const hitRes = applyDamageToEnemy(totalDmg, enemyHp, enemyShield);
+  enemyHp = hitRes.enemyHp;
+  enemyShield = hitRes.enemyShield;
 
   const extraNotes: string[] = [];
   if (state.school === 'flame') {
@@ -939,7 +1304,7 @@ export function triggerStarlightIntervention(
       turns: wasPerfect ? 2 : 1,
       value: 0,
     });
-    const hpHeal = Math.round(stats.maxHp * (wasPerfect ? 0.25 : 0.18));
+    const hpHeal = Math.max(1, Math.round(stats.maxHp * (wasPerfect ? 0.25 : 0.18) * vow.healMult));
     const mpHeal = Math.round(stats.maxMp * (wasPerfect ? 0.5 : 0.35));
     playerHp = Math.min(stats.maxHp, playerHp + hpHeal);
     playerMp = Math.min(stats.maxMp, playerMp + mpHeal);
@@ -972,7 +1337,7 @@ export function triggerStarlightIntervention(
       value: 0.25,
     });
     if (wasPerfect) {
-      const hpHeal = Math.round(stats.maxHp * 0.2);
+      const hpHeal = Math.max(1, Math.round(stats.maxHp * 0.2 * vow.healMult));
       playerHp = Math.min(stats.maxHp, playerHp + hpHeal);
       extraNotes.push(`보호막 ${shieldVal.toLocaleString()} · 반사 · 저주 · HP +${hpHeal.toLocaleString()}`);
     } else {
@@ -983,20 +1348,25 @@ export function triggerStarlightIntervention(
   const nextGauge = wasPerfect ? STARLIGHT_PERFECT_REFUND : 0;
   const newLogs: CombatLogEntry[] = [];
   if (wasPerfect) {
+    const gimmickTail = prev.enemy.gimmick
+      ? ` & 기믹 2턴 봉쇄${shatteredShield > 0 ? ` · 보스 보호막 ${shatteredShield.toLocaleString()} 파쇄` : ''}`
+      : '';
     newLogs.push(
       nextLog(
         turn,
-        `✦ 완벽 개입! [${prev.enemy.heavyName ?? '강공격'}] 예고를 산산조각 파훼! (공명 +${STARLIGHT_PERFECT_REFUND}% 환급)`,
+        `✦ 완벽 개입! [${prev.enemy.heavyName ?? '강공격'}] 예고를 산산조각 파훼!${gimmickTail} (공명 +${STARLIGHT_PERFECT_REFUND}% 환급)`,
         'starlight'
       )
     );
   }
+  const shieldTail =
+    hitRes.shieldAbsorbed > 0 ? ` (결계 -${hitRes.shieldAbsorbed.toLocaleString()})` : '';
   newLogs.push(
     nextLog(
       turn,
       `✦ 별빛 개입 [${def.name}] → ${prev.enemy.name}에게 ${totalDmg.toLocaleString()} 피해!${
         anyCrit ? ' (치명타)' : ''
-      } [${extraNotes.join(' · ')}]`,
+      }${shieldTail} [${extraNotes.join(' · ')}]`,
       'starlight'
     )
   );
@@ -1028,6 +1398,8 @@ export function triggerStarlightIntervention(
         playerStatuses,
         cooldowns,
         enemyHp: 0,
+        enemyShield: 0,
+        gimmickSuppressedTurns,
         enemyStatuses: [],
         enemyTelegraph: false,
         starlightGauge: nextGauge,
@@ -1053,6 +1425,8 @@ export function triggerStarlightIntervention(
       playerStatuses,
       cooldowns,
       enemyHp,
+      enemyShield,
+      gimmickSuppressedTurns,
       enemyStatuses,
       enemyTelegraph: false,
       starlightGauge: nextGauge,

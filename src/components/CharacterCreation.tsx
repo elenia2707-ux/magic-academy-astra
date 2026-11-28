@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
+import { REBIRTH_VOW_ORDER, REBIRTH_VOWS } from '../data/rebirthVows';
 import { getCharacterQuote, getCharacterTitle, SCHOOLS } from '../data/schools';
-import type { Gender, SchoolId } from '../types/game';
+import type { Gender, RebirthVowId, SchoolId } from '../types/game';
 import { AstraCrestSvg, PlayerPortrait } from './GothicArt';
 
 interface Props {
   isRebirth?: boolean;
   rebirthCount?: number;
   initialName?: string;
-  onComplete: (name: string, gender: Gender, school: SchoolId) => void;
+  onComplete: (name: string, gender: Gender, school: SchoolId, vow?: RebirthVowId) => void;
   onCancelRebirth?: () => void;
 }
 
@@ -23,6 +24,7 @@ export const CharacterCreation: React.FC<Props> = ({
   const [name, setName] = useState(initialName || '아스텔');
   const [gender, setGender] = useState<Gender>('female');
   const [school, setSchool] = useState<SchoolId>('flame');
+  const [vow, setVow] = useState<RebirthVowId>('none');
 
   const schoolInfo = SCHOOLS[school];
   const title = getCharacterTitle(school, gender);
@@ -145,13 +147,58 @@ export const CharacterCreation: React.FC<Props> = ({
         </div>
       </div>
 
+      {isRebirth && (
+        <div className="panel rebirth-vow-panel">
+          <div className="panel-title-row">
+            <h2 className="panel-title">3. 성좌의 회귀 서약 (회차 변형 규칙)</h2>
+            <span className="panel-sub">축복 &amp; 대가 선택</span>
+          </div>
+          <div className="rebirth-vow-grid">
+            {REBIRTH_VOW_ORDER.map((vid) => {
+              const v = REBIRTH_VOWS[vid];
+              const selected = vow === v.id;
+              return (
+                <button
+                  key={v.id}
+                  type="button"
+                  className={`vow-choice-card${selected ? ' selected' : ''}`}
+                  style={{ ['--vow-accent' as string]: v.accentColor } as React.CSSProperties}
+                  onClick={() => setVow(v.id)}
+                  aria-pressed={selected}
+                >
+                  <div className="vow-choice-top">
+                    <div className="vow-choice-title-group">
+                      <span
+                        className="vow-choice-dot"
+                        style={{ background: v.accentColor }}
+                      />
+                      <strong className="vow-choice-name">{v.name}</strong>
+                      <span className="vow-choice-subtitle">{v.subtitle}</span>
+                    </div>
+                    <span
+                      className={`vow-remnant-badge${v.remnantBonusPct > 0 ? ' is-bonus' : ''}`}
+                    >
+                      {v.remnantBonusPct > 0 ? `+${v.remnantBonusPct}% 잔재` : '기본'}
+                    </span>
+                  </div>
+                  <div className="vow-blessing">✦ 축복: {v.blessingDesc}</div>
+                  <div className="vow-curse">⚠ 대가: {v.curseDesc}</div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         <button
           id="start-academy-btn"
           type="button"
           className="btn btn-gold btn-block"
           style={{ padding: '12px 16px', fontSize: 14 }}
-          onClick={() => onComplete(name.trim() || '아스텔', gender, school)}
+          onClick={() =>
+            onComplete(name.trim() || '아스텔', gender, school, isRebirth ? vow : 'none')
+          }
         >
           {isRebirth ? '별의 잔재를 품고 새로 입학하기' : '아스트라 마법학교 입학하기'}
         </button>

@@ -147,6 +147,22 @@ export interface DialogueLine {
   ngPlusText?: string;
 }
 
+export type BossGimmickId =
+  | 'crystal_shell'
+  | 'silence_ink'
+  | 'blood_thorns'
+  | 'unyielding_oath'
+  | 'abyss_siphon'
+  | 'eclipse_doom';
+
+export type GrimoireSealId =
+  | 'seal_shatter'
+  | 'seal_ward'
+  | 'seal_flame'
+  | 'seal_pierce'
+  | 'seal_anchor'
+  | 'seal_dawn';
+
 export interface MonsterDef {
   id: string;
   name: string;
@@ -160,6 +176,7 @@ export interface MonsterDef {
   stoneReward: number;
   isBoss?: boolean;
   isRankBoss?: boolean;
+  gimmick?: BossGimmickId;
   heavyInterval?: number; // N턴마다 강공격
   heavyName?: string;
   heavyMult?: number;
@@ -228,6 +245,9 @@ export interface CombatRuntime {
   familiarCounter: number;
   starlightGauge: number; // 0..100 별빛 개입 공명 게이지
   starlightFlash?: { id: number; perfect: boolean; label: string } | null;
+  enemyShield?: number; // P3-3 보스 기믹 외피/흑갑 보호막
+  bossGimmickTriggered?: boolean; // P3-3 체력 임계 1회 기믹 발동 여부
+  gimmickSuppressedTurns?: number; // P3-3 별빛 완벽 개입으로 기믹 억제 턴
   logs: CombatLogEntry[];
   lastVfx: SpellVfxEvent | null;
   victoryBanner?: string | null;
@@ -279,11 +299,19 @@ export type PrestigeUpgradeId =
   | 'darkMastery'
   | 'startingWealth';
 
+export type RebirthVowId =
+  | 'none'
+  | 'crimson_moon'
+  | 'abyss_tide'
+  | 'silent_hourglass';
+
 export interface PrestigeState {
   rebirthCount: number;
   starRemnants: number;
   totalRemnantsEarned: number;
   upgrades: Record<PrestigeUpgradeId, number>;
+  /** P3-4: 현재 회차의 성좌 서약 (변형 규칙) */
+  activeVow?: RebirthVowId;
 }
 
 export interface OfflineSummary {
@@ -379,6 +407,8 @@ export interface GameState {
   infirmary?: InfirmaryState | null;
   sanctum?: ArcaneSanctumState;
   affinity?: ProfessorAffinityState;
+  /** P3-3: 전술 마도서 인장 (막 보스 고유 기믹 대응) */
+  grimoireSeal?: GrimoireSealId | null;
   lastSavedAt: number;
   totalKills: number;
 }
