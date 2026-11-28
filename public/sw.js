@@ -1,4 +1,4 @@
-const CACHE_NAME = 'astra-academy-v13';
+const CACHE_NAME = 'astra-academy-v14';
 const ASSETS = [
   './',
   './index.html',
@@ -75,6 +75,28 @@ const ASSETS = [
   './audio/bgm_academy.mp3',
   './audio/bgm_battle.mp3',
   './audio/bgm_boss.mp3',
+  './art/backgrounds/act_1.webp',
+  './art/backgrounds/act_2.webp',
+  './art/backgrounds/act_3.webp',
+  './art/backgrounds/act_4.webp',
+  './art/backgrounds/act_5.webp',
+  './art/backgrounds/act_6.webp',
+  './art/gear/staff_0.webp',
+  './art/gear/staff_1.webp',
+  './art/gear/staff_2.webp',
+  './art/gear/staff_3.webp',
+  './art/gear/robe_0.webp',
+  './art/gear/robe_1.webp',
+  './art/gear/robe_2.webp',
+  './art/gear/robe_3.webp',
+  './art/gear/grimoire_0.webp',
+  './art/gear/grimoire_1.webp',
+  './art/gear/grimoire_2.webp',
+  './art/gear/grimoire_3.webp',
+  './art/gear/relic_0.webp',
+  './art/gear/relic_1.webp',
+  './art/gear/relic_2.webp',
+  './art/gear/relic_3.webp',
 ];
 
 self.addEventListener('install', (event) => {
