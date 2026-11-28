@@ -352,7 +352,7 @@ export const AbyssTab: React.FC<Props> = ({
                 <>
                   <div className="sanctum-intro">
                     장비와 스킬이 한계에 닿은 대마도사를 위한 심연 화로입니다. 마석을 태워
-                    무한히 각인하거나 희귀 재료로 연성하세요.
+                    무한히 각인하거나 희귀 재료로 연성하세요. 각인은 시간 회귀 후에도 유지됩니다.
                     {sanctum.totalStonesSpent > 0 && (
                       <> (누적 소모 ◆{sanctum.totalStonesSpent.toLocaleString()})</>
                     )}
@@ -447,7 +447,10 @@ export const AbyssTab: React.FC<Props> = ({
             <div style={{ fontSize: 12, color: '#c5bdb0', marginBottom: 10, lineHeight: 1.55 }}>
               환생은 <strong>원할 때만</strong> 선택할 수 있습니다. 회귀 시 레벨·계급·장비가
               초기화되는 대신 <strong>별의 잔재</strong>를 영구 획득하고,{' '}
-              <strong>새로운 출신 학파와 성별</strong>로 다시 입학할 수 있습니다.
+              <strong>새로운 출신 학파와 성별</strong>로 다시 입학할 수 있습니다.{' '}
+              <span style={{ color: '#d8b878' }}>
+                별의 성좌 각인과 <strong>심연 비전 제련소 각인</strong>은 회귀 후에도 그대로 유지됩니다.
+              </span>
             </div>
             <div className="stat-grid" style={{ marginBottom: 10 }}>
               <div className="stat-box">

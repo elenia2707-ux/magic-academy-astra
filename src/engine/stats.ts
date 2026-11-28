@@ -2,10 +2,11 @@ import { createFreshDailyQuests, ensureDailyQuestsCurrent } from '../data/dailyQ
 import { getEnhanceMultiplier, generateEquipment } from '../data/equipment';
 import { FAMILIARS } from '../data/familiars';
 import { getActiveInfirmaryEffect } from '../data/infirmary';
-import { createDefaultSanctum, getSanctumBonuses } from '../data/sanctum';
+import { createDefaultSanctum, ensureSanctum, getSanctumBonuses } from '../data/sanctum';
 import { RANKS, SCHOOLS } from '../data/schools';
 import { SKILL_MAP } from '../data/skills';
 import type {
+  ArcaneSanctumState,
   ComputedStats,
   DailyQuestState,
   GameState,
@@ -128,7 +129,8 @@ export function createNewGameState(
   gender: Gender,
   school: SchoolId,
   existingPrestige?: PrestigeState,
-  existingDailyQuests?: DailyQuestState
+  existingDailyQuests?: DailyQuestState,
+  existingSanctum?: ArcaneSanctumState
 ): GameState {
   const prestige = existingPrestige ?? createDefaultPrestige();
   const startWealthLv = prestige.upgrades.startingWealth ?? 0;
@@ -206,7 +208,8 @@ export function createNewGameState(
     dailyQuests: existingDailyQuests
       ? ensureDailyQuestsCurrent(existingDailyQuests)
       : createFreshDailyQuests(),
-    sanctum: createDefaultSanctum(),
+    // 제련소 각인은 '영구 전투 각인' — 시간 회귀 후에도 유지
+    sanctum: existingSanctum ? ensureSanctum(existingSanctum) : createDefaultSanctum(),
     lastSavedAt: Date.now(),
     totalKills: 0,
   };

@@ -803,7 +803,8 @@ export default function App() {
       gender,
       school,
       nextPrestige,
-      rebirthPending ? state.dailyQuests : undefined
+      rebirthPending ? state.dailyQuests : undefined,
+      rebirthPending ? ensureSanctum(state.sanctum) : undefined
     );
     storyQueueRef.current = [];
     syncStoryQueueCount();
