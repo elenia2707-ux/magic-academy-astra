@@ -7,6 +7,7 @@ import {
 import { effectiveStoneReward } from '../data/economy';
 import { ACTS, createAbyssEliteMonster, createTowerMonster } from '../data/acts';
 import { FAMILIARS } from '../data/familiars';
+import { getFamiliarSynergy, isFamiliarSynergyActive } from '../data/familiarSynergy';
 import { getActiveInfirmaryEffect } from '../data/infirmary';
 import { getNgPlusBaselineScaling, getRebirthVow, type RebirthVowDef } from '../data/rebirthVows';
 import { RANK_EXAM_BOSSES } from '../data/schools';
@@ -26,6 +27,7 @@ import type {
   CombatMode,
   CombatRuntime,
   ComputedStats,
+  FamiliarActionEvent,
   GameState,
   MonsterDef,
   StatusEffect,
@@ -262,6 +264,7 @@ export function createCombatRuntime(
     familiarCounter: 0,
     starlightGauge: Math.max(0, Math.min(STARLIGHT_MAX, Math.round(initialStarlight))),
     starlightFlash: null,
+    lastFamiliarAction: null,
     enemyShield: 0,
     bossGimmickTriggered: false,
     gimmickSuppressedTurns: 0,
@@ -310,9 +313,16 @@ export function stepCombatTurn(
   const vow = getRebirthVow(state.prestige.activeVow);
   const gimmickDef = getBossGimmick(prev.enemy.gimmick);
   const countered = isGimmickCountered(prev.enemy.gimmick, state.grimoireSeal);
-  const sealBossDmgMult = prev.enemy.isBoss
-    ? 1 + getSealBossDamageBonusPct(Boolean(state.equipped.grimoire), countered) / 100
-    : 1;
+  const ravenSynActive =
+    state.activeFamiliar === 'raven' &&
+    Boolean(state.familiars.raven) &&
+    prev.enemy.isBoss &&
+    isFamiliarSynergyActive('raven', state.school);
+  const ravenBossDmgMult = ravenSynActive ? 1.08 : 1;
+  const sealBossDmgMult =
+    (prev.enemy.isBoss
+      ? 1 + getSealBossDamageBonusPct(Boolean(state.equipped.grimoire), countered) / 100
+      : 1) * ravenBossDmgMult;
   const wardSealBonusMp =
     countered && prev.enemy.gimmick === 'silence_ink' && state.grimoireSeal === 'seal_ward'
       ? 6
@@ -341,6 +351,7 @@ export function stepCombatTurn(
 
   const newLogs: CombatLogEntry[] = [];
   let lastVfx = prev.lastVfx;
+  let lastFamiliarAction: FamiliarActionEvent | null = prev.lastFamiliarAction ?? null;
   let sfx: TurnOutcome['sfx'] = 'cast';
 
   // 1) 플레이어 턴 시작 상태이상(재생 / 화상·독)
@@ -698,35 +709,71 @@ export function stepCombatTurn(
         familiarCounter = 0;
         const famName = famDef.evolvedNames[ownedFam.evolution];
         const famScale = 1 + (ownedFam.level - 1) * 0.08 + ownedFam.evolution * 0.45;
+        const synDef = getFamiliarSynergy(famDef.id);
+        const synActive = isFamiliarSynergyActive(famDef.id, state.school);
+        const synTag = synActive ? ` [✦ ${synDef.name}]` : '';
+        let effectText = '';
+
         if (famDef.id === 'raven') {
-          const dmg = Math.max(1, Math.round(stats.magic * 0.72 * famScale * sealBossDmgMult));
+          const baseSealMult = prev.enemy.isBoss
+            ? 1 + getSealBossDamageBonusPct(Boolean(state.equipped.grimoire), countered) / 100
+            : 1;
+          const bossMult = synActive && prev.enemy.isBoss ? 1.25 : 1;
+          const dmg = Math.max(1, Math.round(stats.magic * 0.72 * famScale * baseSealMult * bossMult));
           const hitRes = applyDamageToEnemy(dmg, enemyHp, enemyShield);
           enemyHp = hitRes.enemyHp;
           enemyShield = hitRes.enemyShield;
+          const curseValue = 0.16 + ownedFam.evolution * 0.05 + (synActive ? 0.06 : 0);
           enemyStatuses = addOrRefreshStatus(enemyStatuses, {
             type: 'curse',
             turns: 2,
-            value: 0.16 + ownedFam.evolution * 0.05,
+            value: curseValue,
           });
+          effectText = `${dmg.toLocaleString()} 피해 · 저주${synActive && prev.enemy.isBoss ? ' · 보스강타' : ''}`;
           newLogs.push(
-            nextLog(turn, `사역마 [${famName}]이(가) 급소를 쪼아 ${dmg.toLocaleString()} 피해 & 저주!`, 'familiar')
+            nextLog(
+              turn,
+              `사역마 [${famName}]이(가) 급소를 쪼아 ${dmg.toLocaleString()} 피해 & 저주!${synTag}`,
+              'familiar'
+            )
           );
         } else if (famDef.id === 'golem') {
-          const sh = Math.round(stats.magic * 1.15 * famScale);
+          const sh = Math.round(stats.magic * 1.15 * famScale * (synActive ? 1.35 : 1));
           playerShield = Math.max(playerShield, sh);
+          if (synActive) {
+            playerStatuses = addOrRefreshStatus(playerStatuses, {
+              type: 'reflect',
+              turns: 2,
+              value: 0.3,
+            });
+          }
+          effectText = `보호막 ${sh.toLocaleString()}${synActive ? ' · 반사 2턴' : ''}`;
           newLogs.push(
-            nextLog(turn, `사역마 [${famName}]이(가) ${sh.toLocaleString()} 뼈 보호막 전개!`, 'familiar')
+            nextLog(
+              turn,
+              `사역마 [${famName}]이(가) ${sh.toLocaleString()} 뼈 보호막 전개${synActive ? ' & 반사 결계' : ''}!${synTag}`,
+              'familiar'
+            )
           );
         } else if (famDef.id === 'wisp') {
           const hpH = Math.max(1, Math.round(stats.maxHp * (0.08 + ownedFam.evolution * 0.03) * vow.healMult));
           const mpH = Math.round(18 * famScale);
           playerHp = Math.min(stats.maxHp, playerHp + hpH);
           playerMp = Math.min(stats.maxMp, playerMp + mpH);
+          if (synActive) {
+            starlightGauge = Math.min(STARLIGHT_MAX, starlightGauge + 8);
+          }
+          effectText = `HP +${hpH.toLocaleString()} · MP +${mpH}${synActive ? ' · 별빛 +8%' : ''}`;
           newLogs.push(
-            nextLog(turn, `사역마 [${famName}]이(가) 체력 +${hpH.toLocaleString()}, 마나 +${mpH} 회복!`, 'familiar')
+            nextLog(
+              turn,
+              `사역마 [${famName}]이(가) 체력 +${hpH.toLocaleString()}, 마나 +${mpH} 회복${synActive ? ' & 별빛 +8%' : ''}!${synTag}`,
+              'familiar'
+            )
           );
         } else if (famDef.id === 'wolf') {
-          const crit = Math.random() < 0.45;
+          const critChance = synActive ? 0.6 : 0.45;
+          const crit = Math.random() < critChance;
           const dmg = Math.max(
             1,
             Math.round(stats.magic * 0.98 * famScale * (crit ? 1.65 : 1) * sealBossDmgMult)
@@ -734,10 +781,20 @@ export function stepCombatTurn(
           const hitRes = applyDamageToEnemy(dmg, enemyHp, enemyShield);
           enemyHp = hitRes.enemyHp;
           enemyShield = hitRes.enemyShield;
+          if (synActive) {
+            enemyStatuses = addOrRefreshStatus(enemyStatuses, {
+              type: 'shock',
+              turns: 2,
+              value: 0.22,
+            });
+          }
+          effectText = `${dmg.toLocaleString()} 피해${crit ? '!' : ''}${synActive ? ' · 감전' : ''}`;
           newLogs.push(
             nextLog(
               turn,
-              `사역마 [${famName}]의 그림자 습격! ${dmg.toLocaleString()} 피해${crit ? ' (치명타)' : ''}.`,
+              `사역마 [${famName}]의 그림자 습격! ${dmg.toLocaleString()} 피해${crit ? ' (치명타)' : ''}${
+                synActive ? ' & 감전' : ''
+              }.${synTag}`,
               'familiar'
             )
           );
@@ -746,19 +803,29 @@ export function stepCombatTurn(
           const hitRes = applyDamageToEnemy(dmg, enemyHp, enemyShield);
           enemyHp = hitRes.enemyHp;
           enemyShield = hitRes.enemyShield;
-          const froze = Math.random() < 0.35 + ownedFam.evolution * 0.1;
+          const freezeChance = (synActive ? 0.5 : 0.35) + ownedFam.evolution * 0.1;
+          const froze = Math.random() < freezeChance;
+          let mpBonus = 0;
           if (froze) {
             enemyStatuses = addOrRefreshStatus(enemyStatuses, { type: 'freeze', turns: 1, value: 0 });
+            if (synActive) {
+              mpBonus = 12;
+              playerMp = Math.min(stats.maxMp, playerMp + mpBonus);
+            }
           }
+          effectText = `${dmg.toLocaleString()} 피해${froze ? ' · 빙결' : ''}${mpBonus > 0 ? ' · MP +12' : ''}`;
           newLogs.push(
             nextLog(
               turn,
-              `사역마 [${famName}]의 서리 날개짓! ${dmg.toLocaleString()} 피해${froze ? ' [빙결]' : ''}.`,
+              `사역마 [${famName}]의 서리 날개짓! ${dmg.toLocaleString()} 피해${froze ? ' [빙결]' : ''}${
+                mpBonus > 0 ? ' · 마나 +12' : ''
+              }.${synTag}`,
               'familiar'
             )
           );
         } else if (famDef.id === 'bat') {
-          const dmg = Math.max(1, Math.round(stats.magic * 0.84 * famScale * sealBossDmgMult));
+          const dmgScale = synActive ? famScale * 1.35 : famScale;
+          const dmg = Math.max(1, Math.round(stats.magic * 0.84 * dmgScale * sealBossDmgMult));
           const heal = Math.round(dmg * 0.45 * vow.healMult);
           const hitRes = applyDamageToEnemy(dmg, enemyHp, enemyShield);
           enemyHp = hitRes.enemyHp;
@@ -766,17 +833,32 @@ export function stepCombatTurn(
           playerHp = Math.min(stats.maxHp, playerHp + heal);
           enemyStatuses = addOrRefreshStatus(enemyStatuses, {
             type: 'burn',
-            turns: 2,
-            value: 0.3,
+            turns: synActive ? 3 : 2,
+            value: synActive ? 0.42 : 0.3,
           });
+          if (synActive) {
+            starlightGauge = Math.min(STARLIGHT_MAX, starlightGauge + 6);
+          }
+          effectText = `${dmg.toLocaleString()} 피해 · 흡혈 +${heal.toLocaleString()}${synActive ? ' · 화상 · 별빛+6%' : ''}`;
           newLogs.push(
             nextLog(
               turn,
-              `사역마 [${famName}]의 흑염 흡혈! ${dmg.toLocaleString()} 피해 & 체력 +${heal.toLocaleString()}.`,
+              `사역마 [${famName}]의 흑염 흡혈! ${dmg.toLocaleString()} 피해 & 체력 +${heal.toLocaleString()}${
+                synActive ? ' · 별빛 +6%' : ''
+              }.${synTag}`,
               'familiar'
             )
           );
         }
+
+        lastFamiliarAction = {
+          id: vfxIdCounter++,
+          familiarId: famDef.id,
+          name: famName,
+          actionLabel: synDef.actionName,
+          effectText,
+          synergyTriggered: synActive,
+        };
       }
     }
   }
@@ -826,6 +908,7 @@ export function stepCombatTurn(
         enemyTelegraph: false,
         familiarCounter,
         starlightGauge,
+        lastFamiliarAction,
         logs: [...prev.logs, ...newLogs].slice(-26),
         lastVfx,
         victoryBanner: `${prev.enemy.name} 토벌 완료!`,
@@ -1135,6 +1218,7 @@ export function stepCombatTurn(
         enemyTelegraph: false,
         familiarCounter,
         starlightGauge,
+        lastFamiliarAction,
         logs: [...prev.logs, ...newLogs].slice(-26),
         lastVfx,
         victoryBanner: `${prev.enemy.name} 토벌 완료!`,
@@ -1168,6 +1252,7 @@ export function stepCombatTurn(
         enemyTelegraph: false,
         familiarCounter,
         starlightGauge: 0,
+        lastFamiliarAction,
         logs: [...prev.logs, ...newLogs].slice(-26),
         lastVfx: {
           id: vfxIdCounter++,
@@ -1202,6 +1287,7 @@ export function stepCombatTurn(
       enemyTelegraph: nextTelegraph,
       familiarCounter,
       starlightGauge,
+      lastFamiliarAction,
       logs: [...prev.logs, ...newLogs].slice(-26),
       lastVfx,
     },
@@ -1228,9 +1314,15 @@ export function triggerStarlightIntervention(
   const perfectMult = wasPerfect ? STARLIGHT_PERFECT_MULT : 1;
   const vow = getRebirthVow(state.prestige.activeVow);
   const countered = isGimmickCountered(prev.enemy.gimmick, state.grimoireSeal);
-  const sealBossDmgMult = prev.enemy.isBoss
-    ? 1 + getSealBossDamageBonusPct(Boolean(state.equipped.grimoire), countered) / 100
-    : 1;
+  const ravenSynActive =
+    state.activeFamiliar === 'raven' &&
+    Boolean(state.familiars.raven) &&
+    prev.enemy.isBoss &&
+    isFamiliarSynergyActive('raven', state.school);
+  const sealBossDmgMult =
+    (prev.enemy.isBoss
+      ? 1 + getSealBossDamageBonusPct(Boolean(state.equipped.grimoire), countered) / 100
+      : 1) * (ravenSynActive ? 1.08 : 1);
 
   let playerHp = Math.min(stats.maxHp, prev.playerHp);
   let playerMp = Math.min(stats.maxMp, prev.playerMp);

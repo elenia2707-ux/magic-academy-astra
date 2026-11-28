@@ -5,6 +5,7 @@ import { getActBgArt, getMonsterArt } from '../data/art';
 import type { AcademyEventDef } from '../data/blackComedyEvents';
 import { getBossGimmick, GRIMOIRE_SEALS, isGimmickCountered } from '../data/bossGimmicks';
 import { FAMILIARS } from '../data/familiars';
+import { isFamiliarSynergyActive } from '../data/familiarSynergy';
 import { getActiveInfirmaryEffect } from '../data/infirmary';
 import { getRebirthVow } from '../data/rebirthVows';
 import { CATEGORY_META, getCharacterTitle, RANKS, SCHOOLS } from '../data/schools';
@@ -155,6 +156,13 @@ export const BattleTab: React.FC<Props> = ({
 
   const activeDeck = state.deck.slice(0, stats.maxDeckSlots);
   const activeFam = state.activeFamiliar ? state.familiars[state.activeFamiliar] : undefined;
+  const familiarHasSynergy = state.activeFamiliar
+    ? isFamiliarSynergyActive(state.activeFamiliar, state.school)
+    : false;
+  const familiarIsActing =
+    Boolean(state.activeFamiliar) &&
+    combat.lastFamiliarAction?.familiarId === state.activeFamiliar &&
+    combat.turn > 0;
   const starlightDef = STARLIGHT_SKILLS[state.school];
   const starlightGauge = Math.max(0, Math.min(STARLIGHT_MAX, combat.starlightGauge ?? 0));
   const starlightPct = Math.round((starlightGauge / STARLIGHT_MAX) * 100);
@@ -338,8 +346,20 @@ export const BattleTab: React.FC<Props> = ({
               />
               {combat.lastVfx?.target === 'player' && <SpellImpactVfx vfx={combat.lastVfx} />}
               {state.activeFamiliar && activeFam && (
-                <div className="familiar-mini-badge" title={FAMILIARS[state.activeFamiliar].name}>
+                <div
+                  className={`familiar-mini-badge${familiarIsActing ? ' is-acting' : ''}${
+                    familiarHasSynergy ? ' has-synergy' : ''
+                  }`}
+                  title={`${FAMILIARS[state.activeFamiliar].name}${
+                    familiarHasSynergy ? ' · 학파 공명' : ''
+                  }`}
+                >
                   <FamiliarPortrait id={state.activeFamiliar} variant="badge" />
+                  {familiarHasSynergy && (
+                    <span className="familiar-synergy-spark" aria-hidden="true">
+                      ✦
+                    </span>
+                  )}
                 </div>
               )}
             </button>
@@ -605,6 +625,29 @@ export const BattleTab: React.FC<Props> = ({
             aria-hidden="true"
           >
             {combat.starlightFlash.label}
+          </div>
+        )}
+
+        {combat.lastFamiliarAction && (
+          <div
+            key={combat.lastFamiliarAction.id}
+            className={`familiar-cutin-strip${
+              combat.lastFamiliarAction.synergyTriggered ? ' is-synergy' : ''
+            }`}
+            aria-hidden="true"
+          >
+            <span className="familiar-cutin-avatar">
+              <FamiliarPortrait id={combat.lastFamiliarAction.familiarId} variant="badge" />
+            </span>
+            <span className="familiar-cutin-body">
+              <span className="familiar-cutin-name">
+                {combat.lastFamiliarAction.name} · {combat.lastFamiliarAction.actionLabel}
+              </span>
+              <span className="familiar-cutin-effect">{combat.lastFamiliarAction.effectText}</span>
+            </span>
+            {combat.lastFamiliarAction.synergyTriggered && (
+              <span className="familiar-cutin-syn">✦ 공명</span>
+            )}
           </div>
         )}
       </div>

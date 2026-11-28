@@ -2,6 +2,7 @@ import { createDefaultAffinity, ensureAffinity, getAffinityBonuses } from '../da
 import { createFreshDailyQuests, ensureDailyQuestsCurrent } from '../data/dailyQuests';
 import { getEnhanceMultiplier, generateEquipment } from '../data/equipment';
 import { FAMILIARS } from '../data/familiars';
+import { getActiveFamiliarSynergy } from '../data/familiarSynergy';
 import { getActiveInfirmaryEffect } from '../data/infirmary';
 import { getNgPlusBaselineScaling, getRebirthVow } from '../data/rebirthVows';
 import { createDefaultSanctum, ensureSanctum, getSanctumBonuses } from '../data/sanctum';
@@ -289,6 +290,18 @@ export function computePlayerStats(state: GameState): ComputedStats {
       if (def.passiveDefPct) famDefPct += def.passiveDefPct * evoBonus;
       if (def.passiveCritRate) critRate += def.passiveCritRate * (1 + owned.evolution * 0.35);
       if (def.passiveMpRegen) mpRegen += Math.round(def.passiveMpRegen * (1 + owned.evolution * 0.4));
+
+      // P4-1: 사역마 학파 공명 패시브
+      const syn = getActiveFamiliarSynergy(state.activeFamiliar, state.school);
+      if (syn) {
+        if (syn.passive.magicPct) famMagicPct += syn.passive.magicPct;
+        if (syn.passive.defPct) famDefPct += syn.passive.defPct;
+        if (syn.passive.critDmgBonus) critDmg += syn.passive.critDmgBonus;
+        if (syn.passive.mpRegen) mpRegen += syn.passive.mpRegen;
+        if (syn.passive.elementBonus) {
+          categoryBonus[syn.passive.elementBonus.category] += syn.passive.elementBonus.pct;
+        }
+      }
     }
   }
 

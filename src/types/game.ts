@@ -224,6 +224,15 @@ export interface SpellVfxEvent {
   label: string;
 }
 
+export interface FamiliarActionEvent {
+  id: number;
+  familiarId: FamiliarId;
+  name: string;
+  actionLabel: string;
+  effectText: string;
+  synergyTriggered: boolean;
+}
+
 export interface CombatRuntime {
   mode: CombatMode;
   act: number;
@@ -245,6 +254,7 @@ export interface CombatRuntime {
   familiarCounter: number;
   starlightGauge: number; // 0..100 별빛 개입 공명 게이지
   starlightFlash?: { id: number; perfect: boolean; label: string } | null;
+  lastFamiliarAction?: FamiliarActionEvent | null; // P4-1 사역마 전투 컷인 연출
   enemyShield?: number; // P3-3 보스 기믹 외피/흑갑 보호막
   bossGimmickTriggered?: boolean; // P3-3 체력 임계 1회 기믹 발동 여부
   gimmickSuppressedTurns?: number; // P3-3 별빛 완벽 개입으로 기믹 억제 턴

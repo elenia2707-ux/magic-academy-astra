@@ -6,7 +6,13 @@ import {
   getFamiliarEvoCost,
   getFamiliarUpgradeCost,
 } from '../data/familiars';
-import { RANKS } from '../data/schools';
+import {
+  getActiveFamiliarSynergy,
+  getFamiliarSynergy,
+  getRecommendedFamiliarForSchool,
+  isFamiliarSynergyActive,
+} from '../data/familiarSynergy';
+import { RANKS, SCHOOLS } from '../data/schools';
 import type { FamiliarId, GameState } from '../types/game';
 import { FamiliarPortrait } from './GothicArt';
 
@@ -32,6 +38,13 @@ export const FamiliarTab: React.FC<Props> = ({
 
   const inspectFam = inspectId ? FAMILIARS[inspectId] : null;
   const inspectOwned = inspectId ? state.familiars[inspectId] : undefined;
+  const inspectSyn = inspectFam ? getFamiliarSynergy(inspectFam.id) : null;
+
+  const activeSyn = state.activeFamiliar
+    ? getActiveFamiliarSynergy(state.activeFamiliar, state.school)
+    : null;
+  const recId = getRecommendedFamiliarForSchool(state.school);
+  const recSyn = getFamiliarSynergy(recId);
 
   return (
     <div>
@@ -52,10 +65,30 @@ export const FamiliarTab: React.FC<Props> = ({
             </div>
           </div>
         ) : (
-          <div style={{ fontSize: 12, color: '#9a9386' }}>
-            출전한 사역마는 영구 패시브를 제공하고, 일정 턴마다 고유 스킬로 주인을 보조합니다.
-            초상화를 탭하면 수채화 원화를 크게 볼 수 있어요.
-          </div>
+          <>
+            <div style={{ fontSize: 12, color: '#9a9386' }}>
+              출전한 사역마는 영구 패시브를 제공하고, 일정 턴마다 고유 스킬로 주인을 보조합니다.
+              초상화를 탭하면 수채화 원화를 크게 볼 수 있어요.
+            </div>
+            {activeSyn ? (
+              <div className="familiar-synergy-banner is-active">
+                <div className="familiar-synergy-banner-title">
+                  ✦ 공명 활성 · {activeSyn.name}
+                </div>
+                <div className="familiar-synergy-banner-desc">{activeSyn.effectDesc}</div>
+              </div>
+            ) : (
+              <div className="familiar-synergy-banner">
+                <div className="familiar-synergy-banner-title">
+                  ✦ {SCHOOLS[state.school].name} 사역마 공명
+                </div>
+                <div className="familiar-synergy-banner-desc">
+                  추천 학파 공명: {FAMILIARS[recId].name} ({recSyn.name}) · 공용 공명: 검은 까마귀 /
+                  영혼불
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
 
@@ -63,6 +96,8 @@ export const FamiliarTab: React.FC<Props> = ({
         {FAMILIAR_LIST.map((fam) => {
           const owned = state.familiars[fam.id];
           const isActive = state.activeFamiliar === fam.id;
+          const syn = getFamiliarSynergy(fam.id);
+          const matchesSchool = isFamiliarSynergyActive(fam.id, state.school);
           const evoCost = owned && owned.evolution < 2 ? getFamiliarEvoCost(owned.evolution) : null;
           const upCost = owned ? getFamiliarUpgradeCost(owned.level) : 0;
           const canHatch =
@@ -110,6 +145,17 @@ export const FamiliarTab: React.FC<Props> = ({
                     {fam.description}
                   </div>
                 </div>
+              </div>
+
+              <div
+                className={`familiar-synergy-box${matchesSchool ? ' is-match' : ''}${
+                  isActive && matchesSchool ? ' is-active' : ''
+                }`}
+              >
+                <span className="familiar-synergy-tag">
+                  ✦ {syn.badgeLabel} · {syn.name}
+                </span>
+                <div className="familiar-synergy-desc">{syn.effectDesc}</div>
               </div>
 
               <div className="list-actions">
@@ -207,6 +253,15 @@ export const FamiliarTab: React.FC<Props> = ({
                 {inspectFam.evolvedNames.join(' → ')}
               </div>
             </div>
+            {inspectSyn && (
+              <div className="familiar-lore-box parchment">
+                <div className="familiar-lore-title">사역마 관찰 일지</div>
+                <div className="familiar-lore-note">{inspectSyn.loreNote}</div>
+                <div className="familiar-lore-synergy">
+                  ✦ {inspectSyn.badgeLabel} · {inspectSyn.name} — {inspectSyn.effectDesc}
+                </div>
+              </div>
+            )}
             <button
               type="button"
               className="btn btn-gold btn-block"
