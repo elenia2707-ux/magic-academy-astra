@@ -13,6 +13,7 @@ import {
 } from '../data/escortStories';
 import { FAMILIARS } from '../data/familiars';
 import { getFamiliarSynergy, isFamiliarSynergyActive } from '../data/familiarSynergy';
+import { getGearSetBonuses } from '../data/gearSets';
 import { getActiveInfirmaryEffect } from '../data/infirmary';
 import { PROFESSORS } from '../data/professors';
 import { getNgPlusBaselineScaling, getRebirthVow, type RebirthVowDef } from '../data/rebirthVows';
@@ -28,6 +29,7 @@ import {
   STARLIGHT_PERFECT_REFUND,
   STARLIGHT_SKILLS,
 } from '../data/starlight';
+import { getTowerDepthForFloor } from '../data/towerDepth';
 import type {
   CombatLogEntry,
   CombatMode,
@@ -197,7 +199,13 @@ export function createCombatRuntime(
     ngScale
   );
   // P0-6: 마석 보상 곡선 압축 (전투 화면 표시·실제 지급 모두 이 값 사용)
-  const enemy = { ...tuned, stoneReward: effectiveStoneReward(tuned.stoneReward) };
+  const towerDepth = mode === 'tower' ? getTowerDepthForFloor(towerFloor) : null;
+  const enemy = {
+    ...tuned,
+    hp: towerDepth ? Math.max(1, Math.round(tuned.hp * towerDepth.enemyHpMult)) : tuned.hp,
+    atk: towerDepth ? Math.max(1, Math.round(tuned.atk * towerDepth.enemyAtkMult)) : tuned.atk,
+    stoneReward: effectiveStoneReward(tuned.stoneReward),
+  };
   const introMsg =
     mode === 'rankBoss'
       ? `승급 시험 개시! [${enemy.name}]이(가) 앞을 가로막습니다.`
@@ -208,6 +216,9 @@ export function createCombatRuntime(
           : `[${enemy.name}]이(가) 검은 안개 속에서 나타났습니다.`;
 
   const initialLogs: CombatLogEntry[] = [nextLog(0, introMsg, 'system')];
+  if (towerDepth && towerDepth.tierNumber >= 2) {
+    initialLogs.push(nextLog(0, `[${towerDepth.name}] ${towerDepth.ruleSummary}`, 'status'));
+  }
   const infEffect = getActiveInfirmaryEffect(state);
   if (infEffect && state.infirmary) {
     initialLogs.push(
@@ -251,15 +262,28 @@ export function createCombatRuntime(
   }
 
   const escortBonus = getEscortBonuses(state);
+  const setBonus = getGearSetBonuses(state.equipped);
+  const totalOpeningShieldPct = escortBonus.openingShieldPct + setBonus.openingShieldPct;
   const openingShield =
-    escortBonus.openingShieldPct > 0
-      ? Math.round(stats.maxHp * (escortBonus.openingShieldPct / 100))
+    totalOpeningShieldPct > 0
+      ? Math.round(stats.maxHp * (totalOpeningShieldPct / 100))
       : 0;
-  if (state.activeEscort && openingShield > 0) {
+  if (state.activeEscort && escortBonus.openingShieldPct > 0) {
+    const escortShield = Math.round(stats.maxHp * (escortBonus.openingShieldPct / 100));
     initialLogs.push(
       nextLog(
         0,
-        `[동행 · ${PROFESSORS[state.activeEscort].name}] 개전 보호막 +${openingShield.toLocaleString()}!`,
+        `[동행 · ${PROFESSORS[state.activeEscort].name}] 개전 보호막 +${escortShield.toLocaleString()}!`,
+        'system'
+      )
+    );
+  }
+  if (setBonus.openingShieldPct > 0) {
+    const setShield = Math.round(stats.maxHp * (setBonus.openingShieldPct / 100));
+    initialLogs.push(
+      nextLog(
+        0,
+        `[마도구 세트] 개전 보호막 +${setShield.toLocaleString()}!`,
         'system'
       )
     );
@@ -335,6 +359,11 @@ export function stepCombatTurn(
   const turn = prev.turn + 1;
   const vow = getRebirthVow(state.prestige.activeVow);
   const escortBonus = getEscortBonuses(state);
+  const setBonus = getGearSetBonuses(state.equipped);
+  const towerDepth = prev.mode === 'tower' ? getTowerDepthForFloor(prev.towerFloor) : null;
+  const towerStarMult = towerDepth?.playerStarlightMult ?? 1;
+  const towerCritDmgBonus =
+    towerDepth && towerDepth.playerCritDmgBonus > 0 ? towerDepth.playerCritDmgBonus : 0;
   const gimmickDef = getBossGimmick(prev.enemy.gimmick);
   const countered = isGimmickCountered(prev.enemy.gimmick, state.grimoireSeal);
   const ravenSynActive =
@@ -346,6 +375,10 @@ export function stepCombatTurn(
   const escortBossDmgMult =
     prev.enemy.isBoss && escortBonus.bossDamagePct > 0
       ? 1 + escortBonus.bossDamagePct / 100
+      : 1;
+  const setBossDmgMult =
+    prev.enemy.isBoss && setBonus.bossDamagePct > 0
+      ? 1 + setBonus.bossDamagePct / 100
       : 1;
   const sealBossDmgMult =
     (prev.enemy.isBoss
@@ -584,7 +617,7 @@ export function stepCombatTurn(
         for (let h = 0; h < hits; h++) {
           const isCrit = Math.random() * 100 < stats.critRate + (def.bonusCrit ?? 0);
           if (isCrit) anyCrit = true;
-          const critMult = isCrit ? stats.critDmg / 100 : 1;
+          const critMult = isCrit ? (stats.critDmg + towerCritDmgBonus) / 100 : 1;
           const raw =
             stats.magic *
             (def.powerPct / 100) *
@@ -596,6 +629,7 @@ export function stepCombatTurn(
             enemyVuln *
             sealBossDmgMult *
             escortBossDmgMult *
+            setBossDmgMult *
             critMult *
             (0.94 + Math.random() * 0.12);
           const mitigated = Math.max(
@@ -692,7 +726,8 @@ export function stepCombatTurn(
         enemyVuln *
         sealBossDmgMult *
         escortBossDmgMult *
-        (isCrit ? stats.critDmg / 100 : 1);
+        setBossDmgMult *
+        (isCrit ? (stats.critDmg + towerCritDmgBonus) / 100 : 1);
       const dmg = Math.max(Math.round(raw * 0.25), Math.round(raw - prev.enemy.def * 0.45));
       const hitRes = applyDamageToEnemy(dmg, enemyHp, enemyShield);
       enemyHp = hitRes.enemyHp;
@@ -720,14 +755,21 @@ export function stepCombatTurn(
     }
   }
 
-  // P3-1: 별빛 공명 게이지 충전 (매 턴 +16, 빙결 시 +8, 치명타 시 +8) × 서약/서표/동행 배율
+  // P3-1: 별빛 공명 게이지 충전 (매 턴 +16, 빙결 시 +8, 치명타 시 +8) × 서약/서표/동행/세트/심층 배율
   const turnStarGain =
     (playerFrozen ? Math.floor(STARLIGHT_GAIN_TURN / 2) : STARLIGHT_GAIN_TURN) +
     (landedCrit ? STARLIGHT_GAIN_CRIT : 0);
   starlightGauge = Math.min(
     STARLIGHT_MAX,
     starlightGauge +
-      Math.round(turnStarGain * vow.starlightGainMult * dawnSealStarlightMult * escortBonus.starlightGainMult)
+      Math.round(
+        turnStarGain *
+          vow.starlightGainMult *
+          dawnSealStarlightMult *
+          escortBonus.starlightGainMult *
+          setBonus.starlightGainMult *
+          towerStarMult
+      )
   );
 
   // 3) 사역마 보조 행동
@@ -1091,20 +1133,33 @@ export function stepCombatTurn(
           STARLIGHT_GAIN_HIT *
             vow.starlightGainMult *
             dawnSealStarlightMult *
-            escortBonus.starlightGainMult
+            escortBonus.starlightGainMult *
+            setBonus.starlightGainMult *
+            towerStarMult
         )
     );
 
-    // 피해 반사 체크
+    // 피해 반사 체크 (결계 반사 버프 + 마도구 세트 반사)
     const reflect = getStatus(playerStatuses, 'reflect');
-    if (reflect && afterDef > 0) {
-      const refDmg = Math.max(1, Math.round(afterDef * reflect.value));
-      const refRes = applyDamageToEnemy(refDmg, enemyHp, enemyShield);
-      enemyHp = refRes.enemyHp;
-      enemyShield = refRes.enemyShield;
-      newLogs.push(
-        nextLog(turn, `결계 반사! ${prev.enemy.name}에게 ${refDmg.toLocaleString()} 피해 반사!`, 'player')
-      );
+    if ((reflect || setBonus.reflectBonusPct > 0) && afterDef > 0) {
+      const statusRefDmg = reflect ? Math.max(1, Math.round(afterDef * reflect.value)) : 0;
+      const setRefDmg =
+        setBonus.reflectBonusPct > 0
+          ? Math.max(1, Math.round(afterDef * (setBonus.reflectBonusPct / 100)))
+          : 0;
+      const refDmg = statusRefDmg + setRefDmg;
+      if (refDmg > 0) {
+        const refRes = applyDamageToEnemy(refDmg, enemyHp, enemyShield);
+        enemyHp = refRes.enemyHp;
+        enemyShield = refRes.enemyShield;
+        newLogs.push(
+          nextLog(
+            turn,
+            `${reflect ? '결계 반사' : '세트 반사'}! ${prev.enemy.name}에게 ${refDmg.toLocaleString()} 피해 반사!`,
+            'player'
+          )
+        );
+      }
     }
 
     const atkLabel = isHeavy ? `[${prev.enemy.heavyName ?? '강공격'}]` : '공격';
@@ -1464,6 +1519,10 @@ export function triggerStarlightIntervention(
   const perfectMult = wasPerfect ? STARLIGHT_PERFECT_MULT : 1;
   const vow = getRebirthVow(state.prestige.activeVow);
   const escortBonus = getEscortBonuses(state);
+  const setBonus = getGearSetBonuses(state.equipped);
+  const towerDepth = prev.mode === 'tower' ? getTowerDepthForFloor(prev.towerFloor) : null;
+  const towerCritDmgBonus =
+    towerDepth && towerDepth.playerCritDmgBonus > 0 ? towerDepth.playerCritDmgBonus : 0;
   const countered = isGimmickCountered(prev.enemy.gimmick, state.grimoireSeal);
   const ravenSynActive =
     state.activeFamiliar === 'raven' &&
@@ -1474,12 +1533,17 @@ export function triggerStarlightIntervention(
     prev.enemy.isBoss && escortBonus.bossDamagePct > 0
       ? 1 + escortBonus.bossDamagePct / 100
       : 1;
+  const setBossDmgMult =
+    prev.enemy.isBoss && setBonus.bossDamagePct > 0
+      ? 1 + setBonus.bossDamagePct / 100
+      : 1;
   const sealBossDmgMult =
     (prev.enemy.isBoss
       ? 1 + getSealBossDamageBonusPct(Boolean(state.equipped.grimoire), countered) / 100
       : 1) *
     (ravenSynActive ? 1.08 : 1) *
-    escortBossDmgMult;
+    escortBossDmgMult *
+    setBossDmgMult;
 
   let playerHp = Math.min(stats.maxHp, prev.playerHp);
   let playerMp = Math.min(stats.maxMp, prev.playerMp);
@@ -1506,7 +1570,7 @@ export function triggerStarlightIntervention(
     const guaranteedCrit = state.school === 'flame' && hasBurn;
     const isCrit = guaranteedCrit || Math.random() * 100 < stats.critRate + def.bonusCrit;
     if (isCrit) anyCrit = true;
-    const critMult = isCrit ? stats.critDmg / 100 : 1;
+    const critMult = isCrit ? (stats.critDmg + towerCritDmgBonus) / 100 : 1;
     const raw =
       stats.magic *
       (def.powerPct / 100) *

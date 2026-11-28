@@ -122,6 +122,25 @@ function normalizeViewedSideStories(raw?: unknown): string[] {
   return raw.filter((id): id is string => typeof id === 'string');
 }
 
+function normalizeClaimedTowerMilestones(raw?: unknown): number[] {
+  if (!Array.isArray(raw)) return [];
+  const seen = new Set<number>();
+  const result: number[] = [];
+  for (const val of raw) {
+    if (
+      typeof val === 'number' &&
+      Number.isFinite(val) &&
+      Number.isInteger(val) &&
+      val > 0 &&
+      !seen.has(val)
+    ) {
+      seen.add(val);
+      result.push(val);
+    }
+  }
+  return result;
+}
+
 function hydrateState(parsed: Partial<GameState>): GameState | null {
   if (!parsed || typeof parsed !== 'object' || !parsed.created) return null;
   const fallback = createEmptyUncreatedState();
@@ -170,6 +189,7 @@ function hydrateState(parsed: Partial<GameState>): GameState | null {
     grimoireSeal: normalizeGrimoireSeal(parsed.grimoireSeal),
     activeEscort: normalizeActiveEscort(parsed.activeEscort),
     viewedSideStories: normalizeViewedSideStories(parsed.viewedSideStories),
+    claimedTowerMilestones: normalizeClaimedTowerMilestones(parsed.claimedTowerMilestones),
     ...(normalizedAffinity ? { affinity: normalizedAffinity } : {}),
   });
 }

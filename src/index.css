@@ -6066,3 +6066,582 @@ select,
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* ===== P4-4: 마도구 세트 효과 & 무한 탑 심층 ===== */
+.equip-grid > .list-card {
+  min-width: 0;
+}
+
+.gear-set-tag-row {
+  margin-top: 2px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  min-width: 0;
+}
+
+.gear-set-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-top: 2px;
+  padding: 1px 6px;
+  max-width: 100%;
+  border-radius: 999px;
+  font-size: 9.5px;
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: 0.01em;
+  color: #f6e2b4;
+  background: linear-gradient(180deg, rgba(64, 34, 42, 0.92) 0%, rgba(34, 17, 24, 0.96) 100%);
+  border: 1px solid var(--set-accent, rgba(214, 174, 102, 0.58));
+  box-shadow: inset 0 1px 0 rgba(255, 236, 195, 0.14);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gear-set-tag-row .gear-set-tag {
+  margin-top: 0;
+}
+
+.gear-set-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.gear-set-active-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.gear-set-empty {
+  padding: 9px 10px;
+  border-radius: 9px;
+  border: 1px dashed rgba(184, 146, 90, 0.28);
+  background: rgba(18, 10, 14, 0.58);
+  font-size: 11px;
+  line-height: 1.45;
+  color: #a49484;
+  text-align: center;
+}
+
+.gear-set-status-row {
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(184, 146, 90, 0.28);
+  border-left: 3px solid var(--set-accent, #c8a45d);
+  background: linear-gradient(180deg, #27151c 0%, #1a0e13 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 232, 190, 0.07);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.gear-set-status-row.is-active {
+  border-color: rgba(226, 188, 112, 0.62);
+  border-left-color: var(--set-accent, #e3c481);
+  background:
+    radial-gradient(ellipse at 0% 0%, rgba(232, 194, 114, 0.14) 0%, transparent 65%),
+    linear-gradient(180deg, #392020 0%, #201116 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 238, 196, 0.18),
+    0 2px 7px rgba(0, 0, 0, 0.36);
+}
+
+.gear-set-status-row.is-tier4 {
+  border-color: #ecc97b;
+  box-shadow:
+    inset 0 0 0 1px rgba(248, 222, 152, 0.24),
+    0 2px 10px rgba(236, 201, 123, 0.2);
+}
+
+.gear-set-status-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.gear-set-status-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #f3e1be;
+  min-width: 0;
+}
+
+.gear-set-status-count {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #c8b39a;
+  font-variant-numeric: tabular-nums;
+}
+
+.gear-set-tier-badge {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 1px 7px;
+  border-radius: 999px;
+  border: 1px solid rgba(184, 146, 90, 0.34);
+  background: rgba(20, 12, 16, 0.72);
+  color: #b7a38e;
+  white-space: nowrap;
+}
+
+.gear-set-tier-badge.is-active {
+  border-color: #6b4714;
+  background: linear-gradient(180deg, #f3d796 0%, #c99a49 100%);
+  color: #261408;
+  box-shadow: inset 0 1px 0 rgba(255, 250, 228, 0.55);
+}
+
+.gear-set-status-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 10.5px;
+  line-height: 1.38;
+  min-width: 0;
+}
+
+.gear-set-status-lines .is-on {
+  color: #f4dfab;
+  font-weight: 600;
+}
+
+.gear-set-status-lines .is-off {
+  color: #8c7d72;
+}
+
+.gear-set-workshop {
+  padding-top: 9px;
+  border-top: 1px solid rgba(184, 146, 90, 0.22);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.gear-set-workshop-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.gear-set-workshop-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #ebd094;
+}
+
+.gear-set-workshop-wallet {
+  font-size: 10.5px;
+  color: #bda892;
+  font-variant-numeric: tabular-nums;
+}
+
+.gear-set-slot-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.gear-set-slot-btn {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 6px 4px;
+  border-radius: 8px;
+  border: 1px solid rgba(184, 146, 90, 0.3);
+  background: linear-gradient(180deg, #27161d 0%, #190e13 100%);
+  color: #cfc0ae;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: border-color 0.14s ease, background 0.14s ease, color 0.14s ease;
+}
+
+.gear-set-slot-btn.is-active {
+  border-color: #9c7028;
+  background: linear-gradient(180deg, #ead9b5 0%, #dbc59a 100%);
+  color: #2e1d12;
+  box-shadow: inset 0 1px 0 rgba(255, 248, 228, 0.65);
+}
+
+.gear-set-slot-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #e6be6c;
+  flex-shrink: 0;
+}
+
+.gear-set-slot-btn.is-active .gear-set-slot-dot {
+  background: #7c4c12;
+}
+
+.gear-set-target-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 6px 9px;
+  border-radius: 8px;
+  border: 1px solid rgba(184, 146, 90, 0.24);
+  background: rgba(16, 9, 13, 0.72);
+  min-width: 0;
+}
+
+.gear-set-target-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #a89684;
+  flex-shrink: 0;
+}
+
+.gear-set-target-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  min-width: 0;
+  flex: 1 1 auto;
+  justify-content: flex-end;
+}
+
+.gear-set-target-name {
+  font-size: 11.5px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.gear-set-target-empty {
+  font-size: 11px;
+  color: #7d6d63;
+}
+
+.gear-set-option-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.gear-set-option-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 8px 9px;
+  border-radius: 9px;
+  border: 1px solid rgba(184, 146, 90, 0.26);
+  border-left: 3px solid var(--set-accent, #c8a45d);
+  background: linear-gradient(180deg, #25141b 0%, #180d12 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 232, 190, 0.06);
+  min-width: 0;
+}
+
+.gear-set-option-card.is-inscribed {
+  border-color: rgba(226, 188, 112, 0.62);
+  border-left-color: var(--set-accent, #ecc97b);
+  background: linear-gradient(180deg, #3a231d 0%, #211216 100%);
+}
+
+.gear-set-opt-info {
+  flex: 1 1 165px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.gear-set-opt-name {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #f4e3c2;
+  line-height: 1.25;
+}
+
+.gear-set-opt-desc {
+  font-size: 10px;
+  line-height: 1.38;
+  color: #b7a692;
+  word-break: keep-all;
+}
+
+.gear-set-opt-btn {
+  flex: 0 0 auto;
+  font-size: 10.5px;
+  padding: 5px 8px;
+  white-space: nowrap;
+}
+
+/* 무한 탑 심층 하이라이트 & 쾌속 등반 */
+.tower-depth-card {
+  margin-bottom: 9px;
+  padding: 10px 11px;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #ead9b5 0%, #dbc59a 100%);
+  color: #2e1d12;
+  border: 1.5px solid #8f6b3a;
+  border-left: 4px solid var(--depth-accent, #8f6b3a);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 248, 228, 0.68),
+    0 2px 8px rgba(0, 0, 0, 0.42);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.tower-depth-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.tower-depth-title-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.tower-depth-name {
+  font-family: var(--font-round);
+  font-size: 13px;
+  font-weight: 800;
+  color: #2e1d12;
+  line-height: 1.25;
+}
+
+.tower-depth-range {
+  font-size: 10px;
+  font-weight: 800;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(96, 62, 26, 0.16);
+  border: 1px solid rgba(96, 62, 26, 0.34);
+  color: #4f3116;
+  white-space: nowrap;
+}
+
+.tower-depth-mult {
+  flex-shrink: 0;
+  font-size: 10.5px;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #5b3a1d;
+  border: 1px solid #3c220c;
+  color: #f8e4b6;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.tower-depth-rule {
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.38;
+  color: #4b2d14;
+  word-break: keep-all;
+}
+
+.tower-depth-lore {
+  font-size: 10.5px;
+  line-height: 1.42;
+  color: #5b4028;
+  padding-top: 3px;
+  border-top: 1px dashed rgba(107, 67, 16, 0.28);
+  word-break: keep-all;
+}
+
+.tower-jump-btn {
+  margin-bottom: 7px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
+
+/* 무한 탑 심층 마일스톤 */
+.tower-milestone-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tower-milestone-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.tower-milestone-card {
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(184, 146, 90, 0.28);
+  background: linear-gradient(180deg, #27151b 0%, #1a0e13 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 232, 190, 0.07);
+  color: #e6d7c0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.tower-milestone-card.is-claimable {
+  background: linear-gradient(180deg, #ead9b5 0%, #dbc59a 100%);
+  color: #2e1d12;
+  border: 1.5px solid #9c7028;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 248, 228, 0.68),
+    0 0 0 1px rgba(242, 212, 145, 0.5),
+    0 3px 9px rgba(0, 0, 0, 0.42);
+}
+
+.tower-milestone-card.is-claimed {
+  border-color: rgba(154, 196, 154, 0.34);
+  background: linear-gradient(180deg, #22181d 0%, #170f14 100%);
+  opacity: 0.88;
+}
+
+.tower-milestone-card.is-locked {
+  border-color: rgba(164, 134, 92, 0.2);
+  background: rgba(19, 11, 15, 0.72);
+  color: #a49486;
+}
+
+.tower-ms-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.tower-ms-title-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.tower-ms-floor {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(184, 146, 90, 0.22);
+  border: 1px solid rgba(214, 174, 102, 0.4);
+  color: #f2d692;
+  font-variant-numeric: tabular-nums;
+}
+
+.tower-milestone-card.is-claimable .tower-ms-floor {
+  background: #5b3a1d;
+  border-color: #3c220c;
+  color: #f8e4b6;
+}
+
+.tower-milestone-card.is-locked .tower-ms-floor {
+  background: rgba(120, 104, 92, 0.22);
+  border-color: rgba(140, 122, 108, 0.28);
+  color: #9f9082;
+}
+
+.tower-ms-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #f3e4c7;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tower-milestone-card.is-claimable .tower-ms-title {
+  color: #2e1d12;
+}
+
+.tower-milestone-card.is-locked .tower-ms-title {
+  color: #b5a697;
+}
+
+.tower-ms-claim-btn {
+  flex-shrink: 0;
+  padding: 3px 11px;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.tower-ms-seal {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(114, 34, 40, 0.82) 0%, rgba(72, 20, 26, 0.92) 100%);
+  border: 1px solid rgba(226, 178, 108, 0.58);
+  color: #f6ddb0;
+  font-size: 10px;
+  font-weight: 800;
+  white-space: nowrap;
+  box-shadow: inset 0 1px 0 rgba(255, 224, 180, 0.2);
+}
+
+.tower-ms-locked-badge {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 700;
+  color: #8f8074;
+  white-space: nowrap;
+}
+
+.tower-ms-reward {
+  font-size: 11px;
+  line-height: 1.38;
+  color: #e3c481;
+  word-break: keep-all;
+}
+
+.tower-milestone-card.is-claimable .tower-ms-reward {
+  color: #4f2f12;
+  font-weight: 700;
+}
+
+.tower-milestone-card.is-claimed .tower-ms-reward {
+  color: #a99b8d;
+}
+
+.tower-milestone-card.is-locked .tower-ms-reward {
+  color: #9a8b7d;
+}
+

@@ -1,5 +1,6 @@
 import { ECON } from './economy';
-import type { EquipmentItem, EquipSlot, MagicCategory, Rarity } from '../types/game';
+import { rollGearSetForRarity } from './gearSets';
+import type { EquipmentItem, EquipSlot, GearSetId, MagicCategory, Rarity } from '../types/game';
 
 export const SLOT_LABELS: Record<EquipSlot, string> = {
   staff: '지팡이',
@@ -48,7 +49,8 @@ export function rollRarity(tier: number, luckBonus = 0): Rarity {
 export function generateEquipment(
   tier: number,
   forcedSlot?: EquipSlot,
-  forcedRarity?: Rarity
+  forcedRarity?: Rarity,
+  forcedSetId?: GearSetId
 ): EquipmentItem {
   const slots: EquipSlot[] = ['staff', 'robe', 'grimoire', 'relic'];
   const slot = forcedSlot ?? slots[Math.floor(Math.random() * slots.length)];
@@ -102,6 +104,8 @@ export function generateEquipment(
     };
   }
 
+  const setId = forcedSetId ?? rollGearSetForRarity(rarity);
+
   return {
     uid: `eq_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
     name,
@@ -109,6 +113,7 @@ export function generateEquipment(
     rarity,
     tier,
     enhance: 0,
+    ...(setId ? { setId } : {}),
     stats,
   };
 }
@@ -144,6 +149,7 @@ export function getItemScoreFor(item: EquipmentItem, category?: MagicCategory): 
   let score = getItemPowerScore(item);
   const eb = item.stats.elementBonus;
   if (category && eb && eb.category === category) score += Math.round(eb.pct * 6);
+  if (item.setId) score += 25;
   return score;
 }
 

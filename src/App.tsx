@@ -87,6 +87,18 @@ import {
 import { RANKS, SCHOOLS } from './data/schools';
 import { SKILL_MAP } from './data/skills';
 import { STARLIGHT_MAX } from './data/starlight';
+import {
+  GEAR_SETS,
+  getSchoolPreferredSet,
+  rollReforgeGearSet,
+  SET_INSCRIBE_COST,
+} from './data/gearSets';
+import {
+  formatTowerMilestoneReward,
+  getTowerDepthForFloor,
+  getTowerJumpTarget,
+  TOWER_MILESTONES,
+} from './data/towerDepth';
 import { getTowerLordForFloor } from './data/towerLords';
 import { bgmEngine, type BgmTrackId } from './engine/bgm';
 import { createCombatRuntime, stepCombatTurn, triggerStarlightIntervention } from './engine/combat';
@@ -124,6 +136,7 @@ import type {
   EquipSlot,
   FamiliarId,
   GameState,
+  GearSetId,
   Gender,
   GrimoireSealId,
   MagicCategory,
@@ -534,9 +547,11 @@ export default function App() {
     (curCombat: CombatRuntime, curState: GameState, carryStarlight: number, tickMs: number) => {
       combatTransitionRef.current = true;
       const rewardMult = getRewardMultiplier(curState);
+      const towerRewardMult =
+        curCombat.mode === 'tower' ? getTowerDepthForFloor(curCombat.towerFloor).rewardMult : 1;
       const enemy = curCombat.enemy;
-      const expGain = Math.round(enemy.expReward * rewardMult);
-      const stoneGain = Math.round(enemy.stoneReward * rewardMult);
+      const expGain = Math.round(enemy.expReward * rewardMult * towerRewardMult);
+      const stoneGain = Math.round(enemy.stoneReward * rewardMult * towerRewardMult);
 
       // 전환 대상 및 사이드이펙트를 state updater 밖에서 결정적으로 계산
       let nextMode: CombatMode = curCombat.mode;
@@ -921,7 +936,8 @@ export default function App() {
       rebirthPending ? ensureAffinity(state.affinity) : undefined,
       rebirthPending ? ensureArchive(state.archive) : undefined,
       rebirthPending ? (state.activeEscort ?? null) : null,
-      rebirthPending ? (state.viewedSideStories ?? []) : []
+      rebirthPending ? (state.viewedSideStories ?? []) : [],
+      rebirthPending ? (state.claimedTowerMilestones ?? []) : []
     );
     storyQueueRef.current = [];
     syncStoryQueueCount();
@@ -971,6 +987,66 @@ export default function App() {
     playSfx('click', state.settings.sfxEnabled);
     setTab('battle');
     startCombatNow(state, stats, 'tower', state.selectedAct, 0, state.towerFloor);
+  };
+
+  // P4-4: 무한 심연 탑 심층 마일스톤 수령
+  const handleClaimTowerMilestone = (floor: number) => {
+    const def = TOWER_MILESTONES.find((m) => m.floor === floor);
+    if (!def) return;
+    if (state.highestTowerFloor < floor || (state.claimedTowerMilestones ?? []).includes(floor)) {
+      return;
+    }
+    const rewardGear = def.guaranteedGearRarity
+      ? generateEquipment(
+          Math.min(7, Math.max(4, Math.ceil(floor / 6) + 3)),
+          undefined,
+          def.guaranteedGearRarity,
+          getSchoolPreferredSet(state.school)
+        )
+      : null;
+    playSfx('victory', state.settings.sfxEnabled);
+    setState((prev) => {
+      const prevClaimed = prev.claimedTowerMilestones ?? [];
+      if (prev.highestTowerFloor < floor || prevClaimed.includes(floor)) return prev;
+      const remnants = def.starRemnants ?? 0;
+      const nextInventory = rewardGear
+        ? [rewardGear, ...prev.inventory].slice(0, 36)
+        : prev.inventory;
+      const next: GameState = {
+        ...prev,
+        arcaneDust: prev.arcaneDust + (def.arcaneDust ?? 0),
+        tomeShards: prev.tomeShards + (def.tomeShards ?? 0),
+        eggShards: prev.eggShards + (def.eggShards ?? 0),
+        inventory: nextInventory,
+        prestige:
+          remnants > 0
+            ? {
+                ...prev.prestige,
+                starRemnants: prev.prestige.starRemnants + remnants,
+                totalRemnantsEarned: prev.prestige.totalRemnantsEarned + remnants,
+              }
+            : prev.prestige,
+        claimedTowerMilestones: [...prevClaimed, floor],
+      };
+      saveGameToStorage(next);
+      return next;
+    });
+    showToast(`🏰 무한 탑 ${floor}층 마일스톤 수령! ${formatTowerMilestoneReward(def)}`);
+  };
+
+  // P4-4: 무한 심연 탑 심층 체크포인트 쾌속 등반
+  const handleJumpTowerCheckpoint = () => {
+    const target = getTowerJumpTarget(state.highestTowerFloor);
+    if (target <= state.towerFloor) return;
+    playSfx('cast', state.settings.sfxEnabled);
+    setState((prev) => {
+      const t = getTowerJumpTarget(prev.highestTowerFloor);
+      if (t <= prev.towerFloor) return prev;
+      const next: GameState = { ...prev, towerFloor: t };
+      saveGameToStorage(next);
+      return next;
+    });
+    showToast(`⚡ 심층 쾌속 등반 — 제 ${target}층으로 이동했습니다!`);
   };
 
   const handleAssignTraining = (slotIdx: number, skillId: string | null) => {
@@ -1369,9 +1445,10 @@ export default function App() {
     const cats: MagicCategory[] = ['flame', 'frost', 'thunder', 'earth', 'dark'];
     const picked = cats[Math.floor(Math.random() * cats.length)];
     const pct = Math.round(10 + RARITY_META[item.rarity].order * 5 + item.tier * 2);
+    const nextSetId = rollReforgeGearSet(state.school, item.setId);
     setState((prev) => {
       const cur = prev.equipped[slot];
-      if (!cur) return prev;
+      if (!cur || prev.arcaneDust < 80) return prev;
       return {
         ...prev,
         arcaneDust: prev.arcaneDust - 80,
@@ -1379,12 +1456,42 @@ export default function App() {
           ...prev.equipped,
           [slot]: {
             ...cur,
+            setId: nextSetId,
             stats: { ...cur.stats, elementBonus: { category: picked, pct } },
           },
         },
       };
     });
-    showToast('속성 옵션 재련 완료!');
+    showToast(`속성 & 세트 재련 완료! [${GEAR_SETS[nextSetId].shortName}]`);
+  };
+
+  // P4-4: 마도구 세트 확정 각인
+  const handleInscribeGearSet = (slot: EquipSlot, setId: GearSetId) => {
+    const item = state.equipped[slot];
+    if (!item || item.setId === setId) return;
+    if (state.arcaneDust < SET_INSCRIBE_COST.dust || state.stones < SET_INSCRIBE_COST.stones) {
+      return;
+    }
+    playSfx('victory', state.settings.sfxEnabled);
+    setState((prev) => {
+      const cur = prev.equipped[slot];
+      if (!cur || cur.setId === setId) return prev;
+      if (prev.arcaneDust < SET_INSCRIBE_COST.dust || prev.stones < SET_INSCRIBE_COST.stones) {
+        return prev;
+      }
+      const next: GameState = {
+        ...prev,
+        arcaneDust: prev.arcaneDust - SET_INSCRIBE_COST.dust,
+        stones: prev.stones - SET_INSCRIBE_COST.stones,
+        equipped: {
+          ...prev.equipped,
+          [slot]: { ...cur, setId },
+        },
+      };
+      saveGameToStorage(next);
+      return next;
+    });
+    showToast(`✦ [${item.name}]에 ${GEAR_SETS[setId].name} 각인 완료!`);
   };
 
   // P3-3: 전술 마도서 인장 선택 (무료 즉시 전환 + 즉시 저장)
@@ -2094,6 +2201,7 @@ export default function App() {
                   onEquipBest={handleEquipBest}
                   onEnhanceEquipped={handleEnhanceEquipped}
                   onReforgeEquipped={handleReforgeEquipped}
+                  onInscribeGearSet={handleInscribeGearSet}
                   onDismantleItem={handleDismantleItem}
                   onDismantleBulk={handleDismantleBulk}
                   onSetAutoDismantle={(below) =>
@@ -2130,6 +2238,8 @@ export default function App() {
                   onExploreAbyssStep={handleExploreAbyssStep}
                   onResolveAbyssChoice={handleResolveAbyssChoice}
                   onChallengeTower={handleChallengeTower}
+                  onClaimTowerMilestone={handleClaimTowerMilestone}
+                  onJumpTowerCheckpoint={handleJumpTowerCheckpoint}
                   onUpgradeImprint={handleUpgradeImprint}
                   onTransmuteStones={handleTransmuteStones}
                   onBuyPrestigeUpgrade={handleBuyPrestigeUpgrade}

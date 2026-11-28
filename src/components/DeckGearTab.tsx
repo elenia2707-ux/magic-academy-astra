@@ -9,6 +9,12 @@ import {
   SLOT_LABELS,
 } from '../data/equipment';
 import { GRIMOIRE_SEAL_ORDER, GRIMOIRE_SEALS } from '../data/bossGimmicks';
+import {
+  GEAR_SET_ORDER,
+  GEAR_SETS,
+  getGearSetBonuses,
+  SET_INSCRIBE_COST,
+} from '../data/gearSets';
 import { CATEGORY_META } from '../data/schools';
 import { SKILL_MAP } from '../data/skills';
 import type {
@@ -16,6 +22,7 @@ import type {
   EquipmentItem,
   EquipSlot,
   GameState,
+  GearSetId,
   GrimoireSealId,
   Rarity,
 } from '../types/game';
@@ -49,6 +56,7 @@ interface Props {
   onBuyShopBox: (kind: 'gear' | 'tome' | 'egg' | 'dustGear') => void;
   onSelectGrimoireSeal?: (seal: GrimoireSealId | null) => void;
   onClaimLoanerGrimoire?: () => void;
+  onInscribeGearSet?: (slot: EquipSlot, setId: GearSetId) => void;
   initialSub?: 'deck' | 'gear' | 'shop';
   externalGearJump?: number;
 }
@@ -69,12 +77,14 @@ export const DeckGearTab: React.FC<Props> = ({
   onBuyShopBox,
   onSelectGrimoireSeal,
   onClaimLoanerGrimoire,
+  onInscribeGearSet,
   initialSub,
   externalGearJump,
 }) => {
   const [sub, setSub] = useState<'deck' | 'gear' | 'shop'>(
     () => initialSub ?? ((externalGearJump ?? 0) > 0 ? 'gear' : 'deck')
   );
+  const [workshopSlot, setWorkshopSlot] = useState<EquipSlot>('staff');
   const [seenJump, setSeenJump] = useState<number>(externalGearJump ?? 0);
   const [seenInitialSub, setSeenInitialSub] = useState<'deck' | 'gear' | 'shop' | undefined>(
     initialSub
@@ -333,16 +343,30 @@ export const DeckGearTab: React.FC<Props> = ({
                       <>
                         <div style={{ display: 'flex', gap: 7, alignItems: 'center', marginBottom: 5 }}>
                           <GearIcon item={item} slot={slot} size={40} />
-                          <div
-                            style={{
-                              fontWeight: 700,
-                              fontSize: 12,
-                              lineHeight: 1.3,
-                              color: RARITY_META[item.rarity].color,
-                              minWidth: 0,
-                            }}
-                          >
-                            {item.name} {item.enhance > 0 ? `+${item.enhance}` : ''}
+                          <div style={{ minWidth: 0, flex: 1 }}>
+                            <div
+                              style={{
+                                fontWeight: 700,
+                                fontSize: 12,
+                                lineHeight: 1.3,
+                                color: RARITY_META[item.rarity].color,
+                                minWidth: 0,
+                              }}
+                            >
+                              {item.name} {item.enhance > 0 ? `+${item.enhance}` : ''}
+                            </div>
+                            {item.setId && GEAR_SETS[item.setId] && (
+                              <span
+                                className="gear-set-tag"
+                                style={
+                                  {
+                                    ['--set-accent' as string]: GEAR_SETS[item.setId].accent,
+                                  } as React.CSSProperties
+                                }
+                              >
+                                ✦ {GEAR_SETS[item.setId].shortName}
+                              </span>
+                            )}
                           </div>
                         </div>
                         <div style={{ fontSize: 10.5, color: '#c5bdb0', minHeight: 30, marginBottom: 6 }}>
@@ -359,13 +383,13 @@ export const DeckGearTab: React.FC<Props> = ({
                             <Hammer size={11} />
                             {item.enhance >= 15 ? 'MAX' : `${cost.toLocaleString()}`}
                           </button>
-                          {state.rank >= 3 && (
+                          {state.rank >= 2 && (
                             <button
                               type="button"
                               className="btn btn-sm"
                               disabled={state.arcaneDust < 80}
                               onClick={() => onReforgeEquipped(slot)}
-                              title="마력 가루 80으로 속성 옵션 재련"
+                              title="마력 가루 80으로 속성 & 세트 옵션 재련"
                             >
                               재련
                             </button>
@@ -383,6 +407,174 @@ export const DeckGearTab: React.FC<Props> = ({
               })}
             </div>
           </div>
+
+          {(() => {
+            const setInfo = getGearSetBonuses(state.equipped);
+            const workshopItem = state.equipped[workshopSlot];
+            const canAffordInscribe =
+              state.arcaneDust >= SET_INSCRIBE_COST.dust &&
+              state.stones >= SET_INSCRIBE_COST.stones;
+            return (
+              <div className="panel gear-set-panel">
+                <div className="panel-title-row">
+                  <h2 className="panel-title">✦ 마도구 세트 효과 &amp; 각인 공방</h2>
+                  <span className="panel-sub">
+                    보유 가루 {state.arcaneDust.toLocaleString()}
+                  </span>
+                </div>
+
+                <div className="gear-set-active-list">
+                  {setInfo.activeSets.length > 0 ? (
+                    setInfo.activeSets.map((s) => {
+                      const tierLabel =
+                        s.tier === 4
+                          ? '4세트 활성'
+                          : s.tier === 2
+                            ? '2세트 활성'
+                            : `${s.count}/2`;
+                      return (
+                        <div
+                          key={s.def.id}
+                          className={`gear-set-status-row${s.tier >= 2 ? ' is-active' : ''}${
+                            s.tier === 4 ? ' is-tier4' : ''
+                          }`}
+                          style={
+                            { ['--set-accent' as string]: s.def.accent } as React.CSSProperties
+                          }
+                        >
+                          <div className="gear-set-status-head">
+                            <span className="gear-set-status-name">
+                              ✦ {s.def.name}
+                              <span className="gear-set-status-count">{s.count}/4</span>
+                            </span>
+                            <span
+                              className={`gear-set-tier-badge${s.tier >= 2 ? ' is-active' : ''}`}
+                            >
+                              {tierLabel}
+                            </span>
+                          </div>
+                          <div className="gear-set-status-lines">
+                            <div className={s.tier >= 2 ? 'is-on' : 'is-off'}>
+                              2세트: {s.def.twoPieceLabel}
+                            </div>
+                            <div className={s.tier === 4 ? 'is-on' : 'is-off'}>
+                              4세트: {s.def.fourPieceLabel}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div className="gear-set-empty">
+                      동일 세트를 2부위 또는 4부위 장착하면 강력한 세트 효과가 발동됩니다.
+                    </div>
+                  )}
+                </div>
+
+                <div className="gear-set-workshop">
+                  <div className="gear-set-workshop-head">
+                    <span className="gear-set-workshop-title">확정 세트 각인 공방</span>
+                    <span className="gear-set-workshop-wallet">
+                      가루 {state.arcaneDust.toLocaleString()} · ◆{state.stones.toLocaleString()}
+                    </span>
+                  </div>
+
+                  <div className="gear-set-slot-tabs" role="tablist" aria-label="각인 대상 부위">
+                    {SLOTS.map((slot) => {
+                      const eq = state.equipped[slot];
+                      const selected = workshopSlot === slot;
+                      return (
+                        <button
+                          key={slot}
+                          type="button"
+                          role="tab"
+                          aria-selected={selected}
+                          className={`gear-set-slot-btn${selected ? ' is-active' : ''}${
+                            eq?.setId ? ' has-set' : ''
+                          }`}
+                          onClick={() => setWorkshopSlot(slot)}
+                        >
+                          <span>{SLOT_LABELS[slot]}</span>
+                          {eq?.setId && <span className="gear-set-slot-dot" aria-hidden="true" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div className="gear-set-target-bar">
+                    <span className="gear-set-target-label">대상 [{SLOT_LABELS[workshopSlot]}]</span>
+                    {workshopItem ? (
+                      <div className="gear-set-target-item">
+                        <span
+                          className="gear-set-target-name"
+                          style={{ color: RARITY_META[workshopItem.rarity].color }}
+                        >
+                          {workshopItem.name}
+                          {workshopItem.enhance > 0 ? ` +${workshopItem.enhance}` : ''}
+                        </span>
+                        {workshopItem.setId && GEAR_SETS[workshopItem.setId] && (
+                          <span
+                            className="gear-set-tag"
+                            style={
+                              {
+                                ['--set-accent' as string]: GEAR_SETS[workshopItem.setId].accent,
+                              } as React.CSSProperties
+                            }
+                          >
+                            ✦ {GEAR_SETS[workshopItem.setId].shortName}
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="gear-set-target-empty">장착된 장비 없음</span>
+                    )}
+                  </div>
+
+                  <div className="gear-set-option-list">
+                    {GEAR_SET_ORDER.map((setId) => {
+                      const def = GEAR_SETS[setId];
+                      const alreadyInscribed = workshopItem?.setId === setId;
+                      const disabled =
+                        alreadyInscribed ||
+                        !workshopItem ||
+                        !onInscribeGearSet ||
+                        !canAffordInscribe;
+                      return (
+                        <div
+                          key={setId}
+                          className={`gear-set-option-card${alreadyInscribed ? ' is-inscribed' : ''}`}
+                          style={{ ['--set-accent' as string]: def.accent } as React.CSSProperties}
+                        >
+                          <div className="gear-set-opt-info">
+                            <div className="gear-set-opt-name">✦ {def.name}</div>
+                            <div className="gear-set-opt-desc">
+                              2세트: {def.twoPieceLabel} · 4세트: {def.fourPieceLabel}
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            className={`btn btn-sm gear-set-opt-btn${
+                              alreadyInscribed
+                                ? ' btn-ghost'
+                                : !disabled
+                                  ? ' btn-gold'
+                                  : ''
+                            }`}
+                            disabled={disabled}
+                            onClick={() => onInscribeGearSet?.(workshopSlot, setId)}
+                          >
+                            {alreadyInscribed
+                              ? '각인됨'
+                              : `각인 (가루 ${SET_INSCRIBE_COST.dust} · ◆${SET_INSCRIBE_COST.stones})`}
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
 
           <div className="panel grimoire-seal-panel">
             <div className="panel-title-row grimoire-seal-header">
@@ -517,6 +709,20 @@ export const DeckGearTab: React.FC<Props> = ({
                               {diff > 0 ? `▲ +${diff}` : diff < 0 ? `▼ ${diff}` : '동일'}
                             </span>
                           </div>
+                          {item.setId && GEAR_SETS[item.setId] && (
+                            <div className="gear-set-tag-row">
+                              <span
+                                className="gear-set-tag"
+                                style={
+                                  {
+                                    ['--set-accent' as string]: GEAR_SETS[item.setId].accent,
+                                  } as React.CSSProperties
+                                }
+                              >
+                                ✦ {GEAR_SETS[item.setId].shortName}
+                              </span>
+                            </div>
+                          )}
                           <div className="list-desc">{renderStatSummary(item)}</div>
                         </div>
                       </div>

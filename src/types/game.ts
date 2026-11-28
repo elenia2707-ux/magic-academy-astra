@@ -5,6 +5,12 @@ export type RankIndex = 0 | 1 | 2 | 3 | 4 | 5;
 
 export type EquipSlot = 'staff' | 'robe' | 'grimoire' | 'relic';
 export type Rarity = 'common' | 'rare' | 'epic' | 'ancient' | 'mythic';
+export type GearSetId =
+  | 'ember_covenant'
+  | 'glacier_mirror'
+  | 'storm_spire'
+  | 'basalt_oath'
+  | 'astral_abyss';
 
 export type StatusType =
   | 'burn'
@@ -91,6 +97,7 @@ export interface EquipmentItem {
   rarity: Rarity;
   tier: number; // 1~7
   enhance: number;
+  setId?: GearSetId;
   stats: EquipmentStats;
 }
 
@@ -447,6 +454,8 @@ export interface GameState {
   activeEscort?: ProfessorId | null;
   /** P4-3: 최초 열람 완료한 막별 외전 미니 스토리 ID 목록 (회귀 시 유지) */
   viewedSideStories?: string[];
+  /** P4-4: 수령 완료한 무한 탑 마일스톤 층수 목록 (회귀 유지) */
+  claimedTowerMilestones?: number[];
   lastSavedAt: number;
   totalKills: number;
 }

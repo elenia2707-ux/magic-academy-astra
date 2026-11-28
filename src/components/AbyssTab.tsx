@@ -28,6 +28,12 @@ import {
   getImprintCost,
 } from '../data/sanctum';
 import { SCHOOLS } from '../data/schools';
+import {
+  formatTowerMilestoneReward,
+  getTowerDepthForFloor,
+  getTowerJumpTarget,
+  TOWER_MILESTONES,
+} from '../data/towerDepth';
 import { getNextTowerLordFloor } from '../data/towerLords';
 import { BGM_TRACKS, type BgmTrackId } from '../engine/bgm';
 import { exportSaveCode } from '../engine/save';
@@ -58,6 +64,8 @@ interface Props {
   onExploreAbyssStep: (rolledFace?: number) => void;
   onResolveAbyssChoice: (choice: AbyssChoice) => void;
   onChallengeTower: () => void;
+  onClaimTowerMilestone?: (floor: number) => void;
+  onJumpTowerCheckpoint?: () => void;
   onUpgradeImprint: (id: ArcaneImprintId) => void;
   onTransmuteStones: (id: ArcaneTransmuteId) => void;
   onBuyPrestigeUpgrade: (id: PrestigeUpgradeId) => void;
@@ -76,6 +84,8 @@ export const AbyssTab: React.FC<Props> = ({
   onExploreAbyssStep,
   onResolveAbyssChoice,
   onChallengeTower,
+  onClaimTowerMilestone,
+  onJumpTowerCheckpoint,
   onUpgradeImprint,
   onTransmuteStones,
   onBuyPrestigeUpgrade,
@@ -292,6 +302,10 @@ export const AbyssTab: React.FC<Props> = ({
       {/* 2. 무한 심연 탑 & P1-7 심연 비전 제련소 */}
       {sub === 'tower' && (() => {
         const sanctum = ensureSanctum(state.sanctum);
+        const depth = getTowerDepthForFloor(state.towerFloor);
+        const jumpTarget = getTowerJumpTarget(state.highestTowerFloor);
+        const claimedSet = new Set(state.claimedTowerMilestones ?? []);
+        const claimedCount = TOWER_MILESTONES.filter((m) => claimedSet.has(m.floor)).length;
         return (
           <>
             <div className="panel">
@@ -317,51 +331,132 @@ export const AbyssTab: React.FC<Props> = ({
                     ? upcoming.lord.ngPlusQuote
                     : upcoming.lord.encounterQuote;
                 return (
-                  <div className="list-card highlight">
-                    <div className="list-top">
-                      <span className="list-title" style={{ color: '#e3c481' }}>
-                        도전 가능: 제 {state.towerFloor}층
-                      </span>
-                      <span className="tag">
-                        {isLordFloor
-                          ? `✦ 군주전 · 금서 +${upcoming.lord.bonusTomeShards}`
-                          : `다음 군주 ${upcoming.floor}층`}
-                      </span>
-                    </div>
-                    <div className={`tower-lord-preview${isLordFloor ? ' is-now' : ''}`}>
-                      <div className="wc-boss-thumb">
-                        <MonsterPortrait
-                          artKey={upcoming.lord.artKey}
-                          isBoss
-                          variant="thumb"
-                          alt={upcoming.lord.name}
-                        />
-                      </div>
-                      <div className="tower-lord-info">
-                        <div className="tower-lord-head">
-                          <span className="tower-lord-floor">
-                            {isLordFloor ? `${upcoming.floor}층 군주 출현` : `${upcoming.floor}층 예고`}
-                          </span>
-                          <span className="tower-lord-name">{upcoming.lord.name}</span>
-                        </div>
-                        <div className="tower-lord-sub">
-                          {upcoming.lord.title} · 강공격 [{upcoming.lord.heavyName}]
-                        </div>
-                        <div className="tower-lord-quote">“{quote}”</div>
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      className="btn btn-crimson btn-block"
-                      onClick={onChallengeTower}
+                  <>
+                    <div
+                      className="tower-depth-card parchment"
+                      style={{ ['--depth-accent' as string]: depth.accent } as React.CSSProperties}
                     >
-                      <Swords size={14} />
-                      무한 심연 탑 {state.towerFloor}층 도전
-                    </button>
-                  </div>
+                      <div className="tower-depth-head">
+                        <div className="tower-depth-title-group">
+                          <span className="tower-depth-name">{depth.name}</span>
+                          <span className="tower-depth-range">{depth.rangeLabel}</span>
+                        </div>
+                        <span className="tower-depth-mult">
+                          보상 ×{depth.rewardMult.toFixed(2)}
+                        </span>
+                      </div>
+                      <div className="tower-depth-rule">{depth.ruleSummary}</div>
+                      <div className="tower-depth-lore">{depth.loreNote}</div>
+                    </div>
+
+                    <div className="list-card highlight">
+                      <div className="list-top">
+                        <span className="list-title" style={{ color: '#e3c481' }}>
+                          도전 가능: 제 {state.towerFloor}층
+                        </span>
+                        <span className="tag">
+                          {isLordFloor
+                            ? `✦ 군주전 · 금서 +${upcoming.lord.bonusTomeShards}`
+                            : `다음 군주 ${upcoming.floor}층`}
+                        </span>
+                      </div>
+                      <div className={`tower-lord-preview${isLordFloor ? ' is-now' : ''}`}>
+                        <div className="wc-boss-thumb">
+                          <MonsterPortrait
+                            artKey={upcoming.lord.artKey}
+                            isBoss
+                            variant="thumb"
+                            alt={upcoming.lord.name}
+                          />
+                        </div>
+                        <div className="tower-lord-info">
+                          <div className="tower-lord-head">
+                            <span className="tower-lord-floor">
+                              {isLordFloor ? `${upcoming.floor}층 군주 출현` : `${upcoming.floor}층 예고`}
+                            </span>
+                            <span className="tower-lord-name">{upcoming.lord.name}</span>
+                          </div>
+                          <div className="tower-lord-sub">
+                            {upcoming.lord.title} · 강공격 [{upcoming.lord.heavyName}]
+                          </div>
+                          <div className="tower-lord-quote">“{quote}”</div>
+                        </div>
+                      </div>
+                      {jumpTarget > state.towerFloor && onJumpTowerCheckpoint && (
+                        <button
+                          type="button"
+                          className="btn btn-gold btn-block tower-jump-btn"
+                          onClick={onJumpTowerCheckpoint}
+                        >
+                          ⚡ 쾌속 등반 ({jumpTarget}층으로 이동)
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        className="btn btn-crimson btn-block"
+                        onClick={onChallengeTower}
+                      >
+                        <Swords size={14} />
+                        무한 심연 탑 {state.towerFloor}층 도전
+                      </button>
+                    </div>
+                  </>
                 );
               })()}
             </div>
+
+            {towerUnlocked && (
+              <div className="panel tower-milestone-panel">
+                <div className="panel-title-row">
+                  <h2 className="panel-title">무한 탑 심층 마일스톤</h2>
+                  <span className="panel-sub">
+                    {claimedCount} / {TOWER_MILESTONES.length} 수령 · 회귀 유지
+                  </span>
+                </div>
+                <div className="tower-milestone-list">
+                  {TOWER_MILESTONES.map((m) => {
+                    const claimed = claimedSet.has(m.floor);
+                    const claimable = state.highestTowerFloor >= m.floor && !claimed;
+                    const rewardText = formatTowerMilestoneReward(m);
+                    return (
+                      <div
+                        key={m.floor}
+                        className={`tower-milestone-card${
+                          claimable
+                            ? ' parchment is-claimable'
+                            : claimed
+                              ? ' is-claimed'
+                              : ' is-locked'
+                        }`}
+                      >
+                        <div className="tower-ms-head">
+                          <div className="tower-ms-title-group">
+                            <span className="tower-ms-floor">{m.floor}F</span>
+                            <span className="tower-ms-title">{m.title}</span>
+                          </div>
+                          {claimable ? (
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-gold tower-ms-claim-btn"
+                              onClick={() => onClaimTowerMilestone?.(m.floor)}
+                            >
+                              수령
+                            </button>
+                          ) : claimed ? (
+                            <span className="tower-ms-seal">✓ 수령됨</span>
+                          ) : (
+                            <span className="tower-ms-locked-badge">
+                              {m.floor}층 돌파 시 해금
+                            </span>
+                          )}
+                        </div>
+                        <div className="tower-ms-reward">{rewardText}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* P1-7: 후반 마석 소모처 — 심연 비전 제련소 */}
             <div className="panel">
