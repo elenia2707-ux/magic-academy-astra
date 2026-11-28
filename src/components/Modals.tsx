@@ -17,6 +17,12 @@ import {
   resolveDialogueText,
 } from '../data/professors';
 import { getCharacterQuote, getCharacterTitle, RANKS, SCHOOLS } from '../data/schools';
+import {
+  getActEpilogueMemo,
+  getSelectedChoiceId,
+  getStoryChoiceKey,
+  getStoryChoiceNode,
+} from '../data/storyBranches';
 import { formatDuration } from '../engine/offline';
 import type {
   ComputedStats,
@@ -165,7 +171,8 @@ export const StoryModal: React.FC<{
   story: StoryModalPayload;
   onClose: () => void;
   onMarkSideStoryViewed?: (sideStoryId: string) => void;
-}> = ({ state, story, onClose, onMarkSideStoryViewed }) => {
+  onSelectStoryChoice?: (choiceKey: string, optionId: string) => void;
+}> = ({ state, story, onClose, onMarkSideStoryViewed, onSelectStoryChoice }) => {
   const initialPhase: StoryPhase = story.kind === 'act' ? story.phase : 'intro';
   const [activePhase, setActivePhase] = useState<StoryPhase>(initialPhase);
   const [activeSideId, setActiveSideId] = useState<string | null>(
@@ -199,6 +206,19 @@ export const StoryModal: React.FC<{
       onMarkSideStoryViewed(match.id);
     }
   }, [story.kind, actNumber, activeSideId, state, onMarkSideStoryViewed]);
+
+  const isMainActView = story.kind === 'act' && !activeSideId;
+  const choiceNode = isMainActView ? getStoryChoiceNode(story.act, activePhase) : null;
+  const choiceKey = isMainActView
+    ? choiceNode?.key ?? getStoryChoiceKey(story.act, activePhase)
+    : null;
+  const selectedChoiceId = choiceKey ? getSelectedChoiceId(state, choiceKey) : null;
+  const selectedOption =
+    choiceNode && selectedChoiceId
+      ? choiceNode.options.find((o) => o.id === selectedChoiceId) ?? null
+      : null;
+  const epilogue =
+    isMainActView && activePhase === 'clear' ? getActEpilogueMemo(story.act) : null;
 
   let subtitle = '';
   let title = '';
@@ -343,6 +363,70 @@ export const StoryModal: React.FC<{
             <DialogueRow key={`${activeSideId ?? activePhase}_${idx}`} line={line} state={state} />
           ))}
         </div>
+
+        {choiceNode && (
+          <div className="story-choice-box">
+            <div className="story-choice-head">
+              <span className="story-choice-pill">분기 선택</span>
+              <span className="story-choice-prompt">{choiceNode.prompt}</span>
+            </div>
+            <div className="story-choice-list">
+              {choiceNode.options.map((opt) => {
+                const isSelected = selectedChoiceId === opt.id;
+                const isDimmed = Boolean(selectedChoiceId) && !isSelected;
+                const rewardParts = [`${PROFESSORS[opt.affinityProf].name} +${opt.affinityGain}`];
+                if (opt.rewardStones && opt.rewardStones > 0) {
+                  rewardParts.push(`마석 +${opt.rewardStones.toLocaleString()}`);
+                }
+                if (opt.rewardDust && opt.rewardDust > 0) {
+                  rewardParts.push(`가루 +${opt.rewardDust.toLocaleString()}`);
+                }
+                return (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    disabled={Boolean(selectedChoiceId)}
+                    className={`story-choice-btn${isSelected ? ' is-selected' : ''}${
+                      isDimmed ? ' is-dimmed' : ''
+                    }`}
+                    onClick={() => onSelectStoryChoice?.(choiceNode.key, opt.id)}
+                  >
+                    <span className="story-choice-top">
+                      <span className="story-choice-tone">[{opt.toneTag}]</span>
+                      <span className={`story-choice-hint${isSelected ? ' is-selected' : ''}`}>
+                        {isSelected ? '✓ 선택됨' : rewardParts.join(' · ')}
+                      </span>
+                    </span>
+                    <span className="story-choice-label">{opt.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {choiceNode && selectedOption && (
+          <div className="story-reaction-wrap">
+            <div className="story-reaction-label">선택 결과</div>
+            {selectedOption.reactionLines.map((line, idx) => (
+              <DialogueRow
+                key={`reaction_${choiceNode.key}_${selectedOption.id}_${idx}`}
+                line={line}
+                state={state}
+              />
+            ))}
+          </div>
+        )}
+
+        {epilogue && (
+          <div className="act-epilogue-memo parchment">
+            <div className="act-epilogue-header">{epilogue.header}</div>
+            <div className="act-epilogue-headline">{epilogue.headline}</div>
+            <div className="act-epilogue-summary">{epilogue.summary}</div>
+            <div className="act-epilogue-footnote">{epilogue.adminFootnote}</div>
+            <div className="act-epilogue-next">{epilogue.nextHint}</div>
+          </div>
+        )}
 
         <button type="button" className="btn btn-gold btn-block" onClick={onClose}>
           {buttonText}

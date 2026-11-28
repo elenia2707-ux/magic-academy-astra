@@ -37,6 +37,7 @@ import {
 import { getRuneAwakenCost, getSkillRunes, RUNE_UNLOCK_LEVEL } from '../data/runes';
 import { CATEGORY_META, RANK_EXAM_BOSSES, RANKS, SCHOOLS } from '../data/schools';
 import { getSkillsForPlayer, SKILL_MAP } from '../data/skills';
+import { getActChoiceProgress } from '../data/storyBranches';
 import { getSkillUpgradeCost } from '../engine/stats';
 import type {
   ComputedStats,
@@ -873,6 +874,7 @@ export const SchoolTab: React.FC<Props> = ({
                 const cleared = state.clearedActs.includes(act.act);
                 const boss = act.stages[4];
                 const sideStories = getSideStoriesForAct(act.act);
+                const choiceProg = !locked ? getActChoiceProgress(state, act.act) : null;
                 return (
                   <div key={act.act} className="list-card">
                     <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 7 }}>
@@ -895,11 +897,22 @@ export const SchoolTab: React.FC<Props> = ({
                       <div style={{ minWidth: 0, flex: 1 }}>
                         <div className="list-top" style={{ marginBottom: 2 }}>
                           <span className="list-title">{act.title}</span>
-                          <span
-                            className="tag"
-                            style={{ color: cleared ? '#8ad0a2' : locked ? '#8b8479' : '#e3c481' }}
-                          >
-                            {cleared ? '클리어' : locked ? '잠김' : '진행중'}
+                          <span className="act-status-badges">
+                            {choiceProg && choiceProg.total > 0 && (
+                              <span
+                                className={`act-choice-tag${
+                                  choiceProg.chosen >= choiceProg.total ? ' is-complete' : ''
+                                }`}
+                              >
+                                분기 {choiceProg.chosen}/{choiceProg.total}
+                              </span>
+                            )}
+                            <span
+                              className="tag"
+                              style={{ color: cleared ? '#8ad0a2' : locked ? '#8b8479' : '#e3c481' }}
+                            >
+                              {cleared ? '클리어' : locked ? '잠김' : '진행중'}
+                            </span>
                           </span>
                         </div>
                         <div style={{ fontSize: 11.5, color: '#c5bdb0', marginBottom: 2 }}>

@@ -145,7 +145,8 @@ export function createNewGameState(
   existingArchive?: ArchiveState,
   existingEscort?: ProfessorId | null,
   existingViewedSideStories?: string[],
-  existingTowerMilestones?: number[]
+  existingTowerMilestones?: number[],
+  existingStoryChoices?: Record<string, string>
 ): GameState {
   const prestige = existingPrestige ?? createDefaultPrestige();
   const startWealthLv = prestige.upgrades.startingWealth ?? 0;
@@ -231,6 +232,7 @@ export function createNewGameState(
     activeEscort: existingEscort ?? null,
     viewedSideStories: existingViewedSideStories ? [...existingViewedSideStories] : [],
     claimedTowerMilestones: existingTowerMilestones ? [...existingTowerMilestones] : [],
+    storyChoices: existingStoryChoices ? { ...existingStoryChoices } : {},
     lastSavedAt: Date.now(),
     totalKills: 0,
   };

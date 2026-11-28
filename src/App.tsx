@@ -88,6 +88,7 @@ import {
 import { RANKS, SCHOOLS } from './data/schools';
 import { SKILL_MAP } from './data/skills';
 import { STARLIGHT_MAX } from './data/starlight';
+import { STORY_CHOICES } from './data/storyBranches';
 import {
   GEAR_SETS,
   getSchoolPreferredSet,
@@ -938,7 +939,8 @@ export default function App() {
       rebirthPending ? ensureArchive(state.archive) : undefined,
       rebirthPending ? (state.activeEscort ?? null) : null,
       rebirthPending ? (state.viewedSideStories ?? []) : [],
-      rebirthPending ? (state.claimedTowerMilestones ?? []) : []
+      rebirthPending ? (state.claimedTowerMilestones ?? []) : [],
+      rebirthPending ? (state.storyChoices ?? {}) : {}
     );
     storyQueueRef.current = [];
     syncStoryQueueCount();
@@ -1381,6 +1383,54 @@ export default function App() {
       });
       showToast(
         `📜 외전 [${def.title}] 최초 열람! 마석 +${def.rewardStones.toLocaleString()} · ${PROFESSORS[def.leadProfessor].name} 친밀도 +${def.rewardAffinity}`
+      );
+    },
+    [showToast]
+  );
+
+  // P5-2: 메인 스토리 선택지 분기 기록 (1회 한정 보상 + 교수 친밀도 및 마일스톤 자동 해금)
+  const handleSelectStoryChoice = useCallback(
+    (choiceKey: string, optionId: string) => {
+      const node = STORY_CHOICES[choiceKey];
+      const opt = node?.options.find((o) => o.id === optionId);
+      if (!opt) return;
+      const curState = stateRef.current;
+      if (curState.storyChoices?.[choiceKey]) return;
+      playSfx('victory', curState.settings.sfxEnabled);
+      setState((prev) => {
+        if (prev.storyChoices?.[choiceKey]) return prev;
+        const prevAff = ensureAffinity(prev.affinity);
+        const curPts = prevAff.points[opt.affinityProf] ?? 0;
+        const updatedPts = Math.min(AFFINITY_MAX_POINTS, curPts + opt.affinityGain);
+        const affDef = PROFESSOR_AFFINITY[opt.affinityProf];
+        const claimed = [...prevAff.claimedEvents];
+        if (affDef) {
+          for (const milestone of affDef.events) {
+            if (updatedPts >= milestone.threshold && !claimed.includes(milestone.eventKey)) {
+              claimed.push(milestone.eventKey);
+            }
+          }
+        }
+        const next: GameState = {
+          ...prev,
+          stones: prev.stones + (opt.rewardStones ?? 0),
+          arcaneDust: prev.arcaneDust + (opt.rewardDust ?? 0),
+          storyChoices: {
+            ...(prev.storyChoices ?? {}),
+            [choiceKey]: optionId,
+          },
+          affinity: {
+            points: { ...prevAff.points, [opt.affinityProf]: updatedPts },
+            claimedEvents: claimed,
+          },
+        };
+        saveGameToStorage(next);
+        return next;
+      });
+      showToast(
+        `✦ 선택 기록! ${PROFESSORS[opt.affinityProf].name} 친밀도 +${opt.affinityGain}${
+          opt.rewardStones ? ` · 마석 +${opt.rewardStones.toLocaleString()}` : ''
+        }${opt.rewardDust ? ` · 가루 +${opt.rewardDust}` : ''}`
       );
     },
     [showToast]
@@ -2373,6 +2423,7 @@ export default function App() {
                 state={state}
                 story={storyModal}
                 onMarkSideStoryViewed={handleMarkSideStoryViewed}
+                onSelectStoryChoice={handleSelectStoryChoice}
                 onClose={() => {
                   lastStoryClosedRef.current = Date.now();
                   storyModalRef.current = null;

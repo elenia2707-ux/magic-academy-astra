@@ -141,6 +141,17 @@ function normalizeClaimedTowerMilestones(raw?: unknown): number[] {
   return result;
 }
 
+function normalizeStoryChoices(raw?: unknown): Record<string, string> {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {};
+  const result: Record<string, string> = {};
+  for (const [k, v] of Object.entries(raw)) {
+    if (typeof k === 'string' && k && typeof v === 'string' && v) {
+      result[k] = v;
+    }
+  }
+  return result;
+}
+
 function hydrateState(parsed: Partial<GameState>): GameState | null {
   if (!parsed || typeof parsed !== 'object' || !parsed.created) return null;
   const fallback = createEmptyUncreatedState();
@@ -190,6 +201,7 @@ function hydrateState(parsed: Partial<GameState>): GameState | null {
     activeEscort: normalizeActiveEscort(parsed.activeEscort),
     viewedSideStories: normalizeViewedSideStories(parsed.viewedSideStories),
     claimedTowerMilestones: normalizeClaimedTowerMilestones(parsed.claimedTowerMilestones),
+    storyChoices: normalizeStoryChoices(parsed.storyChoices),
     ...(normalizedAffinity ? { affinity: normalizedAffinity } : {}),
   });
 }

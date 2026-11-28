@@ -458,6 +458,8 @@ export interface GameState {
   viewedSideStories?: string[];
   /** P4-4: 수령 완료한 무한 탑 마일스톤 층수 목록 (회귀 유지) */
   claimedTowerMilestones?: number[];
+  /** P5-2: 막별 스토리 선택지 분기 기록 (예: "1_mid" -> optionId, 회귀 유지) */
+  storyChoices?: Record<string, string>;
   lastSavedAt: number;
   totalKills: number;
 }
