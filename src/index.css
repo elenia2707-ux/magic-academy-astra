@@ -8847,3 +8847,299 @@ select,
   filter: grayscale(0.8) brightness(0.5) sepia(0.18);
 }
 
+/* ===== P6-2: 게임 시스템 쾌적화 (덱 프리셋 · 장비 비교 · 전투 통계) ===== */
+.deck-preset-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 9px;
+  margin-bottom: 10px;
+  border-radius: 9px;
+  border: 1px solid rgba(200, 164, 93, 0.28);
+  background: linear-gradient(180deg, rgba(44, 22, 32, 0.86) 0%, rgba(22, 12, 17, 0.94) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(240, 212, 152, 0.12),
+    0 2px 6px rgba(0, 0, 0, 0.35);
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.deck-preset-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  min-width: 0;
+}
+
+.deck-preset-btn {
+  flex: 1 1 88px;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 8px;
+  border-radius: 7px;
+  border: 1px solid rgba(184, 146, 90, 0.3);
+  background: linear-gradient(180deg, #27161d 0%, #190e13 100%);
+  color: #d4c4b2;
+  font-size: 11.5px;
+  font-weight: 700;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  transition: border-color 0.14s ease, background 0.14s ease, color 0.14s ease, transform 0.1s ease;
+}
+
+.deck-preset-btn:active {
+  transform: scale(0.97);
+}
+
+.deck-preset-btn.is-active {
+  border-color: #c99a49;
+  background: linear-gradient(180deg, #f3d796 0%, #c99a49 100%);
+  color: #2b1808;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 248, 228, 0.68),
+    0 1px 5px rgba(0, 0, 0, 0.42);
+}
+
+.deck-recommend-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+}
+
+.deck-recommend-row .deck-recommend-btn {
+  flex: 1 1 110px;
+  min-width: 0;
+  padding: 5px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #e6cb8e;
+  border: 1px solid rgba(200, 164, 93, 0.38);
+  background: linear-gradient(180deg, rgba(64, 38, 24, 0.42) 0%, rgba(30, 17, 18, 0.72) 100%);
+}
+
+.deck-recommend-row .deck-recommend-btn:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+/* 보관함 정렬 바 */
+.inv-sort-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 6px 8px;
+  margin-bottom: 9px;
+  border-radius: 8px;
+  border: 1px solid rgba(184, 146, 90, 0.22);
+  background: rgba(18, 10, 14, 0.74);
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.inv-sort-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #b5a392;
+  flex-shrink: 0;
+}
+
+.inv-sort-pills {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  min-width: 0;
+}
+
+.inv-sort-btn {
+  min-width: 0;
+  padding: 3.5px 9px;
+  border-radius: 999px;
+  border: 1px solid rgba(184, 146, 90, 0.28);
+  background: linear-gradient(180deg, #27161d 0%, #190e13 100%);
+  color: #cbbba9;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.3;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: border-color 0.14s ease, background 0.14s ease, color 0.14s ease, transform 0.1s ease;
+}
+
+.inv-sort-btn:active {
+  transform: scale(0.96);
+}
+
+.inv-sort-btn.is-active {
+  border-color: #c99a49;
+  background: linear-gradient(180deg, #f3d796 0%, #c99a49 100%);
+  color: #2b1808;
+  box-shadow: inset 0 1px 0 rgba(255, 248, 228, 0.65);
+}
+
+/* 마도구 스탯 비교 델타 칩 */
+.gear-delta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: -2px;
+  margin-bottom: 7px;
+  min-width: 0;
+}
+
+.gear-delta-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 1.5px 6px;
+  border-radius: 5px;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.35;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gear-delta-chip.is-up {
+  color: #8ad0a2;
+  background: rgba(54, 134, 88, 0.16);
+  border: 1px solid rgba(138, 208, 162, 0.34);
+}
+
+.gear-delta-chip.is-down {
+  color: #df8285;
+  background: rgba(168, 50, 54, 0.18);
+  border: 1px solid rgba(223, 130, 133, 0.34);
+}
+
+/* 전투 하단 최고 사냥터 빠른 이동 버튼 */
+.frontier-jump-btn {
+  background: linear-gradient(180deg, #5c3a1a 0%, #3a2210 100%);
+  border: 1px solid rgba(227, 196, 129, 0.55);
+  color: #f5dca0;
+  font-weight: 700;
+  white-space: nowrap;
+  box-shadow: inset 0 1px 0 rgba(255, 240, 200, 0.22);
+}
+
+.frontier-jump-btn:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+/* 전투 하단 덱 프리셋 빠른 전환 바 */
+.battle-preset-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px 6px;
+  margin-top: 7px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(184, 146, 90, 0.24);
+  background: linear-gradient(180deg, rgba(40, 20, 28, 0.8) 0%, rgba(20, 11, 16, 0.9) 100%);
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.battle-preset-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #c8b298;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.battle-preset-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  flex: 1 1 190px;
+  min-width: 0;
+}
+
+.battle-preset-btn {
+  flex: 1 1 60px;
+  min-width: 0;
+  padding: 4px 6px;
+  border-radius: 6px;
+  border: 1px solid rgba(184, 146, 90, 0.28);
+  background: linear-gradient(180deg, #27161d 0%, #190e13 100%);
+  color: #d2c1af;
+  font-size: 10.5px;
+  font-weight: 700;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  transition: border-color 0.14s ease, background 0.14s ease, color 0.14s ease, transform 0.1s ease;
+}
+
+.battle-preset-btn:active {
+  transform: scale(0.96);
+}
+
+.battle-preset-btn.is-active {
+  border-color: #c99a49;
+  background: linear-gradient(180deg, #f3d796 0%, #c99a49 100%);
+  color: #2b1808;
+  box-shadow: inset 0 1px 0 rgba(255, 248, 228, 0.65);
+}
+
+/* 전투 효율 실시간 텔레메트리 바 */
+.battle-telemetry-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+  margin-top: 6px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(184, 146, 90, 0.22);
+  background: rgba(15, 9, 13, 0.82);
+  box-shadow: inset 0 1px 0 rgba(255, 244, 214, 0.05);
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.battle-telemetry-item {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 6px;
+  border-radius: 5px;
+  background: rgba(44, 24, 32, 0.68);
+  border: 1px solid rgba(184, 146, 90, 0.18);
+  color: #cfc1b0;
+  font-size: 10.5px;
+  font-weight: 600;
+  line-height: 1.3;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.battle-telemetry-item.is-stones {
+  color: #edd08c;
+  border-color: rgba(200, 164, 93, 0.32);
+}
+
+.battle-telemetry-item.is-exp {
+  color: #9ed3b0;
+  border-color: rgba(138, 208, 162, 0.28);
+}
+
+.battle-telemetry-item.is-peak {
+  color: #e9a588;
+  border-color: rgba(217, 130, 96, 0.3);
+}

@@ -144,11 +144,19 @@ import {
   rankDeckCandidates,
 } from './engine/stats';
 import { GRIMOIRE_SEALS } from './data/bossGimmicks';
+import {
+  buildRecommendedDeck,
+  createFreshTelemetry,
+  ensureDeckPresets,
+  recordTelemetryHit,
+  recordTelemetryWin,
+} from './data/qol';
 import { getRebirthVow } from './data/rebirthVows';
 import type {
   AbyssChoice,
   ArcaneImprintId,
   ArcaneTransmuteId,
+  BattleTelemetry,
   CombatMode,
   CombatRuntime,
   DailyQuestId,
@@ -195,6 +203,7 @@ export default function App() {
   const [gearJump, setGearJump] = useState(0);
   const [toast, setToast] = useState<string | null>(null);
   const [activeEvent, setActiveEvent] = useState<AcademyEventDef | null>(null);
+  const [telemetry, setTelemetry] = useState<BattleTelemetry>(() => createFreshTelemetry());
 
   const stats = useMemo(() => computePlayerStats(state), [state]);
 
@@ -572,6 +581,7 @@ export default function App() {
       const enemy = curCombat.enemy;
       const expGain = Math.round(enemy.expReward * rewardMult * towerRewardMult);
       const stoneGain = Math.round(enemy.stoneReward * rewardMult * towerRewardMult);
+      setTelemetry((prev) => recordTelemetryWin(prev, Math.max(1, curCombat.turn), stoneGain, expGain));
 
       // 전환 대상 및 사이드이펙트를 state updater 밖에서 결정적으로 계산
       let nextMode: CombatMode = curCombat.mode;
@@ -826,6 +836,18 @@ export default function App() {
     [showToast, maybeTriggerStageStory]
   );
 
+  const trackVfxPeakHit = useCallback(
+    (prevVfx: CombatRuntime['lastVfx'], nextVfx: CombatRuntime['lastVfx']) => {
+      if (!nextVfx || nextVfx.id === prevVfx?.id) return;
+      if (nextVfx.target !== 'enemy' || nextVfx.isHeal) return;
+      const parsed = Number(nextVfx.amountText.replace(/[^\d]/g, ''));
+      if (Number.isFinite(parsed) && parsed > 0) {
+        setTelemetry((prev) => recordTelemetryHit(prev, parsed));
+      }
+    },
+    []
+  );
+
   // P3-1: 별빛 개입 수동 발동 핸들러 (즉시 실행, 예고 타이밍 시 강공격 파훼 + 보너스)
   const handleTriggerStarlight = useCallback(() => {
     if (combatTransitionRef.current) return;
@@ -839,6 +861,7 @@ export default function App() {
     combatRef.current = outcome.combat;
     setCombat(outcome.combat);
     playSfx(outcome.sfx, curState.settings.sfxEnabled);
+    trackVfxPeakHit(curCombat.lastVfx, outcome.combat.lastVfx);
 
     if (outcome.combat.starlightFlash?.perfect) {
       setState((prev) => ({
@@ -851,7 +874,7 @@ export default function App() {
       const ms = curState.settings.speed === 3 ? 460 : curState.settings.speed === 2 ? 780 : 1320;
       resolveCombatVictory(curCombat, curState, outcome.combat.starlightGauge, ms);
     }
-  }, [resolveCombatVictory]);
+  }, [resolveCombatVictory, trackVfxPeakHit]);
 
   // 자동 턴제 전투 틱 (스토리 모달 열람 중 일시정지, 전환 중 중복 틱 및 이중 보상 방지)
   useEffect(() => {
@@ -868,6 +891,7 @@ export default function App() {
       combatRef.current = outcome.combat;
       setCombat(outcome.combat);
       playSfx(outcome.sfx, curState.settings.sfxEnabled);
+      trackVfxPeakHit(curCombat.lastVfx, outcome.combat.lastVfx);
 
       if (outcome.result === 'victory') {
         resolveCombatVictory(curCombat, curState, outcome.combat.starlightGauge, ms);
@@ -926,7 +950,15 @@ export default function App() {
     }, ms);
 
     return () => clearInterval(id);
-  }, [state.created, state.settings.speed, rebirthPending, storyModal, showToast, resolveCombatVictory]);
+  }, [
+    state.created,
+    state.settings.speed,
+    rebirthPending,
+    storyModal,
+    showToast,
+    resolveCombatVictory,
+    trackVfxPeakHit,
+  ]);
 
   // ================= 핸들러 =================
   const handleCharacterCreate = (
@@ -964,6 +996,7 @@ export default function App() {
     );
     storyQueueRef.current = [];
     syncStoryQueueCount();
+    setTelemetry(createFreshTelemetry());
     setState(fresh);
     setRebirthPending(false);
     const freshStats = computePlayerStats(fresh);
@@ -995,6 +1028,77 @@ export default function App() {
     const safeStage = Math.min(3, state.selectedStage);
     setState((prev) => ({ ...prev, selectedStage: safeStage }));
     startCombatNow(state, stats, 'stage', state.selectedAct, safeStage);
+  };
+
+  // P6-2: 최고 사냥터 빠른 이동 · 덱 프리셋 · 추천 덱 자동 편성
+  const handleJumpFrontierStage = () => {
+    const targetAct = state.highestAct;
+    const targetStage = Math.min(3, state.highestStageInAct);
+    handleChangeStage(targetAct, targetStage);
+    showToast(`⚡ 최고 사냥터 (${targetAct}-${targetStage + 1})로 이동!`);
+  };
+
+  const handleUpdateDeck = (nextDeck: string[]) => {
+    playSfx('click', state.settings.sfxEnabled);
+    setState((prev) => {
+      const { presets, activeIndex } = ensureDeckPresets(prev);
+      const nextPresets = presets.map((p, idx) =>
+        idx === activeIndex ? { ...p, deck: [...nextDeck] } : p
+      );
+      return {
+        ...prev,
+        deck: nextDeck,
+        deckPresets: nextPresets,
+        activeDeckPreset: activeIndex,
+      };
+    });
+  };
+
+  const handleSelectDeckPreset = (index: number) => {
+    const idx = Math.max(0, Math.min(2, Math.floor(index)));
+    const preview = ensureDeckPresets(state);
+    const presetName = preview.presets[idx]?.name ?? `프리셋 ${idx + 1}`;
+    playSfx('click', state.settings.sfxEnabled);
+    setState((prev) => {
+      const { presets } = ensureDeckPresets(prev);
+      const chosen = presets[idx];
+      const targetDeck = chosen && chosen.deck.length > 0 ? [...chosen.deck] : [...prev.deck];
+      const nextPresets = presets.map((p, i) =>
+        i === idx ? { ...p, deck: targetDeck } : p
+      );
+      const next: GameState = {
+        ...prev,
+        deck: targetDeck,
+        deckPresets: nextPresets,
+        activeDeckPreset: idx,
+      };
+      saveGameToStorage(next);
+      return next;
+    });
+    showToast(`✦ 덱 프리셋 [${idx + 1}. ${presetName}] 전환!`);
+  };
+
+  const handleApplyRecommendedDeck = (mode: 'farm' | 'boss') => {
+    const rec = buildRecommendedDeck(state, mode, stats.maxDeckSlots);
+    if (rec.length === 0) return;
+    playSfx('heal', state.settings.sfxEnabled);
+    setState((prev) => {
+      const { presets, activeIndex } = ensureDeckPresets(prev);
+      const nextRec = buildRecommendedDeck(prev, mode, getMaxDeckSlots(prev));
+      const targetDeck = nextRec.length > 0 ? nextRec : rec;
+      const nextPresets = presets.map((p, i) =>
+        i === activeIndex ? { ...p, deck: [...targetDeck] } : p
+      );
+      const next: GameState = {
+        ...prev,
+        deck: targetDeck,
+        deckPresets: nextPresets,
+        activeDeckPreset: activeIndex,
+      };
+      saveGameToStorage(next);
+      return next;
+    });
+    showToast(`✦ [${mode === 'boss' ? '보스전' : '사냥'}] 추천 덱 자동 편성 완료!`);
   };
 
   const handleChallengeRankExam = () => {
@@ -2406,6 +2510,9 @@ export default function App() {
                     setTab('deck');
                   }}
                   onClearEscort={() => handleSelectEscort(null)}
+                  telemetry={telemetry}
+                  onSelectDeckPreset={handleSelectDeckPreset}
+                  onJumpFrontierStage={handleJumpFrontierStage}
                 />
               )}
 
@@ -2447,10 +2554,9 @@ export default function App() {
                 <DeckGearTab
                   state={state}
                   stats={stats}
-                  onUpdateDeck={(deck) => {
-                    playSfx('click', state.settings.sfxEnabled);
-                    setState((prev) => ({ ...prev, deck }));
-                  }}
+                  onUpdateDeck={handleUpdateDeck}
+                  onSelectDeckPreset={handleSelectDeckPreset}
+                  onApplyRecommendedDeck={handleApplyRecommendedDeck}
                   onEquipItem={handleEquipItem}
                   onEquipBest={handleEquipBest}
                   onEnhanceEquipped={handleEnhanceEquipped}
@@ -2524,6 +2630,7 @@ export default function App() {
                     storyQueueRef.current = [];
                     syncStoryQueueCount();
                     clearGameStorage();
+                    setTelemetry(createFreshTelemetry());
                     setState(createEmptyUncreatedState());
                     setTab('battle');
                   }}

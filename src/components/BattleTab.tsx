@@ -10,10 +10,18 @@ import { isFamiliarSynergyActive } from '../data/familiarSynergy';
 import { getActiveInfirmaryEffect } from '../data/infirmary';
 import { PROFESSORS } from '../data/professors';
 import { getRebirthVow } from '../data/rebirthVows';
+import { ensureDeckPresets, formatTelemetryRates } from '../data/qol';
 import { CATEGORY_META, getCharacterTitle, RANKS, SCHOOLS } from '../data/schools';
 import { SKILL_MAP } from '../data/skills';
 import { STARLIGHT_MAX, STARLIGHT_SKILLS } from '../data/starlight';
-import type { CombatRuntime, ComputedStats, GameState, StatusEffect, StatusType } from '../types/game';
+import type {
+  BattleTelemetry,
+  CombatRuntime,
+  ComputedStats,
+  GameState,
+  StatusEffect,
+  StatusType,
+} from '../types/game';
 import { FamiliarPortrait, MonsterPortrait, NpcPortrait, PlayerPortrait } from './GothicArt';
 import { MonsterShowcaseModal } from './Modals';
 import { SkillIcon, SpellImpactVfx } from './SkillArt';
@@ -40,6 +48,9 @@ interface Props {
   onTriggerStarlight: () => void;
   onOpenGrimoireSeal?: () => void;
   onClearEscort?: () => void;
+  telemetry?: BattleTelemetry;
+  onSelectDeckPreset?: (index: number) => void;
+  onJumpFrontierStage?: () => void;
 }
 
 const STATUS_LABEL: Record<StatusType, string> = {
@@ -94,6 +105,9 @@ export const BattleTab: React.FC<Props> = ({
   onTriggerStarlight,
   onOpenGrimoireSeal,
   onClearEscort,
+  telemetry,
+  onSelectDeckPreset,
+  onJumpFrontierStage,
 }) => {
   const logRef = useRef<HTMLDivElement | null>(null);
   const [enemyModalOpen, setEnemyModalOpen] = useState(false);
@@ -827,7 +841,7 @@ export const BattleTab: React.FC<Props> = ({
 
       {/* 하단 퀵 액션 */}
       <div className="panel" style={{ padding: '10px 11px', marginBottom: 0 }}>
-        <div className="list-actions">
+        <div className="list-actions" style={{ flexWrap: 'wrap', gap: 5 }}>
           <button
             type="button"
             className={`btn btn-sm ${state.settings.autoAdvance ? 'btn-gold' : ''}`}
@@ -835,6 +849,19 @@ export const BattleTab: React.FC<Props> = ({
           >
             자동 전진: {state.settings.autoAdvance ? 'ON' : 'OFF'}
           </button>
+
+          {!isSpecialMode &&
+            onJumpFrontierStage &&
+            (state.selectedAct < state.highestAct ||
+              state.selectedStage < Math.min(3, state.highestStageInAct)) && (
+              <button
+                type="button"
+                className="btn btn-sm frontier-jump-btn"
+                onClick={onJumpFrontierStage}
+              >
+                ⚡ 최고 사냥터 ({state.highestAct}-{Math.min(3, state.highestStageInAct) + 1})
+              </button>
+            )}
 
           {!isSpecialMode &&
             state.selectedStage < 4 &&
@@ -858,6 +885,46 @@ export const BattleTab: React.FC<Props> = ({
                 : '자동 전진 ON: 4번째 사냥터를 돌파하면 막 보스에 자동 도전합니다.'}
           </div>
         )}
+        {onSelectDeckPreset && (() => {
+          const { presets, activeIndex } = ensureDeckPresets(state);
+          return (
+            <div className="battle-preset-row">
+              <span className="battle-preset-label">덱 프리셋</span>
+              <div className="battle-preset-pills" role="group" aria-label="전투 덱 프리셋 전환">
+                {presets.slice(0, 3).map((p, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    className={`battle-preset-btn${idx === activeIndex ? ' is-active' : ''}`}
+                    aria-pressed={idx === activeIndex}
+                    onClick={() => onSelectDeckPreset(idx)}
+                  >
+                    {idx + 1} {p.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
+        {telemetry && (() => {
+          const rates = formatTelemetryRates(telemetry);
+          return (
+            <div className="battle-telemetry-strip" aria-label="전투 효율 통계">
+              <span className="battle-telemetry-item is-stones">
+                분당 ◆{rates.stonesPerMin.toLocaleString()}
+              </span>
+              <span className="battle-telemetry-item is-exp">
+                분당 EXP {rates.expPerMin.toLocaleString()}
+              </span>
+              <span className="battle-telemetry-item">평균 {rates.avgTurns}턴</span>
+              <span className="battle-telemetry-item is-peak">
+                {rates.peakHit > 0
+                  ? `최대 일격 ${rates.peakHit.toLocaleString()}`
+                  : `전투 ${rates.wins}승`}
+              </span>
+            </div>
+          );
+        })()}
         <div className="list-actions" style={{ marginTop: 6 }}>
           <div style={{ fontSize: 11, color: '#9a9386', marginLeft: 'auto' }}>
             마력 {stats.magic.toLocaleString()} · 치명 {stats.critRate}%

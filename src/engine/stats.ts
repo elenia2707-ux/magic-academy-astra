@@ -196,6 +196,7 @@ export function createNewGameState(
       getStarterKit(school).map((id) => [id, { id, level: 1, exp: 0, unlocked: true }])
     ),
     deck: getStarterKit(school),
+    activeDeckPreset: 0,
     trainingSlots: Array.from({ length: maxTrain }, (_, idx) => (idx === 0 ? 'holy_1' : null)),
     equipped: {
       staff: starterStaff,

@@ -426,6 +426,20 @@ export interface SchoolJournalState {
   readNotices: string[];
 }
 
+export interface DeckPreset {
+  name: string;
+  deck: string[];
+}
+
+export interface BattleTelemetry {
+  startedAt: number;
+  wins: number;
+  totalTurns: number;
+  stonesEarned: number;
+  expEarned: number;
+  peakHit: number;
+}
+
 export interface GameState {
   version: number;
   created: boolean;
@@ -450,6 +464,9 @@ export interface GameState {
   highestTowerFloor: number;
   skills: Record<string, LearnedSkill>;
   deck: string[]; // 심플 로테이션 스킬 ID 목록
+  /** P6-2: 스킬 덱 프리셋 3슬롯 (사냥 / 보스 / 심연) */
+  deckPresets?: DeckPreset[];
+  activeDeckPreset?: number;
   trainingSlots: (string | null)[];
   equipped: Record<EquipSlot, EquipmentItem | null>;
   inventory: EquipmentItem[];

@@ -7,6 +7,7 @@ import { ensureSanctum } from '../data/sanctum';
 import { ensureSchoolJournal } from '../data/schoolQuests';
 import { ensureTruthRoute } from '../data/truthRoute';
 import type {
+  DeckPreset,
   GameSettings,
   GameState,
   GrimoireSealId,
@@ -154,10 +155,35 @@ function normalizeStoryChoices(raw?: unknown): Record<string, string> {
   return result;
 }
 
+function normalizeDeckPresets(raw?: unknown): DeckPreset[] | undefined {
+  if (!Array.isArray(raw)) return undefined;
+  const result: DeckPreset[] = [];
+  for (let i = 0; i < Math.min(3, raw.length); i++) {
+    const entry = raw[i];
+    if (!entry || typeof entry !== 'object') {
+      result.push({ name: `프리셋 ${i + 1}`, deck: [] });
+      continue;
+    }
+    const rec = entry as { name?: unknown; deck?: unknown };
+    const name =
+      typeof rec.name === 'string' && rec.name.trim() ? rec.name.trim() : `프리셋 ${i + 1}`;
+    const deck = Array.isArray(rec.deck)
+      ? rec.deck.filter((id): id is string => typeof id === 'string' && id.length > 0)
+      : [];
+    result.push({ name, deck });
+  }
+  return result.length > 0 ? result : undefined;
+}
+
 function hydrateState(parsed: Partial<GameState>): GameState | null {
   if (!parsed || typeof parsed !== 'object' || !parsed.created) return null;
   const fallback = createEmptyUncreatedState();
   const normalizedAffinity = normalizeAffinity(parsed.affinity);
+  const normalizedDeckPresets = normalizeDeckPresets(parsed.deckPresets);
+  const activeDeckPreset =
+    typeof parsed.activeDeckPreset === 'number' && [0, 1, 2].includes(parsed.activeDeckPreset)
+      ? parsed.activeDeckPreset
+      : 0;
   // P0-4: 기존 세이브에도 시작 스킬 3종 지급 + 덱 빈칸 채움
   // P1-2: 기존 세이브에 dailyQuests 자동 생성 및 자정 경과 시 초기화
   return ensureStarterKit({
@@ -165,6 +191,8 @@ function hydrateState(parsed: Partial<GameState>): GameState | null {
     ...parsed,
     version: SAVE_VERSION,
     skills: normalizeSkills(parsed.skills),
+    deckPresets: normalizedDeckPresets,
+    activeDeckPreset,
     prestige: {
       ...createDefaultPrestige(),
       ...(parsed.prestige ?? {}),

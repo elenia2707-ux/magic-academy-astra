@@ -16,6 +16,12 @@ import {
   SET_INSCRIBE_COST,
 } from '../data/gearSets';
 import { CATEGORY_META } from '../data/schools';
+import {
+  computeGearStatDeltas,
+  ensureDeckPresets,
+  sortInventoryItems,
+  type InventorySortMode,
+} from '../data/qol';
 import { SKILL_MAP } from '../data/skills';
 import type {
   ComputedStats,
@@ -46,6 +52,8 @@ interface Props {
   state: GameState;
   stats: ComputedStats;
   onUpdateDeck: (deck: string[]) => void;
+  onSelectDeckPreset?: (index: number) => void;
+  onApplyRecommendedDeck?: (mode: 'farm' | 'boss') => void;
   onEquipItem: (uid: string) => void;
   onEquipBest: () => void;
   onEnhanceEquipped: (slot: EquipSlot) => void;
@@ -67,6 +75,8 @@ export const DeckGearTab: React.FC<Props> = ({
   state,
   stats,
   onUpdateDeck,
+  onSelectDeckPreset,
+  onApplyRecommendedDeck,
   onEquipItem,
   onEquipBest,
   onEnhanceEquipped,
@@ -84,6 +94,7 @@ export const DeckGearTab: React.FC<Props> = ({
   const [sub, setSub] = useState<'deck' | 'gear' | 'shop'>(
     () => initialSub ?? ((externalGearJump ?? 0) > 0 ? 'gear' : 'deck')
   );
+  const [invSort, setInvSort] = useState<InventorySortMode>('score');
   const [workshopSlot, setWorkshopSlot] = useState<EquipSlot>('staff');
   const [seenJump, setSeenJump] = useState<number>(externalGearJump ?? 0);
   const [seenInitialSub, setSeenInitialSub] = useState<'deck' | 'gear' | 'shop' | undefined>(
@@ -149,6 +160,10 @@ export const DeckGearTab: React.FC<Props> = ({
   const bestPlan = planBestLoadout(state.equipped, state.inventory, state.school);
   const upgradeCount = bestPlan.swaps.length;
 
+  // P6-2: 덱 프리셋 & 보관함 정렬
+  const { presets, activeIndex } = ensureDeckPresets(state);
+  const sortedInventory = sortInventoryItems(state.inventory, invSort, state.school);
+
   const gearBoxCost = Math.round(160 * Math.pow(1.55, state.selectedAct - 1));
 
   return (
@@ -190,6 +205,37 @@ export const DeckGearTab: React.FC<Props> = ({
             <div style={{ fontSize: 11.5, color: '#9a9386', marginBottom: 9 }}>
               매 턴 <strong>1순위 → {stats.maxDeckSlots}순위</strong> 순서대로 쿨타임과 마나가
               가능한 첫 번째 마법을 자동 시전합니다.
+            </div>
+            <div className="deck-preset-bar">
+              <div className="deck-preset-pills" role="group" aria-label="덱 프리셋">
+                {presets.slice(0, 3).map((p, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    className={`deck-preset-btn${idx === activeIndex ? ' is-active' : ''}`}
+                    aria-pressed={idx === activeIndex}
+                    onClick={() => onSelectDeckPreset?.(idx)}
+                  >
+                    {idx + 1} {p.name}
+                  </button>
+                ))}
+              </div>
+              <div className="deck-recommend-row">
+                <button
+                  type="button"
+                  className="btn btn-sm btn-ghost deck-recommend-btn"
+                  onClick={() => onApplyRecommendedDeck?.('farm')}
+                >
+                  사냥 추천
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-sm btn-ghost deck-recommend-btn"
+                  onClick={() => onApplyRecommendedDeck?.('boss')}
+                >
+                  보스 추천
+                </button>
+              </div>
             </div>
             <div className="item-list">
               {Array.from({ length: stats.maxDeckSlots }).map((_, idx) => {
@@ -687,16 +733,40 @@ export const DeckGearTab: React.FC<Props> = ({
               </select>
             </div>
 
-            {state.inventory.length === 0 ? (
+            <div className="inv-sort-row">
+              <span className="inv-sort-label">정렬:</span>
+              <div className="inv-sort-pills" role="group" aria-label="보관함 정렬 기준">
+                {(
+                  [
+                    { id: 'score', label: '점수순' },
+                    { id: 'rarity', label: '희귀도' },
+                    { id: 'slot', label: '부위' },
+                  ] as const
+                ).map((opt) => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    className={`inv-sort-btn${invSort === opt.id ? ' is-active' : ''}`}
+                    aria-pressed={invSort === opt.id}
+                    onClick={() => setInvSort(opt.id)}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {sortedInventory.length === 0 ? (
               <div style={{ fontSize: 12, color: '#8b8479', textAlign: 'center', padding: 14 }}>
                 전투를 진행하거나 상점에서 마도구를 획득하세요.
               </div>
             ) : (
               <div className="item-list">
-                {state.inventory.map((item) => {
+                {sortedInventory.map((item) => {
                   const cur = state.equipped[item.slot];
                   const diff =
                     getItemScoreFor(item, state.school) - (cur ? getItemScoreFor(cur, state.school) : 0);
+                  const deltas = computeGearStatDeltas(item, cur);
                   return (
                     <div key={item.uid} className="list-card">
                       <div style={{ display: 'flex', gap: 9, alignItems: 'flex-start' }}>
@@ -734,6 +804,18 @@ export const DeckGearTab: React.FC<Props> = ({
                             </div>
                           )}
                           <div className="list-desc">{renderStatSummary(item)}</div>
+                          {deltas.length > 0 && (
+                            <div className="gear-delta-row">
+                              {deltas.map((d, dIdx) => (
+                                <span
+                                  key={`${d.label}-${dIdx}`}
+                                  className={`gear-delta-chip ${d.positive ? 'is-up' : 'is-down'}`}
+                                >
+                                  {d.label} {d.deltaText}
+                                </span>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       </div>
                       <div className="list-actions">
